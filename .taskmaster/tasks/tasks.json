@@ -1,0 +1,141 @@
+{
+  "master": {
+    "tasks": [
+      {
+        "id": 1,
+        "title": "Fix TypeScript Issues and Clean Template Code",
+        "description": "Resolve TypeScript type inconsistencies and remove sample plugin template code",
+        "details": "Fix type mismatches in main.ts: Line 14 should use 'obsidianTypstPDFExportSettings' instead of 'MyPluginSettings', lines 111 and 113 should use 'obsidianTypstPDFExport' instead of 'MyPlugin'. Remove sample modal and template functionality. Update plugin metadata in package.json to reflect the actual Typst PDF Export plugin. This establishes a clean foundation for implementing the core functionality.",
+        "testStrategy": "Verify TypeScript compilation passes without errors using 'npm run build'. Confirm plugin loads in Obsidian without console errors.",
+        "priority": "high",
+        "dependencies": [],
+        "status": "pending",
+        "subtasks": []
+      },
+      {
+        "id": 2,
+        "title": "Define Core Interfaces and Settings Structure",
+        "description": "Create comprehensive TypeScript interfaces for plugin configuration, export modes, and internal data structures",
+        "details": "Replace basic settings interface with comprehensive PluginSettings including paths (pandocPath, typstPath, outputFolder), export defaults (template, format, mode), typography settings (fonts, sizes), page setup (size, orientation, margins), and behavior flags (openAfterExport, preserveFolderStructure). Create ExportConfig interface for per-export settings, ExportMode enum ('typography' | 'style-preserving'), ExportFormat enum ('standard' | 'single-page'), and Template interface for Typst template management. Follow current Obsidian plugin patterns from reference plugins.",
+        "testStrategy": "Ensure all interfaces compile correctly and settings can be serialized/deserialized. Create unit tests for default settings object structure.",
+        "priority": "high",
+        "dependencies": [
+          1
+        ],
+        "status": "pending",
+        "subtasks": []
+      },
+      {
+        "id": 3,
+        "title": "Implement Dependency Checker and External Tool Management",
+        "description": "Create system to verify and manage Pandoc and Typst installations with clear user guidance",
+        "details": "Build DependencyChecker class using Node.js child_process.spawn to verify Pandoc 3.0+ and Typst 0.11+ installations. Implement platform-specific executable detection (Windows .exe, Unix PATH lookup). Create user-friendly error messages with installation links and troubleshooting steps. Add settings UI for custom executable paths. Handle cases where tools are not in PATH but manually specified. Use current best practices: spawn with timeout, proper error handling, and cross-platform path resolution using Node.js path module.",
+        "testStrategy": "Test on Windows, macOS, and Linux with both PATH-available and custom-path scenarios. Verify error messages are clear and actionable. Mock child_process for unit testing.",
+        "priority": "high",
+        "dependencies": [
+          2
+        ],
+        "status": "pending",
+        "subtasks": []
+      },
+      {
+        "id": 4,
+        "title": "Build Markdown Preprocessor for Obsidian Syntax",
+        "description": "Convert Obsidian-specific markdown syntax to standard markdown compatible with Pandoc",
+        "details": "Create MarkdownPreprocessor class to handle: wikilinks [[note]] and [[note|alias]] conversion to [alias](note.md), embed syntax ![[image.png]] and ![[note.md]] to standard markdown image/link references, callouts > [!note] to standard blockquotes with appropriate styling markers, tags #tag extraction for metadata, frontmatter preservation and parsing using gray-matter library (latest version ~4.0.3). Handle edge cases like nested brackets, special characters in filenames, and relative path resolution within Obsidian vault structure. Use current markdown processing best practices with regex patterns and AST manipulation.",
+        "testStrategy": "Create comprehensive test suite with various Obsidian syntax combinations. Test with real Obsidian notes containing complex wikilinks, embeds, and callouts. Verify output is valid standard markdown.",
+        "priority": "medium",
+        "dependencies": [
+          2
+        ],
+        "status": "pending",
+        "subtasks": []
+      },
+      {
+        "id": 5,
+        "title": "Create Pandoc-Typst Conversion Pipeline",
+        "description": "Implement core conversion logic from processed markdown to PDF via Pandoc and Typst",
+        "details": "Build PandocTypstConverter class using child_process.spawn to execute Pandoc with --pdf-engine=typst. Implement argument building for templates, variables, and custom options. Create temporary file management for intermediate processing with proper cleanup using Node.js fs.promises and tmp library. Handle Pandoc output parsing, error message extraction, and conversion progress tracking. Support both direct PDF output and intermediate .typ file generation for debugging. Use current Pandoc 3.x API with proper argument escaping and environment variable handling. Implement timeout handling for large documents and memory management for batch processing.",
+        "testStrategy": "Test conversion pipeline with various document sizes and complexity levels. Verify proper error handling for malformed markdown, missing dependencies, and file system errors. Test cleanup of temporary files.",
+        "priority": "high",
+        "dependencies": [
+          3,
+          4
+        ],
+        "status": "pending",
+        "subtasks": []
+      },
+      {
+        "id": 6,
+        "title": "Develop Typst Template System",
+        "description": "Create flexible template management system with built-in templates and custom template support",
+        "details": "Build TemplateManager class with embedded default templates (default.typ, article.typ, report.typ, single-page.typ). Implement template variable substitution system for $title$, $author$, $date$, $font$, $fontSize$, $pageSize$, $margins$, $body$ using string templating. Create single-page template using Typst's 'height: auto' feature for dynamic page sizing. Support custom user templates from configurable directory. Implement template validation and variable extraction. Use current Typst 0.11+ syntax with proper page setup, text configuration, and layout control. Include error handling for template parsing issues and missing variables.",
+        "testStrategy": "Test all built-in templates with various content types. Verify single-page template correctly adjusts height for different document lengths. Test custom template loading and variable substitution accuracy.",
+        "priority": "medium",
+        "dependencies": [
+          2
+        ],
+        "status": "pending",
+        "subtasks": []
+      },
+      {
+        "id": 7,
+        "title": "Implement Export Configuration Modal",
+        "description": "Create intuitive user interface for configuring export options with real-time preview",
+        "details": "Build ExportConfigModal extending Obsidian's Modal class, following patterns from reference better-export-pdf plugin. Create form sections for export mode selection (typography/style-preserving), format choice (standard/single-page), template selection with preview, output settings (location, filename pattern), page configuration (size, orientation, margins), and typography options (fonts, sizes). Implement settings persistence and restoration from previous exports. Add progress indicator during export process with cancel capability. Use current Obsidian UI components: Setting, ButtonComponent, DropdownComponent. Include real-time validation and preview updates.",
+        "testStrategy": "Test modal functionality with various combinations of settings. Verify settings persistence across plugin reloads. Test export process cancellation and progress reporting accuracy.",
+        "priority": "medium",
+        "dependencies": [
+          6
+        ],
+        "status": "pending",
+        "subtasks": []
+      },
+      {
+        "id": 8,
+        "title": "Build CSS Extraction and Style Preservation System",
+        "description": "Capture Obsidian theme styles and map them to equivalent Typst styling for style-preserving export mode",
+        "details": "Create CSSExtractor class to capture computed styles from Obsidian's DOM using document.styleSheets API. Build CSSToTypstMapper to convert common CSS properties to Typst equivalents: font-size to #set text(size:), color to #set text(fill: rgb()), font-weight/font-style to #strong/#emph, text-align to #align(), borders and backgrounds to #box() styling. Handle theme-specific variables and plugin-specific styles. Create hybrid export mode combining extracted styles with Typst typography. Use current CSS parsing techniques with proper specificity handling and fallback values. Include support for popular themes (default, minimal, blue topaz) and common plugins (dataview, templater).",
+        "testStrategy": "Test style extraction with various Obsidian themes. Verify CSS to Typst mapping accuracy for common styling patterns. Test style preservation with plugin-generated content.",
+        "priority": "medium",
+        "dependencies": [
+          2
+        ],
+        "status": "pending",
+        "subtasks": []
+      },
+      {
+        "id": 9,
+        "title": "Add Export Commands and Menu Integration",
+        "description": "Integrate export functionality into Obsidian's command palette, ribbon, and context menus",
+        "details": "Register Obsidian commands for 'Export current note to Typst PDF', 'Export with previous settings', and 'Export folder to PDF'. Add ribbon icon with Typst logo for quick access. Integrate context menu items in file explorer following patterns from reference plugins. Implement batch export functionality for folders with parallel processing using configurable concurrency. Add keyboard shortcuts and command palette integration. Support both single file and multi-file export workflows. Use current Obsidian API: addCommand(), addRibbonIcon(), workspace events. Include proper callback validation and error handling.",
+        "testStrategy": "Test all command registration and menu integration. Verify keyboard shortcuts work correctly. Test batch export performance with various folder sizes and concurrency settings.",
+        "priority": "medium",
+        "dependencies": [
+          7
+        ],
+        "status": "pending",
+        "subtasks": []
+      },
+      {
+        "id": 10,
+        "title": "Implement Settings Tab and Plugin Configuration",
+        "description": "Create comprehensive settings interface for plugin configuration with validation and help text",
+        "details": "Build SettingsTab extending PluginSettingTab with sections for: external tools configuration (Pandoc/Typst paths with validation), default export preferences (template, format, output location), typography settings (default fonts, sizes with preview), page layout defaults (margins, orientation, size), advanced options (concurrency, debug mode, custom arguments), template management (import/export custom templates). Include dependency checking with status indicators, path validation with file picker integration, and help text with links to installation guides. Use current Obsidian settings patterns with proper form validation and immediate feedback.",
+        "testStrategy": "Test all settings persistence and validation. Verify dependency checker integration shows correct status. Test template management functionality and custom path validation across platforms.",
+        "priority": "medium",
+        "dependencies": [
+          8,
+          9
+        ],
+        "status": "pending",
+        "subtasks": []
+      }
+    ],
+    "metadata": {
+      "created": "2025-08-29T14:23:07.961Z",
+      "updated": "2025-08-29T14:23:07.962Z",
+      "description": "Tasks for master context"
+    }
+  }
+}
