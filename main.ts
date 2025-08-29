@@ -1,4 +1,5 @@
-import { App, Notice, Plugin, PluginSettingTab, Setting } from 'obsidian';
+import { App, Notice, Plugin, PluginSettingTab, Setting, Modal, MarkdownRenderer } from 'obsidian';
+import { DependencyChecker } from './src/DependencyChecker';
 
 /**
  * Obsidian Typst PDF Export Plugin
@@ -161,13 +162,20 @@ const DEFAULT_SETTINGS: obsidianTypstPDFExportSettings = {
 
 export default class obsidianTypstPDFExport extends Plugin {
 	settings: obsidianTypstPDFExportSettings;
+	dependencyChecker: DependencyChecker;
 
 	async onload() {
 		await this.loadSettings();
 
+		// Initialize dependency checker
+		this.dependencyChecker = new DependencyChecker();
+
+		// Check dependencies on startup (non-blocking)
+		this.checkDependenciesAsync();
+
 		// Add ribbon icon for quick export access
 		this.addRibbonIcon('file-text', 'Export to PDF with Typst', () => {
-			new Notice('Typst PDF Export: Coming soon!');
+			this.handleExportWithDependencyCheck();
 		});
 
 		// Add basic export command
@@ -175,7 +183,16 @@ export default class obsidianTypstPDFExport extends Plugin {
 			id: 'export-current-note',
 			name: 'Export current note to Typst PDF',
 			callback: () => {
-				new Notice('Typst PDF Export functionality will be implemented in future versions.');
+				this.handleExportWithDependencyCheck();
+			}
+		});
+
+		// Add dependency check command
+		this.addCommand({
+			id: 'check-dependencies',
+			name: 'Check Pandoc and Typst dependencies',
+			callback: () => {
+				this.showDependencyStatus();
 			}
 		});
 
@@ -185,6 +202,115 @@ export default class obsidianTypstPDFExport extends Plugin {
 
 	onunload() {
 
+	}
+
+	/**
+	 * Check dependencies asynchronously without blocking plugin startup
+	 */
+	private async checkDependenciesAsync(): Promise<void> {
+		try {
+			const result = await this.dependencyChecker.checkAllDependencies(
+				{ customPath: this.settings.pandocPath },
+				{ customPath: this.settings.typstPath }
+			);
+
+			if (!result.allAvailable) {
+				// Show notice only if some dependencies are missing
+				const missingTools = [];
+				if (!result.pandoc.isAvailable) missingTools.push('Pandoc');
+				if (!result.typst.isAvailable) missingTools.push('Typst');
+				
+				new Notice(`Typst PDF Export: ${missingTools.join(' and ')} not found. Use "Check dependencies" command for setup instructions.`, 8000);
+			}
+		} catch (error) {
+			console.warn('Dependency check failed on startup:', error);
+		}
+	}
+
+	/**
+	 * Handle export with dependency checking
+	 */
+	private async handleExportWithDependencyCheck(): Promise<void> {
+		const result = await this.dependencyChecker.checkAllDependencies(
+			{ customPath: this.settings.pandocPath },
+			{ customPath: this.settings.typstPath }
+		);
+
+		if (!result.allAvailable) {
+			this.showDependencyErrorDialog(result);
+			return;
+		}
+
+		// Dependencies are available, proceed with export
+		new Notice('Typst PDF Export: Dependencies verified! Export functionality will be implemented in future versions.');
+	}
+
+	/**
+	 * Show detailed dependency status
+	 */
+	private async showDependencyStatus(): Promise<void> {
+		try {
+			const result = await this.dependencyChecker.checkAllDependencies(
+				{ customPath: this.settings.pandocPath },
+				{ customPath: this.settings.typstPath }
+			);
+
+			let message = '## Dependency Status\n\n';
+
+			// Pandoc status
+			message += '### Pandoc\n';
+			if (result.pandoc.isAvailable) {
+				message += `✅ **Available** (v${result.pandoc.version})\n`;
+				message += `Path: ${result.pandoc.executablePath}\n\n`;
+			} else {
+				message += '❌ **Not Available**\n';
+				message += `Error: ${result.pandoc.error}\n\n`;
+				message += this.dependencyChecker.formatInstallationGuide(
+					this.dependencyChecker.getInstallationGuide('pandoc')
+				);
+				message += '\n\n';
+			}
+
+			// Typst status
+			message += '### Typst\n';
+			if (result.typst.isAvailable) {
+				message += `✅ **Available** (v${result.typst.version})\n`;
+				message += `Path: ${result.typst.executablePath}\n\n`;
+			} else {
+				message += '❌ **Not Available**\n';
+				message += `Error: ${result.typst.error}\n\n`;
+				message += this.dependencyChecker.formatInstallationGuide(
+					this.dependencyChecker.getInstallationGuide('typst')
+				);
+			}
+
+			// Create and show modal with dependency status
+			const modal = new DependencyStatusModal(this.app, this);
+			modal.open();
+
+		} catch (error) {
+			new Notice(`Error checking dependencies: ${error instanceof Error ? error.message : String(error)}`);
+		}
+	}
+
+	/**
+	 * Show dependency error dialog with installation instructions
+	 */
+	private showDependencyErrorDialog(result: { pandoc: any; typst: any; allAvailable: boolean }): void {
+		let message = '## Missing Dependencies\n\nThe following dependencies are required:\n\n';
+
+		if (!result.pandoc.isAvailable) {
+			message += `**Pandoc**: ${result.pandoc.error}\n\n`;
+		}
+
+		if (!result.typst.isAvailable) {
+			message += `**Typst**: ${result.typst.error}\n\n`;
+		}
+
+		message += 'Use the "Check Pandoc and Typst dependencies" command for detailed installation instructions.';
+
+		const modal = new DependencyStatusModal(this.app, this);
+		modal.open();
 	}
 
 	async loadSettings() {
@@ -384,6 +510,158 @@ export default class obsidianTypstPDFExport extends Plugin {
 	}
 }
 
+/**
+ * Modal for displaying dependency status and installation instructions
+ */
+class DependencyStatusModal extends Modal {
+	plugin: obsidianTypstPDFExport;
+
+	constructor(app: App, plugin: obsidianTypstPDFExport) {
+		super(app);
+		this.plugin = plugin;
+	}
+
+	async onOpen() {
+		const { contentEl } = this;
+		contentEl.empty();
+
+		contentEl.createEl('h2', { text: 'External Dependencies Status' });
+
+		// Show loading indicator
+		const loadingEl = contentEl.createDiv();
+		loadingEl.setText('Checking dependencies...');
+
+		try {
+			// Check dependencies
+			const results = await this.plugin.dependencyChecker.checkAllDependencies(
+				{ customPath: this.plugin.settings.pandocPath },
+				{ customPath: this.plugin.settings.typstPath }
+			);
+
+			// Clear loading indicator
+			loadingEl.remove();
+
+			// Show overall status
+			const overallStatus = contentEl.createDiv({ cls: 'dependency-overall-status' });
+			if (results.allAvailable) {
+				overallStatus.createEl('div', { 
+					text: '✅ All dependencies are available and ready to use',
+					cls: 'dependency-success'
+				});
+			} else {
+				overallStatus.createEl('div', { 
+					text: '❌ Some dependencies need attention',
+					cls: 'dependency-error'
+				});
+			}
+
+			// Pandoc status
+			this.createDependencySection(contentEl, 'Pandoc', results.pandoc);
+
+			// Typst status
+			this.createDependencySection(contentEl, 'Typst', results.typst);
+
+			// Add refresh button
+			const buttonContainer = contentEl.createDiv({ cls: 'dependency-button-container' });
+			const refreshButton = buttonContainer.createEl('button', { text: 'Refresh Status' });
+			refreshButton.onclick = () => {
+				this.close();
+				new DependencyStatusModal(this.app, this.plugin).open();
+			};
+
+		} catch (error) {
+			loadingEl.remove();
+			const errorEl = contentEl.createDiv({ cls: 'dependency-error' });
+			errorEl.setText(`Error checking dependencies: ${error instanceof Error ? error.message : String(error)}`);
+		}
+	}
+
+	private createDependencySection(containerEl: HTMLElement, toolName: string, result: any) {
+		const section = containerEl.createDiv({ cls: 'dependency-section' });
+		
+		// Tool header
+		const header = section.createEl('h3', { text: toolName });
+		
+		// Status indicator
+		const statusEl = section.createDiv({ cls: 'dependency-status' });
+		if (result.isAvailable) {
+			statusEl.createEl('span', { 
+				text: `✅ ${toolName} v${result.version} - Ready`,
+				cls: 'dependency-success'
+			});
+			if (result.executablePath) {
+				statusEl.createEl('div', { 
+					text: `Path: ${result.executablePath}`,
+					cls: 'dependency-path'
+				});
+			}
+			if (result.warning) {
+				statusEl.createEl('div', { 
+					text: `⚠️ ${result.warning}`,
+					cls: 'dependency-warning'
+				});
+			}
+		} else {
+			statusEl.createEl('span', { 
+				text: `❌ ${toolName} - Not Available`,
+				cls: 'dependency-error'
+			});
+			if (result.error) {
+				statusEl.createEl('div', { 
+					text: `Error: ${result.error}`,
+					cls: 'dependency-error-detail'
+				});
+			}
+
+			// Show installation guide
+			this.createInstallationGuide(section, toolName.toLowerCase() as 'pandoc' | 'typst');
+		}
+	}
+
+	private createInstallationGuide(containerEl: HTMLElement, toolName: 'pandoc' | 'typst') {
+		const guide = this.plugin.dependencyChecker.getInstallationGuide(toolName);
+		const platform = this.plugin.dependencyChecker.getCurrentPlatform();
+		const platformInstructions = guide.instructions[platform];
+
+		const guideEl = containerEl.createDiv({ cls: 'dependency-install-guide' });
+		guideEl.createEl('h4', { text: 'Installation Instructions' });
+		
+		guideEl.createEl('p', { text: platformInstructions.description });
+
+		if (platformInstructions.commands && platformInstructions.commands.length > 0) {
+			const commandsEl = guideEl.createDiv();
+			commandsEl.createEl('strong', { text: 'Installation commands:' });
+			const commandsList = commandsEl.createEl('ul');
+			platformInstructions.commands.forEach(cmd => {
+				const listItem = commandsList.createEl('li');
+				listItem.createEl('code', { text: cmd });
+			});
+		}
+
+		const linksEl = guideEl.createDiv();
+		linksEl.createEl('strong', { text: 'Useful links:' });
+		const linksList = linksEl.createEl('ul');
+		platformInstructions.links.forEach(link => {
+			const listItem = linksList.createEl('li');
+			const linkEl = listItem.createEl('a', { text: link, href: link });
+			linkEl.setAttr('target', '_blank');
+		});
+
+		if (guide.troubleshooting.length > 0) {
+			const troubleshootingEl = guideEl.createDiv();
+			troubleshootingEl.createEl('strong', { text: 'Troubleshooting:' });
+			const troubleshootingList = troubleshootingEl.createEl('ul');
+			guide.troubleshooting.forEach(tip => {
+				troubleshootingList.createEl('li', { text: tip });
+			});
+		}
+	}
+
+	onClose() {
+		const { contentEl } = this;
+		contentEl.empty();
+	}
+}
 
 class TypstPDFExportSettingTab extends PluginSettingTab {
 	plugin: obsidianTypstPDFExport;
@@ -399,6 +677,22 @@ class TypstPDFExportSettingTab extends PluginSettingTab {
 		containerEl.empty();
 
 		containerEl.createEl('h2', {text: 'Typst PDF Export Settings'});
+
+		// Dependency Status Section
+		new Setting(containerEl)
+			.setHeading();
+
+		new Setting(containerEl)
+			.setName('Dependency Status')
+			.setDesc('Check the status of external dependencies')
+			.addButton(button => button
+				.setButtonText('Check Dependencies')
+				.setCta()
+				.onClick(async () => {
+					// Open dependency status modal
+					const modal = new DependencyStatusModal(this.app, this.plugin);
+					modal.open();
+				}));
 
 		// External Tools Section
 		new Setting(containerEl)

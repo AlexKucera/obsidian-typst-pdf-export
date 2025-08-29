@@ -19,6 +19,10 @@
     ]
   },
   "include": [
-    "**/*.ts"
+    "main.ts",
+    "src/**/*.ts"
+  ],
+  "exclude": [
+    "reference/**/*"
   ]
 }
