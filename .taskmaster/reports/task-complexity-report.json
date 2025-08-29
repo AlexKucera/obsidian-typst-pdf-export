@@ -1,0 +1,93 @@
+{
+	"meta": {
+		"generatedAt": "2025-08-29T14:37:49.593Z",
+		"tasksAnalyzed": 10,
+		"totalTasks": 10,
+		"analysisCount": 10,
+		"thresholdScore": 5,
+		"projectName": "Taskmaster",
+		"usedResearch": true
+	},
+	"complexityAnalysis": [
+		{
+			"taskId": 1,
+			"taskTitle": "Fix TypeScript Issues and Clean Template Code",
+			"complexityScore": 2,
+			"recommendedSubtasks": 3,
+			"expansionPrompt": "Break down fixing TypeScript issues and template cleanup into: 1) Fix type declarations (obsidianTypstPDFExportSettings vs MyPluginSettings, obsidianTypstPDFExport vs MyPlugin), 2) Remove template components (SampleModal, sample commands, status bar), 3) Update package.json metadata to reflect Typst PDF Export plugin identity",
+			"reasoning": "Simple type fixes and template removal. Current code shows basic template structure with clear type mismatches on lines 14, 111, 113. Straightforward refactoring with low risk."
+		},
+		{
+			"taskId": 2,
+			"taskTitle": "Define Core Interfaces and Settings Structure",
+			"complexityScore": 4,
+			"recommendedSubtasks": 5,
+			"expansionPrompt": "Design comprehensive interface structure: 1) Create PluginSettings interface with external tool paths and export defaults, 2) Define ExportConfig interface for per-export settings, 3) Create ExportMode and ExportFormat enums, 4) Design Template interface for Typst template management, 5) Implement settings serialization/deserialization with validation",
+			"reasoning": "Moderate complexity requiring careful interface design. Reference plugin shows complex settings structure with 11+ properties. Need to balance feature richness with maintainability."
+		},
+		{
+			"taskId": 3,
+			"taskTitle": "Implement Dependency Checker and External Tool Management",
+			"complexityScore": 6,
+			"recommendedSubtasks": 4,
+			"expansionPrompt": "Build robust dependency checking: 1) Create DependencyChecker class with child_process.spawn for tool detection, 2) Implement platform-specific executable resolution (Windows .exe, Unix PATH), 3) Build user-friendly error reporting with installation guidance, 4) Add settings integration for custom executable paths with validation",
+			"reasoning": "High complexity due to cross-platform considerations, process spawning, and error handling. Requires handling multiple failure modes and providing clear user guidance."
+		},
+		{
+			"taskId": 4,
+			"taskTitle": "Build Markdown Preprocessor for Obsidian Syntax",
+			"complexityScore": 7,
+			"recommendedSubtasks": 6,
+			"expansionPrompt": "Create comprehensive Obsidian syntax processor: 1) Implement wikilink parsing [[note]] and [[note|alias]] with edge cases, 2) Handle embed syntax ![[image.png]] and ![[note.md]] conversion, 3) Convert callouts > [!note] to standard blockquotes, 4) Extract and process tags #tag for metadata, 5) Preserve and parse frontmatter using gray-matter, 6) Handle complex edge cases (nested brackets, special characters, relative paths)",
+			"reasoning": "High complexity due to numerous Obsidian-specific syntax patterns, regex complexity, and edge case handling. Each syntax type has its own challenges and interactions."
+		},
+		{
+			"taskId": 5,
+			"taskTitle": "Create Pandoc-Typst Conversion Pipeline",
+			"complexityScore": 8,
+			"recommendedSubtasks": 6,
+			"expansionPrompt": "Build robust conversion pipeline: 1) Create PandocTypstConverter class with process spawning, 2) Implement Pandoc argument building for templates and variables, 3) Add temporary file management with proper cleanup, 4) Build error parsing and progress tracking, 5) Support both direct PDF and intermediate .typ generation, 6) Add timeout handling and memory management for large documents",
+			"reasoning": "Very high complexity involving external process management, file I/O, error handling, and resource management. Critical path component requiring robust error handling."
+		},
+		{
+			"taskId": 6,
+			"taskTitle": "Develop Typst Template System",
+			"complexityScore": 5,
+			"recommendedSubtasks": 4,
+			"expansionPrompt": "Create flexible template management: 1) Build TemplateManager class with embedded default templates (default.typ, article.typ, report.typ, single-page.typ), 2) Implement variable substitution system for $title$, $author$, $date$, etc., 3) Create single-page template with Typst 'height: auto' feature, 4) Add custom template support with validation and error handling",
+			"reasoning": "Moderate-high complexity requiring Typst syntax knowledge, string templating, and file management. Template system needs to be flexible while maintaining validation."
+		},
+		{
+			"taskId": 7,
+			"taskTitle": "Implement Export Configuration Modal",
+			"complexityScore": 6,
+			"recommendedSubtasks": 5,
+			"expansionPrompt": "Build intuitive export UI: 1) Create ExportConfigModal extending Obsidian Modal with form sections, 2) Implement export mode selection and format choices with validation, 3) Add template selection with preview capabilities, 4) Create output settings (location, filename patterns), 5) Add progress indicator with cancellation support",
+			"reasoning": "High complexity due to UI components, state management, validation, and integration with Obsidian's modal system. Reference plugin shows complex modal with many form elements."
+		},
+		{
+			"taskId": 8,
+			"taskTitle": "Build CSS Extraction and Style Preservation System",
+			"complexityScore": 9,
+			"recommendedSubtasks": 6,
+			"expansionPrompt": "Create advanced style preservation: 1) Build CSSExtractor class using document.styleSheets API, 2) Implement CSSToTypstMapper for property conversion (font-size, color, font-weight, etc.), 3) Handle theme-specific variables and computed styles, 4) Add support for popular themes (default, minimal, blue topaz), 5) Create hybrid export mode combining extracted styles with Typst typography, 6) Handle plugin-specific styles and CSS specificity",
+			"reasoning": "Very high complexity requiring deep CSS knowledge, DOM manipulation, and Typst styling understanding. CSS-to-Typst mapping is non-trivial with many edge cases."
+		},
+		{
+			"taskId": 9,
+			"taskTitle": "Add Export Commands and Menu Integration",
+			"complexityScore": 4,
+			"recommendedSubtasks": 4,
+			"expansionPrompt": "Integrate export functionality: 1) Register Obsidian commands for single file and batch export, 2) Add ribbon icon with Typst logo for quick access, 3) Implement context menu integration in file explorer, 4) Create batch export with parallel processing and configurable concurrency",
+			"reasoning": "Moderate complexity with good reference patterns from better-export-pdf plugin. Obsidian API integration is well-documented, but batch processing adds complexity."
+		},
+		{
+			"taskId": 10,
+			"taskTitle": "Implement Settings Tab and Plugin Configuration",
+			"complexityScore": 5,
+			"recommendedSubtasks": 5,
+			"expansionPrompt": "Create comprehensive settings interface: 1) Build SettingsTab extending PluginSettingTab with organized sections, 2) Add external tools configuration with dependency checking integration, 3) Implement default export preferences with validation, 4) Create typography and page layout settings with previews, 5) Add template management (import/export) with file picker integration",
+			"reasoning": "Moderate-high complexity requiring extensive form validation, file system integration, and dependency checker integration. Reference plugin shows complex settings with multiple sections."
+		}
+	]
+}
