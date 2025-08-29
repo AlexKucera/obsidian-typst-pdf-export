@@ -468,7 +468,7 @@
         "dependencies": [
           2
         ],
-        "status": "pending",
+        "status": "done",
         "subtasks": [
           {
             "id": 1,
@@ -476,7 +476,7 @@
             "description": "Create the core CSSExtractor class that captures computed styles from Obsidian's DOM using document.styleSheets API",
             "dependencies": [],
             "details": "Implement CSSExtractor class with methods to traverse document.styleSheets, extract computed styles from DOM elements, handle CSS specificity and cascading rules. Include methods to capture theme variables, process CSS custom properties, and filter relevant styles for export. Handle cross-origin stylesheets and inline styles.",
-            "status": "pending",
+            "status": "done",
             "testStrategy": ""
           },
           {
@@ -487,7 +487,7 @@
               "8.1"
             ],
             "details": "Create mapping functions for: font-size to #set text(size:), color to #set text(fill: rgb()), font-weight/font-style to #strong/#emph, text-align to #align(), line-height, letter-spacing, text-decoration. Handle CSS color formats (hex, rgb, hsl) conversion to Typst color syntax. Implement fallback values for unsupported properties.",
-            "status": "pending",
+            "status": "done",
             "testStrategy": ""
           },
           {
@@ -498,7 +498,7 @@
               "8.1"
             ],
             "details": "Create theme detection logic to identify active Obsidian theme. Extract CSS custom properties (--variables) specific to themes. Handle dynamic theme switching and variable resolution. Create mapping tables for popular themes' color schemes and typography settings. Include support for theme inheritance and variable overrides.",
-            "status": "pending",
+            "status": "done",
             "testStrategy": ""
           },
           {
@@ -510,7 +510,7 @@
               "8.3"
             ],
             "details": "Create theme-specific style extraction profiles for default Obsidian theme, Minimal theme, and Blue Topaz theme. Implement theme detection and automatic profile selection. Create fallback mechanisms for unknown themes. Test and validate style extraction accuracy across different theme configurations.",
-            "status": "pending",
+            "status": "done",
             "testStrategy": ""
           },
           {
@@ -521,7 +521,7 @@
               "8.2"
             ],
             "details": "Create plugin-specific style extractors for Dataview, Templater, and other popular plugins. Handle plugin-generated DOM elements and their styling. Implement CSS selector matching for plugin content. Create mapping rules for plugin-specific visual elements like tables, buttons, and custom components.",
-            "status": "pending",
+            "status": "done",
             "testStrategy": ""
           },
           {
@@ -533,7 +533,7 @@
               "8.5"
             ],
             "details": "Implement export mode that merges extracted CSS styles with Typst's typography system. Create style precedence rules and conflict resolution. Build template integration that applies extracted styles to Typst templates. Add user controls for style preservation vs. typography optimization balance. Include preview functionality for hybrid styling output.",
-            "status": "pending",
+            "status": "done",
             "testStrategy": ""
           }
         ]
@@ -675,7 +675,7 @@
     ],
     "metadata": {
       "created": "2025-08-29T14:23:07.961Z",
-      "updated": "2025-08-29T21:00:45.921Z",
+      "updated": "2025-08-29T21:22:06.861Z",
       "description": "Tasks for master context"
     }
   }
