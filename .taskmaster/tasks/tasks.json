@@ -139,7 +139,7 @@
         "dependencies": [
           2
         ],
-        "status": "pending",
+        "status": "done",
         "subtasks": [
           {
             "id": 1,
@@ -147,7 +147,7 @@
             "description": "Build the core DependencyChecker class that can detect platform-specific executables and handle cross-platform path resolution",
             "dependencies": [],
             "details": "Create a TypeScript class that uses Node.js built-in modules (child_process, path, fs) to detect executables. Implement platform-specific detection logic using process.platform to handle Windows .exe extensions vs Unix PATH lookup. Include methods for resolving executable paths both in system PATH and custom user-specified locations. Use the path module for cross-platform path operations and proper path resolution.",
-            "status": "pending",
+            "status": "done",
             "testStrategy": "Unit tests for platform detection logic, path resolution on different operating systems, and executable detection in both PATH and custom locations. Mock child_process and fs modules for deterministic testing."
           },
           {
@@ -158,7 +158,7 @@
               "3.1"
             ],
             "details": "Implement version detection by executing --version commands using child_process.spawn with proper timeout handling. Parse version strings to extract semantic version numbers and compare against minimum requirements. Handle various version output formats and edge cases. Include proper error handling for cases where executables exist but version cannot be determined.",
-            "status": "pending",
+            "status": "done",
             "testStrategy": "Test version parsing with various version string formats from different Pandoc and Typst versions. Test timeout handling and error cases where version commands fail. Mock child_process.spawn for controlled testing scenarios."
           },
           {
@@ -167,7 +167,7 @@
             "description": "Develop comprehensive error messaging system with helpful installation links and troubleshooting steps",
             "dependencies": [],
             "details": "Create an error messaging system that provides clear, actionable feedback when dependencies are missing or outdated. Include platform-specific installation instructions with direct links to official installation pages. Add troubleshooting guidance for common issues like PATH configuration problems. Implement different message types for missing tools, outdated versions, and permission issues.",
-            "status": "pending",
+            "status": "done",
             "testStrategy": "Test error message generation for various failure scenarios. Verify that installation links are correct and accessible. Test message clarity and usefulness with different types of dependency issues."
           },
           {
@@ -180,7 +180,7 @@
               "3.3"
             ],
             "details": "Integrate the DependencyChecker into the main plugin class, adding it to the onload lifecycle. Create settings interface elements for users to specify custom Pandoc and Typst executable paths. Add validation buttons or indicators that show dependency status in real-time. Include settings persistence and proper initialization of custom paths on plugin startup.",
-            "status": "pending",
+            "status": "done",
             "testStrategy": "Test settings UI integration and persistence of custom paths. Verify dependency checking works correctly with both auto-detected and manually specified executables. Test settings validation and error display in the UI."
           },
           {
@@ -192,7 +192,7 @@
               "3.2"
             ],
             "details": "Add configurable timeout handling to all child_process.spawn calls to prevent hanging operations. Implement proper error categorization for different failure types (missing executable, permission denied, timeout, invalid version output). Create graceful degradation when dependencies are partially available. Include retry logic for transient failures and proper cleanup of spawned processes.",
-            "status": "pending",
+            "status": "done",
             "testStrategy": "Test timeout behavior with artificially slow processes. Verify error handling covers all expected failure modes. Test cleanup of processes and resources during timeout scenarios. Verify retry logic works correctly for transient failures."
           }
         ]
@@ -207,7 +207,7 @@
         "dependencies": [
           2
         ],
-        "status": "pending",
+        "status": "done",
         "subtasks": [
           {
             "id": 1,
@@ -248,7 +248,7 @@
               "4.1"
             ],
             "details": "Implement parseCallouts() method to convert callout syntax: > [!note] to standard blockquotes with CSS class markers, support for different callout types (note, tip, warning, error, etc.), preserve callout content and nested formatting, handle multi-line callouts and nested elements, add appropriate styling markers for Typst conversion. Map Obsidian callout types to equivalent styling in standard markdown with data attributes or CSS classes.",
-            "status": "in-progress",
+            "status": "done",
             "testStrategy": "Test callout conversion with various types and nested content. Verify preservation of formatting and proper blockquote structure generation."
           },
           {
@@ -297,7 +297,7 @@
               "5.1"
             ],
             "details": "Implement the executePandoc method using child_process.spawn instead of exec for better control and streaming capabilities. Handle platform-specific executable detection (pandoc.exe on Windows). Build proper argument arrays for --pdf-engine=typst and other Pandoc 3.x options. Implement timeout handling for large documents using AbortController. Add proper error handling for process failures and non-zero exit codes.",
-            "status": "pending",
+            "status": "done",
             "testStrategy": "Test with mock child_process.spawn calls. Verify proper argument building and timeout functionality. Test cross-platform executable detection."
           },
           {
@@ -308,7 +308,7 @@
               "5.1"
             ],
             "details": "Implement buildPandocArgs method to construct argument arrays for templates, variables (-V key=value), input/output files, and custom options. Support template file paths, metadata variables, and Typst-specific parameters. Handle argument escaping for special characters in file paths and values. Create validation for required arguments and conflict detection between options.",
-            "status": "pending",
+            "status": "done",
             "testStrategy": "Test argument building with various template and variable combinations. Verify proper escaping of special characters and file paths."
           },
           {
@@ -319,7 +319,7 @@
               "5.1"
             ],
             "details": "Implement temporary file creation using fs.promises.mkdtemp for secure temp directories. Create methods for generating unique temporary filenames for intermediate .md, .typ, and .pdf files. Implement comprehensive cleanup system using process exit handlers and explicit cleanup methods. Add error handling for file system operations and ensure cleanup occurs even on process termination or errors.",
-            "status": "pending",
+            "status": "done",
             "testStrategy": "Test temporary file creation and cleanup under normal and error conditions. Verify cleanup on process termination and timeout scenarios."
           },
           {
@@ -330,7 +330,7 @@
               "5.2"
             ],
             "details": "Build progress tracking system that monitors Pandoc stdout/stderr streams for progress indicators. Implement error message parsing to extract meaningful error information from Pandoc output. Create progress callback system for UI updates during long conversions. Add memory management for large document processing by implementing streaming where possible. Support both direct PDF output and intermediate .typ file generation for debugging purposes.",
-            "status": "pending",
+            "status": "done",
             "testStrategy": "Test progress tracking with documents of varying sizes. Verify error message extraction and parsing accuracy. Test memory usage with large documents."
           }
         ]
@@ -675,7 +675,7 @@
     ],
     "metadata": {
       "created": "2025-08-29T14:23:07.961Z",
-      "updated": "2025-08-29T20:41:32.854Z",
+      "updated": "2025-08-29T20:51:56.772Z",
       "description": "Tasks for master context"
     }
   }
