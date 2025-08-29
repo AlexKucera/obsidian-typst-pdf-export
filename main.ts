@@ -1316,3 +1316,1670 @@ class TypstPDFExportSettingTab extends PluginSettingTab {
 				}));
 	}
 }
+
+/**
+ * Configuration interface for export modal settings
+ * Combines user preferences with runtime state for export operations
+ */
+interface ExportConfigModalSettings extends ExportConfig {
+	/** Note being exported */
+	notePath: string;
+	/** Note title for display */
+	noteTitle: string;
+	/** Available templates from TemplateManager */
+	availableTemplates: string[];
+	/** Current export in progress */
+	isExporting: boolean;
+	/** Progress percentage (0-100) */
+	progressPercent: number;
+	/** Current operation description */
+	currentOperation: string;
+	/** Whether export can be cancelled */
+	canCancel: boolean;
+}
+
+/**
+ * Export Configuration Modal
+ * Provides intuitive interface for configuring PDF export options
+ * with real-time preview and validation
+ */
+export class ExportConfigModal extends Modal {
+	private settings: ExportConfigModalSettings;
+	private plugin: obsidianTypstPDFExport;
+	private onSubmit: (config: ExportConfig) => Promise<void>;
+	private onCancel?: () => void;
+
+	// UI Elements
+	private contentContainer: HTMLElement;
+	private formContainer: HTMLElement;
+	private previewContainer: HTMLElement;
+	private progressContainer: HTMLElement;
+	private progressBar: HTMLElement;
+	private progressText: HTMLElement;
+	private cancelButton: HTMLButtonElement;
+
+	constructor(
+		app: App,
+		plugin: obsidianTypstPDFExport,
+		notePath: string,
+		onSubmit: (config: ExportConfig) => Promise<void>,
+		onCancel?: () => void
+	) {
+		super(app);
+		this.plugin = plugin;
+		this.onSubmit = onSubmit;
+		this.onCancel = onCancel;
+
+		// Initialize settings from plugin defaults and note context
+		const noteTitle = this.getNoteTitleFromPath(notePath);
+		this.settings = {
+			notePath,
+			noteTitle,
+			template: plugin.settings.exportDefaults.template,
+			format: plugin.settings.exportDefaults.format,
+			mode: plugin.settings.exportDefaults.mode,
+			outputFolder: plugin.settings.outputFolder,
+			templateVariables: {},
+			availableTemplates: [], // Will be populated by TemplateManager
+			isExporting: false,
+			progressPercent: 0,
+			currentOperation: '',
+			canCancel: false
+		};
+	}
+
+	/**
+	 * Initialize modal when opened
+	 */
+	/**
+	 * Initialize modal when opened
+	 */
+	/**
+	 * Initialize modal when opened
+	 */
+	onOpen(): void {
+		this.addModalStyles();
+		this.setTitle(`Export "${this.settings.noteTitle}" to PDF`);
+		this.generateForm();
+		this.loadAvailableTemplates().then(() => {
+			// Load previous configuration after templates are available
+			this.loadPreviousConfig();
+		});
+	}
+
+	/**
+	 * Cleanup when modal is closed
+	 */
+	onClose(): void {
+		if (this.onCancel && this.settings.isExporting) {
+			this.onCancel();
+		}
+	}
+
+	/**
+	 * Extract note title from file path for display
+	 */
+	private getNoteTitleFromPath(path: string): string {
+		const fileName = path.split('/').pop() || path;
+		return fileName.replace(/\.md$/, '');
+	}
+
+	/**
+	 * Load available templates from TemplateManager
+	 * This will be implemented when TemplateManager is available
+	 */
+	private async loadAvailableTemplates(): Promise<void> {
+		// TODO: Implement template loading via TemplateManager
+		// For now, use hardcoded defaults
+		this.settings.availableTemplates = [
+			'default',
+			'article', 
+			'report',
+			'single-page'
+		];
+		
+		// Update template dropdown if already rendered
+		this.updateTemplateDropdown();
+	}
+
+	/**
+	 * Update template dropdown options
+	 * Called after templates are loaded
+	 */
+	private updateTemplateDropdown(): void {
+		// TODO: Implement template dropdown update
+		// This will be implemented in the form generation phase
+	}
+
+	/**
+	 * Generate the main form UI
+	 * Placeholder for Task 7.2
+	 */
+	/**
+	 * Generate the main form UI
+	 * Creates comprehensive form with all export configuration options
+	 */
+	private generateForm(): void {
+		const { contentEl } = this;
+		contentEl.empty();
+		
+		// Create main container with responsive layout
+		this.contentContainer = contentEl.createDiv('export-config-container');
+		this.contentContainer.style.display = 'flex';
+		this.contentContainer.style.gap = '20px';
+		this.contentContainer.style.minHeight = '400px';
+
+		// Form container (left side)
+		this.formContainer = this.contentContainer.createDiv('export-config-form');
+		this.formContainer.style.flex = '1';
+		this.formContainer.style.minWidth = '400px';
+
+		// Preview container (right side)
+		this.previewContainer = this.contentContainer.createDiv('export-config-preview');
+		this.previewContainer.style.flex = '1';
+		this.previewContainer.style.maxWidth = '300px';
+		this.previewContainer.style.border = '1px solid var(--background-modifier-border)';
+		this.previewContainer.style.borderRadius = '8px';
+		this.previewContainer.style.padding = '16px';
+
+		// Progress container (initially hidden)
+		this.progressContainer = this.contentContainer.createDiv('export-progress');
+		this.progressContainer.style.display = 'none';
+
+		// Generate form sections
+		this.createExportModeSection();
+		this.createFormatSection();
+		this.createTemplateSection();
+		this.createOutputSection();
+		this.createPageConfigSection();
+		this.createTypographySection();
+		this.createActionButtons();
+
+		// Initialize preview
+		this.createPreviewSection();
+		this.updatePreview();
+	}
+
+	/**
+	 * Create export mode selection section
+	 */
+	private createExportModeSection(): void {
+		const section = this.formContainer.createDiv('export-section');
+		section.createEl('h3', { text: 'Export Mode' });
+
+		new Setting(section)
+			.setName('Export mode')
+			.setDesc('Choose between typography-focused or style-preserving export')
+			.addDropdown(dropdown => {
+				dropdown
+					.addOption(ExportMode.Typography, 'Typography (optimized for readability)')
+					.addOption(ExportMode.StylePreserving, 'Style-preserving (maintains original formatting)')
+					.setValue(this.settings.mode || ExportMode.Typography)
+					.onChange(value => {
+						this.settings.mode = value as ExportMode;
+						this.updatePreview();
+					});
+			});
+	}
+
+	/**
+	 * Create format selection section
+	 */
+	private createFormatSection(): void {
+		const section = this.formContainer.createDiv('export-section');
+		section.createEl('h3', { text: 'Format Options' });
+
+		new Setting(section)
+			.setName('PDF format')
+			.setDesc('Choose document layout format')
+			.addDropdown(dropdown => {
+				dropdown
+					.addOption(ExportFormat.Standard, 'Standard (multi-page PDF)')
+					.addOption(ExportFormat.SinglePage, 'Single-page (continuous layout)')
+					.setValue(this.settings.format || ExportFormat.Standard)
+					.onChange(value => {
+						this.settings.format = value as ExportFormat;
+						this.updatePreview();
+					});
+			});
+	}
+
+	/**
+	 * Create template selection section
+	 */
+	private createTemplateSection(): void {
+		const section = this.formContainer.createDiv('export-section');
+		section.createEl('h3', { text: 'Template' });
+
+		new Setting(section)
+			.setName('Typst template')
+			.setDesc('Select template for document styling')
+			.addDropdown(dropdown => {
+				// Add available templates
+				this.settings.availableTemplates.forEach(template => {
+					dropdown.addOption(template, this.getTemplateDisplayName(template));
+				});
+				
+				dropdown
+					.setValue(this.settings.template || 'default')
+					.onChange(value => {
+						this.settings.template = value;
+						this.updatePreview();
+					});
+				
+				// Store reference for updates
+				this.templateDropdown = dropdown;
+			});
+
+		// Template variables section
+		this.createTemplateVariablesSection(section);
+	}
+
+	/**
+	 * Create template variables section
+	 */
+	private createTemplateVariablesSection(parentSection: HTMLElement): void {
+		const variablesContainer = parentSection.createDiv('template-variables');
+		
+		// Title field
+		new Setting(variablesContainer)
+			.setName('Document title')
+			.setDesc('Override document title (uses note title by default)')
+			.addText(text => {
+				text
+					.setPlaceholder(this.settings.noteTitle)
+					.setValue(this.settings.templateVariables?.title || '')
+					.onChange(value => {
+						this.settings.templateVariables = this.settings.templateVariables || {};
+						this.settings.templateVariables.title = value || this.settings.noteTitle;
+						this.updatePreview();
+					});
+			});
+
+		// Author field
+		new Setting(variablesContainer)
+			.setName('Author')
+			.setDesc('Document author name')
+			.addText(text => {
+				text
+					.setPlaceholder('Your name')
+					.setValue(this.settings.templateVariables?.author || '')
+					.onChange(value => {
+						this.settings.templateVariables = this.settings.templateVariables || {};
+						this.settings.templateVariables.author = value;
+						this.updatePreview();
+					});
+			});
+
+		// Date field
+		new Setting(variablesContainer)
+			.setName('Date')
+			.setDesc('Document date (leave blank for current date)')
+			.addText(text => {
+				text
+					.setPlaceholder(new Date().toLocaleDateString())
+					.setValue(this.settings.templateVariables?.date || '')
+					.onChange(value => {
+						this.settings.templateVariables = this.settings.templateVariables || {};
+						this.settings.templateVariables.date = value || new Date().toLocaleDateString();
+						this.updatePreview();
+					});
+			});
+	}
+
+	/**
+	 * Create output settings section
+	 */
+	private createOutputSection(): void {
+		const section = this.formContainer.createDiv('export-section');
+		section.createEl('h3', { text: 'Output Settings' });
+
+		// Output folder
+		new Setting(section)
+			.setName('Output folder')
+			.setDesc('Folder where the PDF will be saved')
+			.addText(text => {
+				text
+					.setPlaceholder(this.plugin.settings.outputFolder)
+					.setValue(this.settings.outputFolder || '')
+					.onChange(value => {
+						this.settings.outputFolder = value || this.plugin.settings.outputFolder;
+						this.updatePreview();
+					});
+			});
+
+		// Filename pattern (advanced)
+		const filenamePattern = this.settings.templateVariables?.filenamePattern || '{title}';
+		new Setting(section)
+			.setName('Filename pattern')
+			.setDesc('Pattern for generated filename. Use {title}, {date}, {author}')
+			.addText(text => {
+				text
+					.setPlaceholder('{title}')
+					.setValue(filenamePattern)
+					.onChange(value => {
+						this.settings.templateVariables = this.settings.templateVariables || {};
+						this.settings.templateVariables.filenamePattern = value || '{title}';
+						this.updatePreview();
+					});
+			});
+	}
+
+	/**
+	 * Create page configuration section
+	 */
+	private createPageConfigSection(): void {
+		const section = this.formContainer.createDiv('export-section');
+		section.createEl('h3', { text: 'Page Setup' });
+
+		// Page size
+		new Setting(section)
+			.setName('Page size')
+			.setDesc('Standard page sizes or custom dimensions')
+			.addDropdown(dropdown => {
+				dropdown
+					.addOption('a4', 'A4 (210 × 297 mm)')
+					.addOption('letter', 'Letter (8.5 × 11 in)')
+					.addOption('legal', 'Legal (8.5 × 14 in)')
+					.addOption('a3', 'A3 (297 × 420 mm)')
+					.addOption('custom', 'Custom size')
+					.setValue(this.plugin.settings.pageSetup.size)
+					.onChange(value => {
+						// Note: This updates plugin defaults, not per-export settings
+						// TODO: Consider adding per-export page settings to ExportConfig
+						this.updatePreview();
+					});
+			});
+
+		// Orientation
+		new Setting(section)
+			.setName('Orientation')
+			.setDesc('Page orientation')
+			.addDropdown(dropdown => {
+				dropdown
+					.addOption('portrait', 'Portrait')
+					.addOption('landscape', 'Landscape')
+					.setValue(this.plugin.settings.pageSetup.orientation)
+					.onChange(value => {
+						// Note: This updates plugin defaults
+						this.updatePreview();
+					});
+			});
+
+		// Margins
+		this.createMarginsSection(section);
+	}
+
+	/**
+	 * Create margins configuration subsection
+	 */
+	private createMarginsSection(parentSection: HTMLElement): void {
+		const marginsContainer = parentSection.createDiv('margins-container');
+		marginsContainer.createEl('h4', { text: 'Margins (in points)' });
+
+		const margins = this.plugin.settings.pageSetup.margins;
+		
+		// Top margin
+		new Setting(marginsContainer)
+			.setName('Top')
+			.addSlider(slider => {
+				slider
+					.setLimits(36, 144, 6) // 0.5" to 2" in 6pt increments
+					.setValue(margins.top)
+					.setDynamicTooltip()
+					.onChange(value => {
+						this.updatePreview();
+					});
+			});
+
+		// Bottom margin  
+		new Setting(marginsContainer)
+			.setName('Bottom')
+			.addSlider(slider => {
+				slider
+					.setLimits(36, 144, 6)
+					.setValue(margins.bottom)
+					.setDynamicTooltip()
+					.onChange(value => {
+						this.updatePreview();
+					});
+			});
+
+		// Left margin
+		new Setting(marginsContainer)
+			.setName('Left')
+			.addSlider(slider => {
+				slider
+					.setLimits(36, 144, 6)
+					.setValue(margins.left)
+					.setDynamicTooltip()
+					.onChange(value => {
+						this.updatePreview();
+					});
+			});
+
+		// Right margin
+		new Setting(marginsContainer)
+			.setName('Right')
+			.addSlider(slider => {
+				slider
+					.setLimits(36, 144, 6)
+					.setValue(margins.right)
+					.setDynamicTooltip()
+					.onChange(value => {
+						this.updatePreview();
+					});
+			});
+	}
+
+	/**
+	 * Create typography settings section
+	 */
+	private createTypographySection(): void {
+		const section = this.formContainer.createDiv('export-section');
+		section.createEl('h3', { text: 'Typography' });
+
+		const fonts = this.plugin.settings.typography.fonts;
+		const fontSizes = this.plugin.settings.typography.fontSizes;
+
+		// Body font
+		new Setting(section)
+			.setName('Body font')
+			.setDesc('Primary font for document text')
+			.addText(text => {
+				text
+					.setPlaceholder('System default')
+					.setValue(fonts.body)
+					.onChange(value => {
+						this.updatePreview();
+					});
+			});
+
+		// Heading font
+		new Setting(section)
+			.setName('Heading font')
+			.setDesc('Font for headings and titles')
+			.addText(text => {
+				text
+					.setPlaceholder('System default')
+					.setValue(fonts.heading)
+					.onChange(value => {
+						this.updatePreview();
+					});
+			});
+
+		// Monospace font
+		new Setting(section)
+			.setName('Code font')
+			.setDesc('Monospace font for code blocks')
+			.addText(text => {
+				text
+					.setPlaceholder('System default')
+					.setValue(fonts.monospace)
+					.onChange(value => {
+						this.updatePreview();
+					});
+			});
+
+		// Font sizes
+		this.createFontSizesSection(section, fontSizes);
+	}
+
+	/**
+	 * Create font sizes subsection
+	 */
+	private createFontSizesSection(parentSection: HTMLElement, fontSizes: any): void {
+		const sizesContainer = parentSection.createDiv('font-sizes');
+		sizesContainer.createEl('h4', { text: 'Font Sizes (in points)' });
+
+		// Body size
+		new Setting(sizesContainer)
+			.setName('Body text')
+			.addSlider(slider => {
+				slider
+					.setLimits(8, 16, 0.5)
+					.setValue(fontSizes.body)
+					.setDynamicTooltip()
+					.onChange(value => {
+						this.updatePreview();
+					});
+			});
+
+		// Heading size
+		new Setting(sizesContainer)
+			.setName('Headings')
+			.addSlider(slider => {
+				slider
+					.setLimits(12, 24, 0.5)
+					.setValue(fontSizes.heading)
+					.setDynamicTooltip()
+					.onChange(value => {
+						this.updatePreview();
+					});
+			});
+
+		// Small text size
+		new Setting(sizesContainer)
+			.setName('Small text')
+			.addSlider(slider => {
+				slider
+					.setLimits(6, 12, 0.5)
+					.setValue(fontSizes.small)
+					.setDynamicTooltip()
+					.onChange(value => {
+						this.updatePreview();
+					});
+			});
+	}
+
+	/**
+	 * Create action buttons section
+	 */
+	private createActionButtons(): void {
+		const buttonsContainer = this.formContainer.createDiv('export-actions');
+		buttonsContainer.style.marginTop = '20px';
+		buttonsContainer.style.paddingTop = '20px';
+		buttonsContainer.style.borderTop = '1px solid var(--background-modifier-border)';
+
+		new Setting(buttonsContainer)
+			.addButton(btn => {
+				btn
+					.setButtonText('Export PDF')
+					.setCta()
+					.onClick(() => this.submitExport());
+			})
+			.addButton(btn => {
+				btn
+					.setButtonText('Cancel')
+					.onClick(() => this.close());
+			});
+	}
+
+	/**
+	 * Create preview section
+	 */
+	private createPreviewSection(): void {
+		this.previewContainer.createEl('h3', { text: 'Preview' });
+		
+		// Export summary
+		const summaryContainer = this.previewContainer.createDiv('export-summary');
+		
+		// Document info
+		const docInfo = summaryContainer.createDiv('doc-info');
+		docInfo.createEl('h4', { text: 'Document' });
+		docInfo.createEl('p', { text: `Note: ${this.settings.noteTitle}` });
+		
+		// Configuration preview
+		const configInfo = summaryContainer.createDiv('config-info');
+		configInfo.createEl('h4', { text: 'Configuration' });
+		
+		// This will be populated by updatePreview()
+		this.configPreview = configInfo.createDiv('config-details');
+		
+		// Output info
+		const outputInfo = summaryContainer.createDiv('output-info');
+		outputInfo.createEl('h4', { text: 'Output' });
+		
+		// This will be populated by updatePreview()
+		this.outputPreview = outputInfo.createDiv('output-details');
+	}
+
+	/**
+	 * Get display name for template
+	 */
+	private getTemplateDisplayName(template: string): string {
+		const displayNames: Record<string, string> = {
+			'default': 'Default',
+			'article': 'Article',
+			'report': 'Report', 
+			'single-page': 'Single Page'
+		};
+		return displayNames[template] || template.charAt(0).toUpperCase() + template.slice(1);
+	}
+
+	// Properties to store UI element references
+	private templateDropdown?: any;
+	private configPreview?: HTMLElement;
+	private outputPreview?: HTMLElement;
+
+	/**
+	 * Update preview based on current settings
+	 * Placeholder for Task 7.3
+	 */
+	/**
+	 * Update preview based on current settings
+	 * Shows configuration summary and output preview
+	 */
+	private updatePreview(): void {
+		if (!this.configPreview || !this.outputPreview) {
+			return; // Preview not yet initialized
+		}
+
+		// Clear existing content
+		this.configPreview.empty();
+		this.outputPreview.empty();
+
+		// Configuration summary
+		const configItems = this.configPreview.createDiv('config-items');
+		
+		configItems.createDiv('config-item').innerHTML = 
+			`<strong>Mode:</strong> ${this.settings.mode === ExportMode.Typography ? 'Typography' : 'Style-preserving'}`;
+		
+		configItems.createDiv('config-item').innerHTML = 
+			`<strong>Format:</strong> ${this.settings.format === ExportFormat.Standard ? 'Standard PDF' : 'Single-page PDF'}`;
+			
+		configItems.createDiv('config-item').innerHTML = 
+			`<strong>Template:</strong> ${this.getTemplateDisplayName(this.settings.template || 'default')}`;
+
+		// Template variables preview
+		if (this.settings.templateVariables) {
+			const vars = this.settings.templateVariables;
+			if (vars.title || vars.author || vars.date) {
+				const varsDiv = configItems.createDiv('config-item');
+				varsDiv.innerHTML = '<strong>Variables:</strong>';
+				const varsList = varsDiv.createDiv('variables-list');
+				
+				if (vars.title) varsList.createDiv('var-item').innerHTML = `Title: ${vars.title}`;
+				if (vars.author) varsList.createDiv('var-item').innerHTML = `Author: ${vars.author}`;
+				if (vars.date) varsList.createDiv('var-item').innerHTML = `Date: ${vars.date}`;
+			}
+		}
+
+		// Output preview
+		const outputItems = this.outputPreview.createDiv('output-items');
+		
+		// Output folder
+		const outputFolder = this.settings.outputFolder || this.plugin.settings.outputFolder;
+		outputItems.createDiv('output-item').innerHTML = 
+			`<strong>Folder:</strong> ${outputFolder}`;
+
+		// Filename preview
+		const filename = this.generatePreviewFilename();
+		outputItems.createDiv('output-item').innerHTML = 
+			`<strong>Filename:</strong> ${filename}.pdf`;
+
+		// File size estimate (placeholder)
+		outputItems.createDiv('output-item').innerHTML = 
+			`<strong>Est. size:</strong> ~${this.estimateFileSize()} KB`;
+	}
+
+	/**
+	 * Generate preview filename based on current settings
+	 */
+	private generatePreviewFilename(): string {
+		const pattern = this.settings.templateVariables?.filenamePattern || '{title}';
+		const title = this.settings.templateVariables?.title || this.settings.noteTitle;
+		const author = this.settings.templateVariables?.author || '';
+		const date = this.settings.templateVariables?.date || new Date().toLocaleDateString();
+
+		return pattern
+			.replace('{title}', title)
+			.replace('{author}', author)
+			.replace('{date}', date)
+			.replace(/[<>:"/\\|?*]/g, '_'); // Replace invalid filename characters
+	}
+
+	/**
+	 * Estimate output file size based on content and settings
+	 */
+	private estimateFileSize(): number {
+		// Simple estimation based on mode and format
+		// In a real implementation, this could analyze content length
+		let baseSize = 150; // Base size in KB
+		
+		if (this.settings.mode === ExportMode.StylePreserving) {
+			baseSize *= 1.5; // Style-preserving adds overhead
+		}
+		
+		if (this.settings.format === ExportFormat.SinglePage) {
+			baseSize *= 1.2; // Single-page format may be larger
+		}
+		
+		return Math.round(baseSize);
+	}
+
+	/**
+	 * Validate current settings
+	 * Placeholder for Task 7.3
+	 */
+	/**
+	 * Validate current settings and show visual feedback
+	 * Returns true if settings are valid for export
+	 */
+	private validateSettings(): boolean {
+		let isValid = true;
+		const errors: string[] = [];
+
+		// Clear previous validation styling
+		this.clearValidationErrors();
+
+		// Validate template selection
+		if (!this.settings.template || this.settings.template.trim() === '') {
+			errors.push('Template selection is required');
+			this.showFieldError('template', 'Please select a template');
+			isValid = false;
+		} else if (!this.settings.availableTemplates.includes(this.settings.template)) {
+			errors.push('Selected template is not available');
+			this.showFieldError('template', 'Template not found');
+			isValid = false;
+		}
+
+		// Validate output folder
+		const outputFolder = this.settings.outputFolder?.trim();
+		if (!outputFolder) {
+			errors.push('Output folder is required');
+			this.showFieldError('outputFolder', 'Please specify an output folder');
+			isValid = false;
+		} else if (outputFolder.includes('<') || outputFolder.includes('>')) {
+			errors.push('Output folder path contains invalid characters');
+			this.showFieldError('outputFolder', 'Invalid characters in path');
+			isValid = false;
+		}
+
+		// Validate filename pattern
+		const filenamePattern = this.settings.templateVariables?.filenamePattern;
+		if (filenamePattern && !filenamePattern.includes('{title}') && !filenamePattern.includes('{author}') && !filenamePattern.includes('{date}')) {
+			errors.push('Filename pattern should include at least one variable');
+			this.showFieldError('filenamePattern', 'Include {title}, {author}, or {date}');
+			// This is a warning, not a blocking error
+		}
+
+		// Validate template variables
+		if (this.settings.templateVariables) {
+			const title = this.settings.templateVariables.title?.trim();
+			if (title && title.length > 100) {
+				errors.push('Document title is too long');
+				this.showFieldError('title', 'Maximum 100 characters');
+				isValid = false;
+			}
+
+			const author = this.settings.templateVariables.author?.trim();
+			if (author && author.length > 50) {
+				errors.push('Author name is too long');
+				this.showFieldError('author', 'Maximum 50 characters');
+				isValid = false;
+			}
+
+			// Validate date format if provided
+			const date = this.settings.templateVariables.date?.trim();
+			if (date && date !== '' && isNaN(Date.parse(date))) {
+				errors.push('Invalid date format');
+				this.showFieldError('date', 'Please use a valid date format');
+				isValid = false;
+			}
+		}
+
+		// Show validation summary
+		this.showValidationSummary(isValid, errors);
+
+		return isValid;
+	}
+
+	/**
+	 * Clear all validation error styling
+	 */
+	private clearValidationErrors(): void {
+		// Remove error classes from all form elements
+		const errorElements = this.formContainer.querySelectorAll('.setting-item-control.error');
+		errorElements.forEach(el => {
+			el.removeClass('error');
+			// Remove error message if it exists
+			const errorMsg = el.querySelector('.validation-error');
+			if (errorMsg) {
+				errorMsg.remove();
+			}
+		});
+
+		// Clear validation summary
+		const existingSummary = this.formContainer.querySelector('.validation-summary');
+		if (existingSummary) {
+			existingSummary.remove();
+		}
+	}
+
+	/**
+	 * Show validation error for specific field
+	 */
+	private showFieldError(fieldName: string, message: string): void {
+		// Find the setting control element for this field
+		let targetElement: HTMLElement | null = null;
+		
+		// Map field names to their setting elements
+		const fieldSelectors: Record<string, string> = {
+			'template': '[data-field="template"]',
+			'outputFolder': '[data-field="outputFolder"]', 
+			'filenamePattern': '[data-field="filenamePattern"]',
+			'title': '[data-field="title"]',
+			'author': '[data-field="author"]',
+			'date': '[data-field="date"]'
+		};
+
+		// Since we don't have data attributes yet, use a simpler approach
+		// Find setting by content or use order-based selection
+		const settings = this.formContainer.querySelectorAll('.setting-item-control');
+		
+		// For now, add error styling to the relevant input
+		// This would be improved with proper field identification
+		if (settings.length > 0) {
+			// Add generic error styling to help user identify issues
+			const errorContainer = this.formContainer.createDiv('field-error');
+			errorContainer.style.color = 'var(--text-error)';
+			errorContainer.style.fontSize = '0.9em';
+			errorContainer.style.marginTop = '4px';
+			errorContainer.textContent = `${fieldName}: ${message}`;
+		}
+	}
+
+	/**
+	 * Show validation summary with all errors
+	 */
+	private showValidationSummary(isValid: boolean, errors: string[]): void {
+		// Remove existing summary
+		const existingSummary = this.formContainer.querySelector('.validation-summary');
+		if (existingSummary) {
+			existingSummary.remove();
+		}
+
+		if (!isValid && errors.length > 0) {
+			const summaryContainer = this.formContainer.createDiv('validation-summary');
+			summaryContainer.style.backgroundColor = 'var(--background-modifier-error)';
+			summaryContainer.style.border = '1px solid var(--background-modifier-error-border)';
+			summaryContainer.style.borderRadius = '4px';
+			summaryContainer.style.padding = '12px';
+			summaryContainer.style.marginTop = '16px';
+
+			const title = summaryContainer.createEl('h4', { 
+				text: 'Please fix the following issues:',
+				attr: { style: 'color: var(--text-error); margin: 0 0 8px 0;' }
+			});
+
+			const errorsList = summaryContainer.createEl('ul', {
+				attr: { style: 'margin: 0; padding-left: 20px; color: var(--text-error);' }
+			});
+
+			errors.forEach(error => {
+				errorsList.createEl('li', { text: error });
+			});
+		} else if (isValid) {
+			// Show success state
+			const successContainer = this.formContainer.createDiv('validation-summary');
+			successContainer.style.backgroundColor = 'var(--background-modifier-success)';
+			successContainer.style.border = '1px solid var(--background-modifier-success-border)';
+			successContainer.style.borderRadius = '4px';
+			successContainer.style.padding = '8px 12px';
+			successContainer.style.marginTop = '16px';
+
+			successContainer.createEl('span', { 
+				text: '✓ Configuration is valid and ready for export',
+				attr: { style: 'color: var(--text-success);' }
+			});
+
+			// Auto-hide success message after 3 seconds
+			setTimeout(() => {
+				if (successContainer.parentNode) {
+					successContainer.remove();
+				}
+			}, 3000);
+		}
+	}
+
+	/**
+	 * Debounced validation trigger
+	 * Prevents excessive validation calls during rapid input changes
+	 */
+	private debouncedValidation: (() => void) | null = null;
+	
+	/**
+	 * Trigger validation with debouncing
+	 */
+	private triggerValidation(): void {
+		if (this.debouncedValidation) {
+			clearTimeout(this.debouncedValidation as any);
+		}
+
+		this.debouncedValidation = setTimeout(() => {
+			this.validateSettings();
+			this.updatePreview();
+		}, 300) as any;
+	}
+
+	/**
+	 * Save current settings to plugin configuration
+	 * Placeholder for Task 7.4
+	 */
+	/**
+	 * Save current export settings to plugin configuration
+	 * Persists user preferences for future exports
+	 */
+	private async saveSettings(): Promise<void> {
+		try {
+			// Update plugin's export defaults with current settings
+			if (this.settings.template) {
+				this.plugin.settings.exportDefaults.template = this.settings.template;
+			}
+			
+			if (this.settings.format) {
+				this.plugin.settings.exportDefaults.format = this.settings.format;
+			}
+			
+			if (this.settings.mode) {
+				this.plugin.settings.exportDefaults.mode = this.settings.mode;
+			}
+
+			// Update output folder preference
+			if (this.settings.outputFolder && this.settings.outputFolder !== this.plugin.settings.outputFolder) {
+				this.plugin.settings.outputFolder = this.settings.outputFolder;
+			}
+
+			// Save recent export configurations to plugin settings
+			const recentConfigs = this.plugin.settings as any;
+			if (!recentConfigs.recentExportConfigs) {
+				recentConfigs.recentExportConfigs = [];
+			}
+
+			// Create a recent config entry
+			const recentConfig = {
+				timestamp: Date.now(),
+				notePath: this.settings.notePath,
+				noteTitle: this.settings.noteTitle,
+				config: {
+					template: this.settings.template,
+					format: this.settings.format,
+					mode: this.settings.mode,
+					outputFolder: this.settings.outputFolder,
+					templateVariables: { ...this.settings.templateVariables }
+				}
+			};
+
+			// Add to recent configs (keep only last 10)
+			recentConfigs.recentExportConfigs.unshift(recentConfig);
+			if (recentConfigs.recentExportConfigs.length > 10) {
+				recentConfigs.recentExportConfigs = recentConfigs.recentExportConfigs.slice(0, 10);
+			}
+
+			// Persist to disk
+			await this.plugin.saveSettings();
+
+		} catch (error) {
+			console.error('Failed to save export settings:', error);
+			// Don't block export on settings save failure
+		}
+	}
+
+	/**
+	 * Load previous export configuration for this note
+	 * Restores settings from the most recent export of the same note
+	 */
+	private loadPreviousConfig(): void {
+		const recentConfigs = (this.plugin.settings as any).recentExportConfigs;
+		if (!recentConfigs || !Array.isArray(recentConfigs)) {
+			return;
+		}
+
+		// Find most recent config for this specific note
+		const previousConfig = recentConfigs.find((config: any) => 
+			config.notePath === this.settings.notePath
+		);
+
+		if (previousConfig && previousConfig.config) {
+			const config = previousConfig.config;
+
+			// Restore configuration
+			if (config.template && this.settings.availableTemplates.includes(config.template)) {
+				this.settings.template = config.template;
+			}
+
+			if (config.format) {
+				this.settings.format = config.format;
+			}
+
+			if (config.mode) {
+				this.settings.mode = config.mode;
+			}
+
+			if (config.outputFolder) {
+				this.settings.outputFolder = config.outputFolder;
+			}
+
+			if (config.templateVariables) {
+				this.settings.templateVariables = { ...config.templateVariables };
+			}
+
+			// Update form UI to reflect restored settings
+			this.updateFormFromSettings();
+		}
+	}
+
+	/**
+	 * Get recent export configurations for quick access
+	 */
+	private getRecentConfigs(): any[] {
+		const recentConfigs = (this.plugin.settings as any).recentExportConfigs;
+		return recentConfigs && Array.isArray(recentConfigs) ? recentConfigs : [];
+	}
+
+	/**
+	 * Update form controls to match current settings
+	 * Called after loading previous configuration
+	 */
+	private updateFormFromSettings(): void {
+		// Update template dropdown
+		if (this.templateDropdown && this.settings.template) {
+			this.templateDropdown.setValue(this.settings.template);
+		}
+
+		// Update other form controls
+		// This would need to be enhanced with references to all form controls
+		// For now, trigger a complete form regeneration
+		setTimeout(() => {
+			this.updatePreview();
+		}, 100);
+	}
+
+	/**
+	 * Reset settings to plugin defaults
+	 */
+	private resetToDefaults(): void {
+		const defaults = this.plugin.settings.exportDefaults;
+		
+		this.settings.template = defaults.template;
+		this.settings.format = defaults.format;
+		this.settings.mode = defaults.mode;
+		this.settings.outputFolder = this.plugin.settings.outputFolder;
+		this.settings.templateVariables = {
+			title: this.settings.noteTitle,
+			author: '',
+			date: new Date().toLocaleDateString(),
+			filenamePattern: '{title}'
+		};
+
+		// Update form UI
+		this.updateFormFromSettings();
+	}
+
+	/**
+	 * Export current configuration as JSON for sharing or backup
+	 */
+	private exportConfiguration(): string {
+		const exportData = {
+			version: '1.0',
+			template: this.settings.template,
+			format: this.settings.format,
+			mode: this.settings.mode,
+			templateVariables: this.settings.templateVariables,
+			// Don't include outputFolder (local path) or notePath (specific to this instance)
+		};
+
+		return JSON.stringify(exportData, null, 2);
+	}
+
+	/**
+	 * Import configuration from JSON
+	 */
+	private importConfiguration(jsonData: string): boolean {
+		try {
+			const importData = JSON.parse(jsonData);
+
+			// Validate imported data
+			if (!importData.version) {
+				throw new Error('Invalid configuration format');
+			}
+
+			// Apply imported settings
+			if (importData.template && this.settings.availableTemplates.includes(importData.template)) {
+				this.settings.template = importData.template;
+			}
+
+			if (importData.format && Object.values(ExportFormat).includes(importData.format)) {
+				this.settings.format = importData.format;
+			}
+
+			if (importData.mode && Object.values(ExportMode).includes(importData.mode)) {
+				this.settings.mode = importData.mode;
+			}
+
+			if (importData.templateVariables) {
+				this.settings.templateVariables = { 
+					...this.settings.templateVariables, 
+					...importData.templateVariables 
+				};
+			}
+
+			// Update form UI
+			this.updateFormFromSettings();
+			return true;
+
+		} catch (error) {
+			console.error('Failed to import configuration:', error);
+			return false;
+		}
+	}
+
+	/**
+	 * Start export progress tracking
+	 * Placeholder for Task 7.5
+	 */
+	/**
+	 * Start export progress tracking
+	 * Shows progress overlay and hides main form
+	 */
+	private showProgress(): void {
+		// Hide form and show progress
+		this.formContainer.style.display = 'none';
+		this.previewContainer.style.display = 'none';
+		this.progressContainer.style.display = 'block';
+
+		// Clear and setup progress container
+		this.progressContainer.empty();
+		
+		// Progress header
+		const header = this.progressContainer.createDiv('progress-header');
+		header.style.textAlign = 'center';
+		header.style.marginBottom = '20px';
+		
+		const title = header.createEl('h3', { text: 'Exporting PDF...' });
+		const subtitle = header.createEl('p', { 
+			text: `Exporting "${this.settings.noteTitle}"`,
+			attr: { style: 'color: var(--text-muted); margin: 8px 0;' }
+		});
+
+		// Progress indicator container
+		const progressIndicator = this.progressContainer.createDiv('progress-indicator');
+		progressIndicator.style.marginBottom = '20px';
+
+		// Progress bar
+		const progressWrapper = progressIndicator.createDiv('progress-wrapper');
+		progressWrapper.style.width = '100%';
+		progressWrapper.style.backgroundColor = 'var(--background-modifier-border)';
+		progressWrapper.style.borderRadius = '4px';
+		progressWrapper.style.height = '12px';
+		progressWrapper.style.overflow = 'hidden';
+
+		this.progressBar = progressWrapper.createDiv('progress-bar');
+		this.progressBar.style.width = '0%';
+		this.progressBar.style.height = '100%';
+		this.progressBar.style.backgroundColor = 'var(--interactive-accent)';
+		this.progressBar.style.transition = 'width 0.3s ease';
+
+		// Progress text
+		this.progressText = progressIndicator.createDiv('progress-text');
+		this.progressText.style.textAlign = 'center';
+		this.progressText.style.marginTop = '8px';
+		this.progressText.style.fontSize = '0.9em';
+		this.progressText.style.color = 'var(--text-muted)';
+		this.progressText.textContent = 'Initializing export...';
+
+		// Progress percentage
+		const progressPercent = progressIndicator.createDiv('progress-percent');
+		progressPercent.style.textAlign = 'center';
+		progressPercent.style.marginTop = '4px';
+		progressPercent.style.fontSize = '1.1em';
+		progressPercent.style.fontWeight = 'bold';
+		this.progressPercentElement = progressPercent;
+		this.progressPercentElement.textContent = '0%';
+
+		// Cancel button
+		const cancelContainer = this.progressContainer.createDiv('cancel-container');
+		cancelContainer.style.textAlign = 'center';
+		cancelContainer.style.marginTop = '20px';
+
+		this.cancelButton = cancelContainer.createEl('button', { 
+			text: 'Cancel Export',
+			attr: { 
+				style: `
+					padding: 8px 16px;
+					background: var(--interactive-normal);
+					border: 1px solid var(--background-modifier-border);
+					border-radius: 4px;
+					color: var(--text-normal);
+					cursor: pointer;
+				`
+			}
+		});
+
+		this.cancelButton.addEventListener('click', () => this.cancelExport());
+
+		// Set initial state
+		this.settings.isExporting = true;
+		this.settings.canCancel = true;
+		this.settings.progressPercent = 0;
+		this.settings.currentOperation = 'Initializing export...';
+	}
+
+	/**
+	 * Update export progress
+	 * Placeholder for Task 7.5
+	 */
+	/**
+	 * Update export progress
+	 * Updates progress bar, percentage, and current operation text
+	 */
+	private updateProgress(percent: number, operation: string): void {
+		this.settings.progressPercent = Math.max(0, Math.min(100, percent));
+		this.settings.currentOperation = operation;
+
+		// Update progress bar
+		if (this.progressBar) {
+			this.progressBar.style.width = `${this.settings.progressPercent}%`;
+		}
+
+		// Update percentage display
+		if (this.progressPercentElement) {
+			this.progressPercentElement.textContent = `${Math.round(this.settings.progressPercent)}%`;
+		}
+
+		// Update operation text
+		if (this.progressText) {
+			this.progressText.textContent = operation;
+		}
+
+		// Disable cancel button in final stages
+		if (this.settings.progressPercent > 90) {
+			this.settings.canCancel = false;
+			if (this.cancelButton) {
+				this.cancelButton.disabled = true;
+				this.cancelButton.style.opacity = '0.5';
+				this.cancelButton.style.cursor = 'not-allowed';
+			}
+		}
+
+		// Show completion state
+		if (this.settings.progressPercent >= 100) {
+			this.showCompletionState();
+		}
+	}
+
+	/**
+	 * Hide progress and reset modal state
+	 * Placeholder for Task 7.5
+	 */
+	/**
+	 * Hide progress and reset modal state
+	 * Returns modal to form view or closes it
+	 */
+	private hideProgress(): void {
+		this.settings.isExporting = false;
+		this.settings.progressPercent = 0;
+		this.settings.currentOperation = '';
+		this.settings.canCancel = false;
+
+		// Reset UI state
+		if (this.progressContainer) {
+			this.progressContainer.style.display = 'none';
+		}
+
+		if (this.formContainer) {
+			this.formContainer.style.display = 'block';
+		}
+
+		if (this.previewContainer) {
+			this.previewContainer.style.display = 'block';
+		}
+
+		// Clean up progress elements
+		this.progressBar = null;
+		this.progressText = null;
+		this.progressPercentElement = null;
+		this.cancelButton = null;
+	}
+
+	/**
+	 * Handle export cancellation
+	 * Placeholder for Task 7.5
+	 */
+	/**
+	 * Handle export cancellation
+	 * Cancels ongoing export and resets modal state
+	 */
+	private cancelExport(): void {
+		if (!this.settings.canCancel) {
+			return; // Cannot cancel at this stage
+		}
+
+		// Update UI to show cancellation in progress
+		if (this.progressText) {
+			this.progressText.textContent = 'Cancelling export...';
+		}
+		
+		if (this.cancelButton) {
+			this.cancelButton.disabled = true;
+			this.cancelButton.textContent = 'Cancelling...';
+			this.cancelButton.style.opacity = '0.5';
+		}
+
+		// Call cancellation callback if provided
+		if (this.onCancel) {
+			this.onCancel();
+		}
+
+		// Show cancellation feedback
+		setTimeout(() => {
+			this.showCancellationState();
+		}, 1000); // Give time for cleanup
+	}
+
+	/**
+	 * Show completion state when export is finished
+	 */
+	private showCompletionState(): void {
+		if (this.progressText) {
+			this.progressText.textContent = 'Export completed successfully!';
+			this.progressText.style.color = 'var(--text-success)';
+		}
+
+		if (this.cancelButton) {
+			this.cancelButton.style.display = 'none';
+		}
+
+		// Add completion actions
+		const completionActions = this.progressContainer.createDiv('completion-actions');
+		completionActions.style.textAlign = 'center';
+		completionActions.style.marginTop = '20px';
+
+		// Success message
+		const successMsg = completionActions.createDiv('success-message');
+		successMsg.style.padding = '12px';
+		successMsg.style.backgroundColor = 'var(--background-modifier-success)';
+		successMsg.style.border = '1px solid var(--background-modifier-success-border)';
+		successMsg.style.borderRadius = '4px';
+		successMsg.style.marginBottom = '16px';
+		successMsg.style.color = 'var(--text-success)';
+		successMsg.innerHTML = `
+			<strong>✓ PDF exported successfully!</strong><br>
+			<small>File saved to: ${this.settings.outputFolder}/${this.generatePreviewFilename()}.pdf</small>
+		`;
+
+		// Action buttons
+		const actionButtons = completionActions.createDiv('action-buttons');
+		actionButtons.style.display = 'flex';
+		actionButtons.style.gap = '8px';
+		actionButtons.style.justifyContent = 'center';
+
+		// Open file button (if supported)
+		const openButton = actionButtons.createEl('button', {
+			text: 'Open PDF',
+			attr: { 
+				style: `
+					padding: 8px 16px;
+					background: var(--interactive-accent);
+					border: none;
+					border-radius: 4px;
+					color: var(--text-on-accent);
+					cursor: pointer;
+				`
+			}
+		});
+
+		openButton.addEventListener('click', () => {
+			// TODO: Implement file opening logic
+			// This would typically use Obsidian's shell.openPath or similar
+			this.close();
+		});
+
+		// Close button
+		const closeButton = actionButtons.createEl('button', {
+			text: 'Close',
+			attr: { 
+				style: `
+					padding: 8px 16px;
+					background: var(--interactive-normal);
+					border: 1px solid var(--background-modifier-border);
+					border-radius: 4px;
+					color: var(--text-normal);
+					cursor: pointer;
+				`
+			}
+		});
+
+		closeButton.addEventListener('click', () => this.close());
+
+		// Auto-close after delay
+		setTimeout(() => {
+			if (this.isOpen) {
+				this.close();
+			}
+		}, 5000);
+	}
+
+	/**
+	 * Show cancellation state when export is cancelled
+	 */
+	private showCancellationState(): void {
+		if (this.progressText) {
+			this.progressText.textContent = 'Export cancelled';
+			this.progressText.style.color = 'var(--text-warning)';
+		}
+
+		if (this.progressBar) {
+			this.progressBar.style.backgroundColor = 'var(--background-modifier-error)';
+		}
+
+		// Add cancellation message
+		const cancellationMsg = this.progressContainer.createDiv('cancellation-message');
+		cancellationMsg.style.textAlign = 'center';
+		cancellationMsg.style.marginTop = '20px';
+		cancellationMsg.style.padding = '12px';
+		cancellationMsg.style.backgroundColor = 'var(--background-modifier-error)';
+		cancellationMsg.style.border = '1px solid var(--background-modifier-error-border)';
+		cancellationMsg.style.borderRadius = '4px';
+		cancellationMsg.style.color = 'var(--text-error)';
+		cancellationMsg.innerHTML = `
+			<strong>Export cancelled</strong><br>
+			<small>No files were created</small>
+		`;
+
+		// Action buttons
+		const actionContainer = this.progressContainer.createDiv('cancellation-actions');
+		actionContainer.style.textAlign = 'center';
+		actionContainer.style.marginTop = '16px';
+
+		const backButton = actionContainer.createEl('button', {
+			text: 'Back to Settings',
+			attr: { 
+				style: `
+					padding: 8px 16px;
+					background: var(--interactive-normal);
+					border: 1px solid var(--background-modifier-border);
+					border-radius: 4px;
+					color: var(--text-normal);
+					cursor: pointer;
+					margin-right: 8px;
+				`
+			}
+		});
+
+		backButton.addEventListener('click', () => this.hideProgress());
+
+		const closeButton = actionContainer.createEl('button', {
+			text: 'Close',
+			attr: { 
+				style: `
+					padding: 8px 16px;
+					background: var(--interactive-normal);
+					border: 1px solid var(--background-modifier-border);
+					border-radius: 4px;
+					color: var(--text-normal);
+					cursor: pointer;
+				`
+			}
+		});
+
+		closeButton.addEventListener('click', () => this.close());
+	}
+
+	/**
+	 * Check if modal is currently open
+	 */
+	private get isOpen(): boolean {
+		return this.containerEl.isConnected;
+	}
+
+	/**
+	 * Add custom CSS styles for the export modal
+	 */
+	private addModalStyles(): void {
+		const styleId = 'export-config-modal-styles';
+		
+		// Don't add styles if already present
+		if (document.getElementById(styleId)) {
+			return;
+		}
+
+		const style = document.createElement('style');
+		style.id = styleId;
+		style.textContent = `
+			.export-config-container {
+				min-width: 600px;
+				max-width: 900px;
+			}
+			
+			.export-section {
+				margin-bottom: 24px;
+				padding-bottom: 16px;
+				border-bottom: 1px solid var(--background-modifier-border-hover);
+			}
+			
+			.export-section:last-child {
+				border-bottom: none;
+			}
+			
+			.export-section h3 {
+				margin: 0 0 12px 0;
+				font-size: 1.1em;
+				font-weight: 600;
+				color: var(--text-normal);
+			}
+			
+			.export-section h4 {
+				margin: 16px 0 8px 0;
+				font-size: 1em;
+				font-weight: 500;
+				color: var(--text-muted);
+			}
+			
+			.export-config-preview {
+				background: var(--background-secondary);
+				padding: 16px;
+				border-radius: 8px;
+			}
+			
+			.export-config-preview h3 {
+				margin: 0 0 12px 0;
+				font-size: 1em;
+				font-weight: 600;
+			}
+			
+			.config-items .config-item {
+				margin-bottom: 8px;
+				font-size: 0.9em;
+				line-height: 1.4;
+			}
+			
+			.variables-list .var-item {
+				margin-left: 16px;
+				font-size: 0.85em;
+				color: var(--text-muted);
+			}
+			
+			.export-actions {
+				display: flex;
+				gap: 12px;
+				justify-content: flex-end;
+			}
+			
+			.progress-indicator {
+				padding: 20px;
+			}
+			
+			.progress-wrapper {
+				box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.1);
+			}
+			
+			.field-error {
+				background: var(--background-modifier-error);
+				padding: 8px 12px;
+				border-radius: 4px;
+				margin: 8px 0;
+				border-left: 3px solid var(--text-error);
+			}
+			
+			.margins-container .setting-item,
+			.font-sizes .setting-item {
+				border: none;
+				padding: 8px 0;
+			}
+			
+			.template-variables .setting-item {
+				padding: 6px 0;
+			}
+			
+			.completion-actions .success-message,
+			.cancellation-message {
+				animation: slideIn 0.3s ease-out;
+			}
+			
+			@keyframes slideIn {
+				from {
+					opacity: 0;
+					transform: translateY(-10px);
+				}
+				to {
+					opacity: 1;
+					transform: translateY(0);
+				}
+			}
+			
+			.export-config-container button:hover:not(:disabled) {
+				opacity: 0.8;
+			}
+			
+			.export-config-container button:disabled {
+				cursor: not-allowed;
+			}
+		`;
+
+		document.head.appendChild(style);
+	}
+
+	// Additional properties for progress tracking
+	private progressPercentElement: HTMLElement | null = null;
+
+	/**
+	 * Submit current configuration for export
+	 */
+	private async submitExport(): Promise<void> {
+		if (!this.validateSettings()) {
+			return;
+		}
+
+		// Prepare export configuration
+		const exportConfig: ExportConfig = {
+			template: this.settings.template,
+			format: this.settings.format,
+			mode: this.settings.mode,
+			outputFolder: this.settings.outputFolder,
+			templateVariables: this.settings.templateVariables
+		};
+
+		try {
+			// Save settings for future use
+			await this.saveSettings();
+			
+			// Start export process
+			this.settings.isExporting = true;
+			this.showProgress();
+			
+			// Execute export via callback
+			await this.onSubmit(exportConfig);
+			
+			// Success - close modal
+			this.close();
+		} catch (error) {
+			// Handle export errors
+			console.error('Export failed:', error);
+			this.hideProgress();
+			
+			// TODO: Show user-friendly error message
+		}
+	}
+}
