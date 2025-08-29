@@ -9,8 +9,61 @@
         "testStrategy": "Verify TypeScript compilation passes without errors using 'npm run build'. Confirm plugin loads in Obsidian without console errors.",
         "priority": "high",
         "dependencies": [],
-        "status": "pending",
-        "subtasks": []
+        "status": "done",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Fix TypeScript Type Declarations in main.ts",
+            "description": "Correct type inconsistencies by replacing MyPluginSettings and MyPlugin references with proper types",
+            "dependencies": [],
+            "details": "Fix line 14: change 'settings: MyPluginSettings' to 'settings: obsidianTypstPDFExportSettings'. Fix line 111: change 'plugin: MyPlugin' to 'plugin: obsidianTypstPDFExport'. Fix line 113: change constructor parameter 'plugin: MyPlugin' to 'plugin: obsidianTypstPDFExport'. These changes will ensure TypeScript compilation passes without type errors.",
+            "status": "done",
+            "testStrategy": "Run 'npm run build' to verify TypeScript compilation passes without type errors"
+          },
+          {
+            "id": 2,
+            "title": "Remove Sample Template Components",
+            "description": "Delete SampleModal class and remove all template commands and functionality",
+            "dependencies": [
+              "1.1"
+            ],
+            "details": "Remove the entire SampleModal class (lines 94-108). Remove all sample commands: 'open-sample-modal-simple', 'sample-editor-command', and 'open-sample-modal-complex' from the onload method. Remove associated ribbon icon, status bar item, and DOM event listeners that are part of the template code. Clean up any unused imports if they become redundant.",
+            "status": "done",
+            "testStrategy": "Verify plugin loads without console errors and no sample functionality appears in Command Palette"
+          },
+          {
+            "id": 3,
+            "title": "Replace Sample Settings Tab with Minimal Implementation",
+            "description": "Replace SampleSettingTab class with a basic settings tab for the Typst PDF Export plugin",
+            "dependencies": [
+              "1.1"
+            ],
+            "details": "Rename SampleSettingTab class to TypstPDFExportSettingTab. Update the class to use proper plugin type references. Replace the sample setting ('Setting #1') with a placeholder message indicating settings will be implemented later. Update the settings interface to remove 'mySetting' and add a placeholder property. Update DEFAULT_SETTINGS accordingly.",
+            "status": "done",
+            "testStrategy": "Verify settings tab opens without errors and shows appropriate placeholder content"
+          },
+          {
+            "id": 4,
+            "title": "Update package.json Metadata",
+            "description": "Change package.json to reflect the actual Typst PDF Export plugin identity",
+            "dependencies": [],
+            "details": "Change 'name' from 'obsidian-sample-plugin' to 'obsidian-typst-pdf-export'. Update 'description' from sample plugin text to 'Export Obsidian notes to PDF using Typst typesetting system'. Add 'author' field with appropriate value. Add relevant 'keywords' like 'pdf', 'export', 'typst', 'obsidian-plugin'. Ensure version and other metadata remain consistent with manifest.json.",
+            "status": "done",
+            "testStrategy": "Verify package.json contains accurate plugin metadata and version matches manifest.json"
+          },
+          {
+            "id": 5,
+            "title": "Clean Up Template Comments and Add Basic Plugin Structure",
+            "description": "Remove template comments and add minimal structure for Typst PDF export functionality",
+            "dependencies": [
+              "1.2",
+              "1.3"
+            ],
+            "details": "Remove the comment 'Remember to rename these classes and interfaces!' and other template-specific comments. Add a basic command for Typst PDF export (placeholder implementation that shows a notice). Update the ribbon icon to use 'file-text' icon and change the tooltip to 'Export to PDF with Typst'. Add basic plugin description comment at the top of the file. Ensure the plugin class is ready for future Typst functionality implementation.",
+            "status": "done",
+            "testStrategy": "Verify plugin loads successfully, shows correct ribbon icon, and basic export command appears in Command Palette"
+          }
+        ]
       },
       {
         "id": 2,
@@ -23,7 +76,58 @@
           1
         ],
         "status": "pending",
-        "subtasks": []
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Create Main PluginSettings Interface",
+            "description": "Define the comprehensive PluginSettings interface with external tool paths, export defaults, typography settings, and page setup configuration",
+            "dependencies": [],
+            "details": "Create PluginSettings interface containing: pandocPath and typstPath for external tool locations, outputFolder for default export directory, export defaults (template, format, mode), typography settings (fonts, font sizes), page setup configuration (page size, orientation, margins), and behavior flags (openAfterExport, preserveFolderStructure). Include proper JSDoc documentation for each property.",
+            "status": "pending",
+            "testStrategy": ""
+          },
+          {
+            "id": 2,
+            "title": "Define ExportConfig and Mode Enums",
+            "description": "Create per-export configuration interface and define ExportMode and ExportFormat enumerations",
+            "dependencies": [],
+            "details": "Define ExportConfig interface for per-export settings that can override plugin defaults. Create ExportMode enum with values 'typography' and 'style-preserving' for different export approaches. Create ExportFormat enum with values 'standard' and 'single-page' for output format options. Ensure enums are properly typed and documented.",
+            "status": "pending",
+            "testStrategy": ""
+          },
+          {
+            "id": 3,
+            "title": "Design Template Interface System",
+            "description": "Create Template interface for Typst template management and validation",
+            "dependencies": [],
+            "details": "Design Template interface with properties for template name, file path, variables, and metadata. Include template validation structure for required variables and compatibility checking. Define template variable types and default value specifications. Create interface for template discovery and loading mechanisms.",
+            "status": "pending",
+            "testStrategy": ""
+          },
+          {
+            "id": 4,
+            "title": "Implement Settings Serialization Logic",
+            "description": "Create serialization and deserialization methods for plugin settings with validation",
+            "dependencies": [
+              "2.1"
+            ],
+            "details": "Implement loadSettings() and saveSettings() methods that properly serialize/deserialize the PluginSettings interface. Add validation for required paths, enum values, and configuration consistency. Include migration logic for settings format updates and proper error handling for corrupted settings.",
+            "status": "pending",
+            "testStrategy": ""
+          },
+          {
+            "id": 5,
+            "title": "Replace Template Settings Interface",
+            "description": "Update main.ts to use new comprehensive settings interface and remove template code references",
+            "dependencies": [
+              "2.1",
+              "2.4"
+            ],
+            "details": "Replace the existing obsidianTypstPDFExportSettings interface in main.ts with the new comprehensive PluginSettings interface. Update all references to use proper TypeScript types. Remove any remaining template/sample code references to settings. Ensure proper initialization of default settings values.",
+            "status": "pending",
+            "testStrategy": ""
+          }
+        ]
       },
       {
         "id": 3,
@@ -36,7 +140,62 @@
           2
         ],
         "status": "pending",
-        "subtasks": []
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Create DependencyChecker class with platform detection",
+            "description": "Build the core DependencyChecker class that can detect platform-specific executables and handle cross-platform path resolution",
+            "dependencies": [],
+            "details": "Create a TypeScript class that uses Node.js built-in modules (child_process, path, fs) to detect executables. Implement platform-specific detection logic using process.platform to handle Windows .exe extensions vs Unix PATH lookup. Include methods for resolving executable paths both in system PATH and custom user-specified locations. Use the path module for cross-platform path operations and proper path resolution.",
+            "status": "pending",
+            "testStrategy": "Unit tests for platform detection logic, path resolution on different operating systems, and executable detection in both PATH and custom locations. Mock child_process and fs modules for deterministic testing."
+          },
+          {
+            "id": 2,
+            "title": "Implement version checking for Pandoc and Typst",
+            "description": "Add functionality to verify that detected Pandoc and Typst installations meet minimum version requirements (3.0+ and 0.11+ respectively)",
+            "dependencies": [
+              "3.1"
+            ],
+            "details": "Implement version detection by executing --version commands using child_process.spawn with proper timeout handling. Parse version strings to extract semantic version numbers and compare against minimum requirements. Handle various version output formats and edge cases. Include proper error handling for cases where executables exist but version cannot be determined.",
+            "status": "pending",
+            "testStrategy": "Test version parsing with various version string formats from different Pandoc and Typst versions. Test timeout handling and error cases where version commands fail. Mock child_process.spawn for controlled testing scenarios."
+          },
+          {
+            "id": 3,
+            "title": "Create user-friendly error messages and installation guidance",
+            "description": "Develop comprehensive error messaging system with helpful installation links and troubleshooting steps",
+            "dependencies": [],
+            "details": "Create an error messaging system that provides clear, actionable feedback when dependencies are missing or outdated. Include platform-specific installation instructions with direct links to official installation pages. Add troubleshooting guidance for common issues like PATH configuration problems. Implement different message types for missing tools, outdated versions, and permission issues.",
+            "status": "pending",
+            "testStrategy": "Test error message generation for various failure scenarios. Verify that installation links are correct and accessible. Test message clarity and usefulness with different types of dependency issues."
+          },
+          {
+            "id": 4,
+            "title": "Integrate DependencyChecker with plugin settings interface",
+            "description": "Add dependency checking functionality to the main plugin with settings UI for custom executable paths",
+            "dependencies": [
+              "3.1",
+              "3.2",
+              "3.3"
+            ],
+            "details": "Integrate the DependencyChecker into the main plugin class, adding it to the onload lifecycle. Create settings interface elements for users to specify custom Pandoc and Typst executable paths. Add validation buttons or indicators that show dependency status in real-time. Include settings persistence and proper initialization of custom paths on plugin startup.",
+            "status": "pending",
+            "testStrategy": "Test settings UI integration and persistence of custom paths. Verify dependency checking works correctly with both auto-detected and manually specified executables. Test settings validation and error display in the UI."
+          },
+          {
+            "id": 5,
+            "title": "Add timeout handling and robust error management",
+            "description": "Implement comprehensive timeout and error handling for all external process execution",
+            "dependencies": [
+              "3.1",
+              "3.2"
+            ],
+            "details": "Add configurable timeout handling to all child_process.spawn calls to prevent hanging operations. Implement proper error categorization for different failure types (missing executable, permission denied, timeout, invalid version output). Create graceful degradation when dependencies are partially available. Include retry logic for transient failures and proper cleanup of spawned processes.",
+            "status": "pending",
+            "testStrategy": "Test timeout behavior with artificially slow processes. Verify error handling covers all expected failure modes. Test cleanup of processes and resources during timeout scenarios. Verify retry logic works correctly for transient failures."
+          }
+        ]
       },
       {
         "id": 4,
@@ -49,7 +208,64 @@
           2
         ],
         "status": "pending",
-        "subtasks": []
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Create MarkdownPreprocessor Class Structure",
+            "description": "Create the foundational MarkdownPreprocessor class with TypeScript interfaces and basic initialization",
+            "dependencies": [],
+            "details": "Create src/MarkdownPreprocessor.ts with class definition, constructor accepting vault path and settings. Define TypeScript interfaces for PreprocessorOptions (includeMetadata, preserveFrontmatter, baseUrl), WikilinkConfig (format, extension), and PreprocessingResult (content, metadata, errors). Initialize class properties for regex patterns and processing state. Follow existing plugin architecture patterns from main.ts.",
+            "status": "pending",
+            "testStrategy": "Create unit tests for class instantiation and basic property initialization. Test interface type checking and default configuration handling."
+          },
+          {
+            "id": 2,
+            "title": "Implement Wikilink Conversion System",
+            "description": "Build comprehensive wikilink parsing and conversion from [[note]] and [[note|alias]] to standard markdown links",
+            "dependencies": [
+              "4.1"
+            ],
+            "details": "Implement parseWikilinks() method using regex patterns to handle: simple wikilinks [[note]] converting to [note](note.md), aliased wikilinks [[note|alias]] converting to [alias](note.md), nested brackets and special characters in filenames, relative path resolution within vault structure. Handle edge cases like escaped brackets, malformed links, and non-existent files. Support configurable link formats and extensions.",
+            "status": "pending",
+            "testStrategy": "Test with various wikilink formats including nested brackets, special characters, spaces, and malformed syntax. Verify proper path resolution and error handling for missing files."
+          },
+          {
+            "id": 3,
+            "title": "Build Embed Syntax Processor",
+            "description": "Convert Obsidian embed syntax ![[file]] to standard markdown image/link references",
+            "dependencies": [
+              "4.1"
+            ],
+            "details": "Implement parseEmbeds() method to handle: image embeds ![[image.png]] converting to ![](image.png), note embeds ![[note.md]] converting to standard link references, file type detection and appropriate markdown syntax selection, path resolution for embedded files within vault structure. Support size parameters and display options. Handle edge cases like missing files, unsupported file types, and nested embeds.",
+            "status": "pending",
+            "testStrategy": "Test embed conversion with various file types (images, documents, audio). Verify proper path resolution and handling of missing or unsupported files."
+          },
+          {
+            "id": 4,
+            "title": "Create Callout Conversion Engine",
+            "description": "Transform Obsidian callouts > [!type] to standard blockquotes with styling markers",
+            "dependencies": [
+              "4.1"
+            ],
+            "details": "Implement parseCallouts() method to convert callout syntax: > [!note] to standard blockquotes with CSS class markers, support for different callout types (note, tip, warning, error, etc.), preserve callout content and nested formatting, handle multi-line callouts and nested elements, add appropriate styling markers for Typst conversion. Map Obsidian callout types to equivalent styling in standard markdown with data attributes or CSS classes.",
+            "status": "pending",
+            "testStrategy": "Test callout conversion with various types and nested content. Verify preservation of formatting and proper blockquote structure generation."
+          },
+          {
+            "id": 5,
+            "title": "Integrate Frontmatter and Tag Processing",
+            "description": "Add gray-matter library integration for frontmatter parsing and implement tag extraction system",
+            "dependencies": [
+              "4.1",
+              "4.2",
+              "4.3",
+              "4.4"
+            ],
+            "details": "Install and integrate gray-matter library (~4.0.3) for frontmatter parsing. Implement processFrontmatter() method to preserve existing frontmatter and add extracted metadata. Create extractTags() method using regex to find #tag patterns, handle nested tags and special characters, extract tags for metadata inclusion. Combine all preprocessing methods in main process() method with proper error handling and result aggregation. Handle edge cases like malformed frontmatter and tag conflicts.",
+            "status": "pending",
+            "testStrategy": "Test frontmatter preservation and tag extraction with various markdown files. Verify proper metadata generation and error handling for malformed content. Integration test combining all preprocessing features."
+          }
+        ]
       },
       {
         "id": 5,
@@ -63,7 +279,61 @@
           4
         ],
         "status": "pending",
-        "subtasks": []
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Create PandocTypstConverter Class Structure",
+            "description": "Design and implement the core PandocTypstConverter class with TypeScript interfaces and basic constructor",
+            "dependencies": [],
+            "details": "Create a new TypeScript class PandocTypstConverter with proper interface definitions for conversion options, template settings, and output configurations. Define types for PandocOptions, TypstSettings, and ConversionResult. Set up the class constructor to accept configuration parameters. Create proper import statements and exports following the existing codebase patterns from main.ts.",
+            "status": "pending",
+            "testStrategy": "Verify class instantiation with various configuration options. Test TypeScript compilation without errors."
+          },
+          {
+            "id": 2,
+            "title": "Implement Pandoc Process Execution with child_process.spawn",
+            "description": "Build the core Pandoc execution logic using Node.js child_process.spawn for cross-platform compatibility",
+            "dependencies": [
+              "5.1"
+            ],
+            "details": "Implement the executePandoc method using child_process.spawn instead of exec for better control and streaming capabilities. Handle platform-specific executable detection (pandoc.exe on Windows). Build proper argument arrays for --pdf-engine=typst and other Pandoc 3.x options. Implement timeout handling for large documents using AbortController. Add proper error handling for process failures and non-zero exit codes.",
+            "status": "pending",
+            "testStrategy": "Test with mock child_process.spawn calls. Verify proper argument building and timeout functionality. Test cross-platform executable detection."
+          },
+          {
+            "id": 3,
+            "title": "Build Argument Construction System",
+            "description": "Create flexible system for building Pandoc command-line arguments with templates, variables, and custom options",
+            "dependencies": [
+              "5.1"
+            ],
+            "details": "Implement buildPandocArgs method to construct argument arrays for templates, variables (-V key=value), input/output files, and custom options. Support template file paths, metadata variables, and Typst-specific parameters. Handle argument escaping for special characters in file paths and values. Create validation for required arguments and conflict detection between options.",
+            "status": "pending",
+            "testStrategy": "Test argument building with various template and variable combinations. Verify proper escaping of special characters and file paths."
+          },
+          {
+            "id": 4,
+            "title": "Implement Temporary File Management with Cleanup",
+            "description": "Create robust temporary file handling system using Node.js fs.promises and proper cleanup mechanisms",
+            "dependencies": [
+              "5.1"
+            ],
+            "details": "Implement temporary file creation using fs.promises.mkdtemp for secure temp directories. Create methods for generating unique temporary filenames for intermediate .md, .typ, and .pdf files. Implement comprehensive cleanup system using process exit handlers and explicit cleanup methods. Add error handling for file system operations and ensure cleanup occurs even on process termination or errors.",
+            "status": "pending",
+            "testStrategy": "Test temporary file creation and cleanup under normal and error conditions. Verify cleanup on process termination and timeout scenarios."
+          },
+          {
+            "id": 5,
+            "title": "Add Progress Tracking and Error Parsing",
+            "description": "Implement conversion progress monitoring and intelligent Pandoc error message extraction",
+            "dependencies": [
+              "5.2"
+            ],
+            "details": "Build progress tracking system that monitors Pandoc stdout/stderr streams for progress indicators. Implement error message parsing to extract meaningful error information from Pandoc output. Create progress callback system for UI updates during long conversions. Add memory management for large document processing by implementing streaming where possible. Support both direct PDF output and intermediate .typ file generation for debugging purposes.",
+            "status": "pending",
+            "testStrategy": "Test progress tracking with documents of varying sizes. Verify error message extraction and parsing accuracy. Test memory usage with large documents."
+          }
+        ]
       },
       {
         "id": 6,
@@ -76,7 +346,50 @@
           2
         ],
         "status": "pending",
-        "subtasks": []
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Build TemplateManager Class with Embedded Default Templates",
+            "description": "Create TemplateManager class with four embedded default Typst templates (default.typ, article.typ, report.typ, single-page.typ)",
+            "dependencies": [],
+            "details": "Implement TemplateManager class that stores built-in templates as string constants. Create default.typ for basic documents, article.typ for academic content, report.typ for formal reports, and single-page.typ using Typst's 'height: auto' feature. Each template should use proper Typst 0.11+ syntax with page setup, text configuration, and layout control. Templates should include placeholder variables for substitution.",
+            "status": "pending",
+            "testStrategy": ""
+          },
+          {
+            "id": 2,
+            "title": "Implement Variable Substitution System",
+            "description": "Create string templating system for replacing template variables like $title$, $author$, $date$, etc.",
+            "dependencies": [
+              "6.1"
+            ],
+            "details": "Build variable substitution engine that processes template strings and replaces placeholders ($title$, $author$, $date$, $font$, $fontSize$, $pageSize$, $margins$, $body$) with actual values. Implement secure string replacement that handles edge cases and prevents template injection. Support default values for missing variables and proper escaping of special characters in Typst syntax.",
+            "status": "pending",
+            "testStrategy": ""
+          },
+          {
+            "id": 3,
+            "title": "Add Custom User Template Support",
+            "description": "Implement custom template loading from configurable directory with template discovery",
+            "dependencies": [
+              "6.2"
+            ],
+            "details": "Create functionality to load custom .typ templates from user-specified directory. Implement template discovery that scans for .typ files and registers them for use. Add template metadata parsing to extract variables and template information. Support template precedence where custom templates can override built-in ones. Include proper file path resolution and cross-platform directory handling.",
+            "status": "pending",
+            "testStrategy": ""
+          },
+          {
+            "id": 4,
+            "title": "Implement Template Validation and Error Handling",
+            "description": "Create validation system for templates with variable extraction and comprehensive error handling",
+            "dependencies": [
+              "6.3"
+            ],
+            "details": "Build template validation that checks Typst syntax correctness and variable consistency. Implement variable extraction that identifies all placeholder variables in templates. Create comprehensive error handling for template parsing issues, missing variables, invalid Typst syntax, and file system errors. Provide clear error messages with suggestions for fixing template issues. Add validation for both built-in and custom templates.",
+            "status": "pending",
+            "testStrategy": ""
+          }
+        ]
       },
       {
         "id": 7,
@@ -89,7 +402,61 @@
           6
         ],
         "status": "pending",
-        "subtasks": []
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Create ExportConfigModal class structure and constructor",
+            "description": "Build basic ExportConfigModal class extending Modal with constructor, configuration state management, and type definitions",
+            "dependencies": [],
+            "details": "Create ExportConfigModal class extending Obsidian's Modal class. Define comprehensive configuration interface for export settings including export mode, format, template selection, page configuration, and typography options. Initialize modal with default settings and plugin reference, following patterns from reference better-export-pdf plugin modal.ts. Set up basic modal structure with proper TypeScript typing.",
+            "status": "pending",
+            "testStrategy": "Test modal can be instantiated, opened, and closed without errors. Verify configuration object initializes with expected default values and types match interface definitions."
+          },
+          {
+            "id": 2,
+            "title": "Implement form generation and UI components",
+            "description": "Create comprehensive form interface using Obsidian's Setting components with sections for all export options",
+            "dependencies": [
+              "7.1"
+            ],
+            "details": "Build generateForm method creating UI sections for: export mode selection (typography/style-preserving), format choice (standard/single-page), template selection dropdown, output settings (location, filename pattern), page configuration (size, orientation, margins), and typography options (fonts, sizes). Use Obsidian UI components: Setting, ButtonComponent, DropdownComponent following existing patterns. Include proper labeling and organization.",
+            "status": "pending",
+            "testStrategy": "Test all form sections render correctly, dropdowns contain expected options, and input fields accept valid values. Verify form layout matches design requirements."
+          },
+          {
+            "id": 3,
+            "title": "Add real-time settings validation and preview updates",
+            "description": "Implement live validation and preview functionality for configuration changes",
+            "dependencies": [
+              "7.2"
+            ],
+            "details": "Add event handlers for all form inputs to validate settings in real-time. Implement preview update logic that refreshes display when settings change. Add validation for required fields, numeric ranges, and file paths. Show visual feedback for invalid inputs and helpful error messages. Use debounced updates for performance optimization following reference implementation patterns.",
+            "status": "pending",
+            "testStrategy": "Test validation triggers on invalid inputs, preview updates reflect configuration changes, and error messages are clear and actionable. Verify performance with rapid setting changes."
+          },
+          {
+            "id": 4,
+            "title": "Implement settings persistence and restoration",
+            "description": "Build system to save and restore export configurations across plugin sessions",
+            "dependencies": [
+              "7.1"
+            ],
+            "details": "Create settings persistence mechanism to save current export configuration to plugin settings. Implement configuration restoration from previous exports, maintaining user preferences. Handle default settings fallback and migration of settings format changes. Store settings in plugin data using Obsidian's standard settings pattern with proper serialization.",
+            "status": "pending",
+            "testStrategy": "Test settings persist across plugin reloads, previous configurations restore correctly, and default settings apply appropriately for new users."
+          },
+          {
+            "id": 5,
+            "title": "Add export progress indicator with cancellation capability",
+            "description": "Create progress tracking UI with ability to cancel ongoing export operations",
+            "dependencies": [
+              "7.3"
+            ],
+            "details": "Implement progress indicator showing export status and completion percentage. Add cancel button functionality to halt export process safely. Create progress modal or overlay displaying current operation status, files processed, and estimated time remaining. Handle cancellation gracefully by cleaning up temporary files and resetting modal state. Follow patterns from reference implementation's Progress.svelte integration.",
+            "status": "pending",
+            "testStrategy": "Test progress indicator shows accurate status during export, cancel functionality works without leaving corrupted files, and modal state resets properly after cancellation."
+          }
+        ]
       },
       {
         "id": 8,
@@ -102,7 +469,74 @@
           2
         ],
         "status": "pending",
-        "subtasks": []
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Build CSSExtractor Class Foundation",
+            "description": "Create the core CSSExtractor class that captures computed styles from Obsidian's DOM using document.styleSheets API",
+            "dependencies": [],
+            "details": "Implement CSSExtractor class with methods to traverse document.styleSheets, extract computed styles from DOM elements, handle CSS specificity and cascading rules. Include methods to capture theme variables, process CSS custom properties, and filter relevant styles for export. Handle cross-origin stylesheets and inline styles.",
+            "status": "pending",
+            "testStrategy": ""
+          },
+          {
+            "id": 2,
+            "title": "Implement CSS Property to Typst Mapping System",
+            "description": "Build CSSToTypstMapper class that converts CSS properties to equivalent Typst styling commands",
+            "dependencies": [
+              "8.1"
+            ],
+            "details": "Create mapping functions for: font-size to #set text(size:), color to #set text(fill: rgb()), font-weight/font-style to #strong/#emph, text-align to #align(), line-height, letter-spacing, text-decoration. Handle CSS color formats (hex, rgb, hsl) conversion to Typst color syntax. Implement fallback values for unsupported properties.",
+            "status": "pending",
+            "testStrategy": ""
+          },
+          {
+            "id": 3,
+            "title": "Add Theme-Specific Variable Handling",
+            "description": "Implement detection and processing of theme-specific CSS variables and computed styles",
+            "dependencies": [
+              "8.1"
+            ],
+            "details": "Create theme detection logic to identify active Obsidian theme. Extract CSS custom properties (--variables) specific to themes. Handle dynamic theme switching and variable resolution. Create mapping tables for popular themes' color schemes and typography settings. Include support for theme inheritance and variable overrides.",
+            "status": "pending",
+            "testStrategy": ""
+          },
+          {
+            "id": 4,
+            "title": "Build Popular Theme Support System",
+            "description": "Add dedicated support for popular Obsidian themes including default, minimal, and blue topaz",
+            "dependencies": [
+              "8.2",
+              "8.3"
+            ],
+            "details": "Create theme-specific style extraction profiles for default Obsidian theme, Minimal theme, and Blue Topaz theme. Implement theme detection and automatic profile selection. Create fallback mechanisms for unknown themes. Test and validate style extraction accuracy across different theme configurations.",
+            "status": "pending",
+            "testStrategy": ""
+          },
+          {
+            "id": 5,
+            "title": "Implement Plugin-Specific Style Handling",
+            "description": "Add support for extracting and converting styles from popular Obsidian plugins",
+            "dependencies": [
+              "8.2"
+            ],
+            "details": "Create plugin-specific style extractors for Dataview, Templater, and other popular plugins. Handle plugin-generated DOM elements and their styling. Implement CSS selector matching for plugin content. Create mapping rules for plugin-specific visual elements like tables, buttons, and custom components.",
+            "status": "pending",
+            "testStrategy": ""
+          },
+          {
+            "id": 6,
+            "title": "Create Hybrid Export Mode Integration",
+            "description": "Build the hybrid export mode that combines extracted styles with Typst typography system",
+            "dependencies": [
+              "8.4",
+              "8.5"
+            ],
+            "details": "Implement export mode that merges extracted CSS styles with Typst's typography system. Create style precedence rules and conflict resolution. Build template integration that applies extracted styles to Typst templates. Add user controls for style preservation vs. typography optimization balance. Include preview functionality for hybrid styling output.",
+            "status": "pending",
+            "testStrategy": ""
+          }
+        ]
       },
       {
         "id": 9,
@@ -115,7 +549,58 @@
           7
         ],
         "status": "pending",
-        "subtasks": []
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Implement Core Command Registration System",
+            "description": "Create command registration infrastructure for 'Export current note to Typst PDF', 'Export with previous settings', and 'Export folder to PDF' commands with proper checkCallback validation",
+            "dependencies": [],
+            "details": "Implement registerCommand() method following the pattern from the reference better-export-pdf plugin. Register three main commands using this.addCommand() with appropriate checkCallback functions to validate current context (active markdown view, file selection). Set proper command IDs, names, and callback functions that will open the ExportConfigModal. Ensure commands only appear when valid files are selected and handle both single file and folder contexts.",
+            "status": "pending",
+            "testStrategy": "Test that commands appear in command palette only when appropriate. Verify commands execute without errors and open the expected modal interface. Test with various file contexts including no active file, markdown files, and folders."
+          },
+          {
+            "id": 2,
+            "title": "Add Ribbon Icon with Typst Logo",
+            "description": "Implement ribbon icon using addRibbonIcon() with Typst logo for quick export access",
+            "dependencies": [],
+            "details": "Replace the template ribbon icon (currently 'dice') with a Typst-appropriate icon. Use addRibbonIcon() to create a ribbon button that triggers the export modal for the currently active file. Implement proper click handler that checks for active markdown view and opens ExportConfigModal. Add hover tooltip explaining the export functionality. Consider using 'file-pdf' or custom Typst logo icon if available.",
+            "status": "pending",
+            "testStrategy": "Test ribbon icon appears correctly and has appropriate tooltip. Verify clicking ribbon icon opens export modal when a markdown file is active, and shows appropriate message when no file is active."
+          },
+          {
+            "id": 3,
+            "title": "Integrate File Explorer Context Menu",
+            "description": "Add context menu items to file explorer using workspace.on('file-menu') event registration following reference plugin patterns",
+            "dependencies": [],
+            "details": "Implement registerEvents() method using this.registerEvent() to add file menu items. Use this.app.workspace.on('file-menu') to add 'Export to Typst PDF' option for individual files and 'Export folder to PDF' for folders. Follow the pattern from better-export-pdf reference plugin with proper menu item configuration including icons, sections, and onClick handlers. Distinguish between single file and folder export options with appropriate submenu structure if needed.",
+            "status": "pending",
+            "testStrategy": "Test context menu items appear for both files and folders in file explorer. Verify menu items execute proper export commands and open correct modal configurations. Test with various file types to ensure only markdown files show export options."
+          },
+          {
+            "id": 4,
+            "title": "Implement Batch Export Infrastructure",
+            "description": "Create batch processing system for folder exports with configurable concurrency using p-limit pattern from reference plugin",
+            "dependencies": [
+              "9.1",
+              "9.3"
+            ],
+            "details": "Implement folder traversal and batch export functionality using patterns from reference plugin. Create utility functions for folder traversal (following traverseFolder from utils.ts reference). Implement parallel processing using p-limit library for configurable concurrency. Add progress tracking and cancellation support for long-running batch operations. Handle file selection logic to export only markdown files within folders and manage temporary file cleanup.",
+            "status": "pending",
+            "testStrategy": "Test batch export with folders containing various file types and sizes. Verify concurrency limits work correctly and progress reporting is accurate. Test cancellation functionality and ensure no temporary files are left after completion or cancellation."
+          },
+          {
+            "id": 5,
+            "title": "Add Keyboard Shortcuts and Settings Integration",
+            "description": "Configure default keyboard shortcuts for export commands and integrate with plugin settings system",
+            "dependencies": [
+              "9.1"
+            ],
+            "details": "Define default keyboard shortcuts for primary export commands in manifest.json or through command registration. Update the plugin settings interface (extending obsidianTypstPDFExportSettings) to include export preferences like default output location, concurrency settings, and previous export configuration storage. Implement settings persistence using loadSettings() and saveSettings() methods. Add settings tab integration for user configuration of shortcuts and export defaults.",
+            "status": "pending",
+            "testStrategy": "Test keyboard shortcuts trigger appropriate export commands. Verify settings are properly saved and restored across plugin reloads. Test that previous export settings are remembered and can be reused through 'Export with previous settings' command."
+          }
+        ]
       },
       {
         "id": 10,
@@ -129,12 +614,68 @@
           9
         ],
         "status": "pending",
-        "subtasks": []
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Create TypstPDFExportSettingTab Class Structure",
+            "description": "Build the main settings tab class extending PluginSettingTab with comprehensive section organization and proper TypeScript typing",
+            "dependencies": [],
+            "details": "Create TypstPDFExportSettingTab class extending Obsidian's PluginSettingTab with proper constructor accepting app and plugin parameters. Define sections for external tools, export preferences, typography, page layout, advanced options, and template management. Set up proper TypeScript interfaces for settings validation and section organization. Follow the pattern from reference better-export-pdf plugin setting.ts with proper containerEl management and section headings using setHeading().",
+            "status": "pending",
+            "testStrategy": "Test settings tab can be instantiated and displays without errors. Verify all section headings render correctly and proper TypeScript compilation."
+          },
+          {
+            "id": 2,
+            "title": "Implement External Tools Configuration Section",
+            "description": "Build external tools section with Pandoc and Typst path configuration, validation, and dependency status indicators",
+            "dependencies": [
+              "10.1"
+            ],
+            "details": "Create external tools section using Setting components with text inputs for Pandoc and Typst executable paths. Add validation buttons that check executable accessibility and version requirements using the DependencyChecker class. Include status indicators (green check/red X) showing dependency status. Add browse/file picker functionality for path selection. Include help text with installation links and platform-specific guidance. Handle custom path validation and proper error messaging.",
+            "status": "pending",
+            "testStrategy": "Test path validation works for both valid and invalid executable paths. Verify dependency status indicators update correctly. Test file picker integration and help text accessibility."
+          },
+          {
+            "id": 3,
+            "title": "Build Default Export Preferences Section",
+            "description": "Create section for configuring default export settings including template, format, output location with proper persistence",
+            "dependencies": [
+              "10.1"
+            ],
+            "details": "Implement default export preferences section with dropdown for template selection, toggle for export format (standard/single-page), text input for default output directory with folder picker, and dropdown for export mode (typography/style-preserving). Add settings persistence using plugin saveSettings() method. Include preview functionality showing how defaults will be applied. Follow patterns from reference better-export-pdf plugin with proper Setting component usage.",
+            "status": "pending",
+            "testStrategy": "Test all default settings persist across plugin reloads. Verify dropdown options match available templates. Test folder picker for output directory selection."
+          },
+          {
+            "id": 4,
+            "title": "Create Typography and Page Layout Settings Sections",
+            "description": "Implement typography settings with font selection and page layout configuration with margins, orientation, and size options",
+            "dependencies": [
+              "10.1"
+            ],
+            "details": "Build typography section with dropdown for default fonts, text input for font sizes with validation, and toggle for font embedding options. Create page layout section with dropdown for page size (A4, Letter, etc.), toggle for orientation (portrait/landscape), and text inputs for margin settings (top, bottom, left, right). Add preview functionality showing layout changes. Include validation for numeric inputs and proper unit handling (pt, mm, in).",
+            "status": "pending",
+            "testStrategy": "Test font selection and size validation work correctly. Verify page layout settings apply proper validation and show preview updates. Test margin input validation with various units."
+          },
+          {
+            "id": 5,
+            "title": "Implement Advanced Options and Template Management",
+            "description": "Create advanced settings section and template management functionality with import/export capabilities",
+            "dependencies": [
+              "10.2",
+              "10.3",
+              "10.4"
+            ],
+            "details": "Build advanced options section with text input for concurrency settings, toggle for debug mode, and text area for custom Pandoc arguments. Create template management section with file picker for importing custom templates, button for exporting current templates, and list display of available templates with delete functionality. Include proper file validation for .typ template files and error handling for template operations. Add help text explaining advanced options and template usage.",
+            "status": "pending",
+            "testStrategy": "Test concurrency setting validation and custom argument handling. Verify template import/export functionality works with proper file validation. Test debug mode toggle and advanced option persistence."
+          }
+        ]
       }
     ],
     "metadata": {
       "created": "2025-08-29T14:23:07.961Z",
-      "updated": "2025-08-29T14:23:07.962Z",
+      "updated": "2025-08-29T15:02:03.551Z",
       "description": "Tasks for master context"
     }
   }
