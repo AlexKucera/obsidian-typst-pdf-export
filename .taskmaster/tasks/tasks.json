@@ -345,7 +345,7 @@
         "dependencies": [
           2
         ],
-        "status": "pending",
+        "status": "done",
         "subtasks": [
           {
             "id": 1,
@@ -353,7 +353,7 @@
             "description": "Create TemplateManager class with four embedded default Typst templates (default.typ, article.typ, report.typ, single-page.typ)",
             "dependencies": [],
             "details": "Implement TemplateManager class that stores built-in templates as string constants. Create default.typ for basic documents, article.typ for academic content, report.typ for formal reports, and single-page.typ using Typst's 'height: auto' feature. Each template should use proper Typst 0.11+ syntax with page setup, text configuration, and layout control. Templates should include placeholder variables for substitution.",
-            "status": "pending",
+            "status": "done",
             "testStrategy": ""
           },
           {
@@ -364,7 +364,7 @@
               "6.1"
             ],
             "details": "Build variable substitution engine that processes template strings and replaces placeholders ($title$, $author$, $date$, $font$, $fontSize$, $pageSize$, $margins$, $body$) with actual values. Implement secure string replacement that handles edge cases and prevents template injection. Support default values for missing variables and proper escaping of special characters in Typst syntax.",
-            "status": "pending",
+            "status": "done",
             "testStrategy": ""
           },
           {
@@ -375,7 +375,7 @@
               "6.2"
             ],
             "details": "Create functionality to load custom .typ templates from user-specified directory. Implement template discovery that scans for .typ files and registers them for use. Add template metadata parsing to extract variables and template information. Support template precedence where custom templates can override built-in ones. Include proper file path resolution and cross-platform directory handling.",
-            "status": "pending",
+            "status": "done",
             "testStrategy": ""
           },
           {
@@ -386,7 +386,7 @@
               "6.3"
             ],
             "details": "Build template validation that checks Typst syntax correctness and variable consistency. Implement variable extraction that identifies all placeholder variables in templates. Create comprehensive error handling for template parsing issues, missing variables, invalid Typst syntax, and file system errors. Provide clear error messages with suggestions for fixing template issues. Add validation for both built-in and custom templates.",
-            "status": "pending",
+            "status": "done",
             "testStrategy": ""
           }
         ]
@@ -675,7 +675,7 @@
     ],
     "metadata": {
       "created": "2025-08-29T14:23:07.961Z",
-      "updated": "2025-08-29T20:31:05.316Z",
+      "updated": "2025-08-29T20:41:32.854Z",
       "description": "Tasks for master context"
     }
   }
