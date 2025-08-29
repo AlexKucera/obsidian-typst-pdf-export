@@ -1,5 +1,354 @@
 import { App, Notice, Plugin, PluginSettingTab, Setting, Modal, MarkdownRenderer } from 'obsidian';
 import { DependencyChecker } from './src/DependencyChecker';
+import { spawn, ChildProcess } from 'child_process';
+import { promises as fs } from 'fs';
+import * as path from 'path';
+import * as os from 'os';
+
+/**
+ * Configuration options for Pandoc conversion
+ */
+interface PandocOptions {
+	/** Path to pandoc executable (optional, uses PATH if not specified) */
+	pandocPath?: string;
+	/** Template file path */
+	template?: string;
+	/** Template variables to pass to pandoc */
+	variables?: Record<string, string | number | boolean>;
+	/** Additional pandoc arguments */
+	additionalArgs?: string[];
+	/** Timeout for pandoc process in milliseconds (default: 60000) */
+	timeout?: number;
+	/** Generate intermediate .typ file for debugging */
+	generateIntermediateTypst?: boolean;
+}
+
+/**
+ * Settings specific to Typst engine
+ */
+interface TypstSettings {
+	/** Additional options to pass to Typst engine */
+	engineOptions?: string[];
+}
+
+/**
+ * Result of a Pandoc conversion operation
+ */
+interface ConversionResult {
+	/** Whether the conversion was successful */
+	success: boolean;
+	/** Path to the output PDF file */
+	outputPath?: string;
+	/** Path to intermediate .typ file (if generated) */
+	intermediateTypstPath?: string;
+	/** Error message if conversion failed */
+	error?: string;
+	/** Pandoc stdout output */
+	stdout?: string;
+	/** Pandoc stderr output */
+	stderr?: string;
+	/** Process exit code */
+	exitCode?: number;
+}
+
+/**
+ * Progress callback function type
+ */
+type ProgressCallback = (message: string, progress?: number) => void;
+
+/**
+ * Core converter class for Pandoc to Typst PDF conversion
+ */
+class PandocTypstConverter {
+	private tempDir: string | null = null;
+	private cleanupHandlers: (() => void)[] = [];
+
+	/**
+	 * Create a new PandocTypstConverter instance
+	 * @param pandocOptions Configuration options for Pandoc
+	 * @param typstSettings Settings specific to Typst engine
+	 */
+	constructor(
+		private pandocOptions: PandocOptions = {},
+		private typstSettings: TypstSettings = {}
+	) {
+		// Set up cleanup handlers for process termination
+		this.setupCleanup();
+	}
+
+	/**
+	 * Convert a markdown file to PDF using Pandoc with Typst engine
+	 * @param inputPath Path to the input markdown file
+	 * @param outputPath Path where the PDF should be saved
+	 * @param progressCallback Optional callback for progress updates
+	 * @returns Promise resolving to conversion result
+	 */
+	async convertToPDF(
+		inputPath: string, 
+		outputPath: string, 
+		progressCallback?: ProgressCallback
+	): Promise<ConversionResult> {
+		try {
+			progressCallback?.('Starting PDF conversion...', 0);
+
+			// Create temporary directory if needed
+			await this.ensureTempDirectory();
+			
+			// Build pandoc arguments
+			const args = await this.buildPandocArgs(inputPath, outputPath);
+			
+			progressCallback?.('Executing Pandoc with Typst engine...', 30);
+			
+			// Execute pandoc process
+			const result = await this.executePandoc(args, progressCallback);
+			
+			progressCallback?.('Conversion complete!', 100);
+			
+			return result;
+			
+		} catch (error) {
+			const errorMessage = error instanceof Error ? error.message : String(error);
+			return {
+				success: false,
+				error: `Conversion failed: ${errorMessage}`
+			};
+		}
+	}
+
+	/**
+	 * Set up cleanup handlers for temporary files
+	 */
+	private setupCleanup(): void {
+		const cleanup = () => {
+			this.cleanup();
+		};
+
+		process.on('exit', cleanup);
+		process.on('SIGINT', cleanup);
+		process.on('SIGTERM', cleanup);
+		process.on('uncaughtException', cleanup);
+	}
+
+	/**
+	 * Clean up temporary files and directories
+	 */
+	private async cleanup(): Promise<void> {
+		try {
+			// Execute registered cleanup handlers
+			this.cleanupHandlers.forEach(handler => {
+				try {
+					handler();
+				} catch (error) {
+					console.warn('Cleanup handler failed:', error);
+				}
+			});
+
+			// Remove temporary directory
+			if (this.tempDir) {
+				await fs.rmdir(this.tempDir, { recursive: true });
+				this.tempDir = null;
+			}
+		} catch (error) {
+			console.warn('Cleanup failed:', error);
+		}
+	}
+
+	/**
+	 * Ensure temporary directory exists
+	 */
+	private async ensureTempDirectory(): Promise<string> {
+		if (!this.tempDir) {
+			this.tempDir = await fs.mkdtemp(path.join(os.tmpdir(), 'obsidian-typst-'));
+		}
+		return this.tempDir;
+	}
+
+	/**
+	 * Build pandoc command-line arguments
+	 */
+	private async buildPandocArgs(inputPath: string, outputPath: string): Promise<string[]> {
+		const args: string[] = [];
+
+		// Input file
+		args.push(inputPath);
+
+		// Output file
+		args.push('-o', outputPath);
+
+		// Set PDF engine to Typst
+		args.push('--pdf-engine=typst');
+
+		// Add template if specified
+		if (this.pandocOptions.template) {
+			args.push('--template', this.pandocOptions.template);
+		}
+
+		// Add variables
+		if (this.pandocOptions.variables) {
+			for (const [key, value] of Object.entries(this.pandocOptions.variables)) {
+				args.push('-V', `${key}=${value}`);
+			}
+		}
+
+		// Add Typst engine options
+		if (this.typstSettings.engineOptions) {
+			for (const option of this.typstSettings.engineOptions) {
+				args.push('--pdf-engine-opt', option);
+			}
+		}
+
+		// Generate intermediate Typst file if requested
+		if (this.pandocOptions.generateIntermediateTypst) {
+			const tempDir = await this.ensureTempDirectory();
+			const typstPath = path.join(tempDir, 'intermediate.typ');
+			args.push('--output', typstPath);
+		}
+
+		// Add additional arguments
+		if (this.pandocOptions.additionalArgs) {
+			args.push(...this.pandocOptions.additionalArgs);
+		}
+
+		return args;
+	}
+
+	/**
+	 * Execute pandoc process with the given arguments
+	 */
+	private async executePandoc(args: string[], progressCallback?: ProgressCallback): Promise<ConversionResult> {
+		return new Promise((resolve) => {
+			const pandocPath = this.pandocOptions.pandocPath || 'pandoc';
+			const timeout = this.pandocOptions.timeout || 60000;
+
+			progressCallback?.('Starting Pandoc process...', 40);
+
+			// Spawn pandoc process
+			const pandocProcess: ChildProcess = spawn(pandocPath, args, {
+				stdio: ['pipe', 'pipe', 'pipe'],
+			});
+
+			let stdout = '';
+			let stderr = '';
+			let hasTimedOut = false;
+
+			// Set up timeout
+			const timeoutHandle = setTimeout(() => {
+				hasTimedOut = true;
+				pandocProcess.kill('SIGTERM');
+				resolve({
+					success: false,
+					error: `Pandoc process timed out after ${timeout}ms`,
+					exitCode: -1
+				});
+			}, timeout);
+
+			// Collect stdout
+			pandocProcess.stdout?.on('data', (data: Buffer) => {
+				stdout += data.toString();
+				progressCallback?.('Processing document...', 60);
+			});
+
+			// Collect stderr and monitor for progress
+			pandocProcess.stderr?.on('data', (data: Buffer) => {
+				const output = data.toString();
+				stderr += output;
+				
+				// Parse progress information from stderr if available
+				this.parseProgressFromOutput(output, progressCallback);
+			});
+
+			// Handle process completion
+			pandocProcess.on('close', (code: number | null) => {
+				clearTimeout(timeoutHandle);
+				
+				if (hasTimedOut) {
+					return; // Already resolved with timeout error
+				}
+
+				const success = code === 0;
+				const result: ConversionResult = {
+					success,
+					stdout,
+					stderr,
+					exitCode: code || -1
+				};
+
+				if (!success) {
+					result.error = this.extractErrorMessage(stderr, stdout);
+				} else {
+					progressCallback?.('PDF generation complete!', 90);
+				}
+
+				resolve(result);
+			});
+
+			// Handle process errors
+			pandocProcess.on('error', (error: Error) => {
+				clearTimeout(timeoutHandle);
+				resolve({
+					success: false,
+					error: `Failed to start Pandoc process: ${error.message}`,
+					exitCode: -1
+				});
+			});
+		});
+	}
+
+	/**
+	 * Parse progress information from pandoc output
+	 */
+	private parseProgressFromOutput(output: string, progressCallback?: ProgressCallback): void {
+		// Look for common progress indicators in pandoc/typst output
+		if (output.includes('reading')) {
+			progressCallback?.('Reading input file...', 50);
+		} else if (output.includes('parsing')) {
+			progressCallback?.('Parsing document...', 55);
+		} else if (output.includes('typst')) {
+			progressCallback?.('Generating PDF with Typst...', 70);
+		} else if (output.includes('writing')) {
+			progressCallback?.('Writing output file...', 80);
+		}
+	}
+
+	/**
+	 * Extract meaningful error messages from pandoc output
+	 */
+	private extractErrorMessage(stderr: string, stdout: string): string {
+		// Look for common error patterns
+		const errorPatterns = [
+			/error:/i,
+			/Error:/,
+			/failed/i,
+			/Fatal/i,
+			/pandoc:/i
+		];
+
+		const allOutput = (stderr + '\n' + stdout).split('\n');
+		
+		for (const line of allOutput) {
+			for (const pattern of errorPatterns) {
+				if (pattern.test(line)) {
+					return line.trim();
+				}
+			}
+		}
+
+		// If no specific error found, return first non-empty line from stderr
+		const stderrLines = stderr.split('\n').filter(line => line.trim().length > 0);
+		if (stderrLines.length > 0) {
+			return stderrLines[0];
+		}
+
+		return 'Unknown error occurred during conversion';
+	}
+
+	/**
+	 * Dispose of the converter and clean up resources
+	 */
+	async dispose(): Promise<void> {
+		await this.cleanup();
+	}
+}
 
 /**
  * Obsidian Typst PDF Export Plugin

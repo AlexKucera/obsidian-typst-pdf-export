@@ -278,7 +278,7 @@
           3,
           4
         ],
-        "status": "pending",
+        "status": "done",
         "subtasks": [
           {
             "id": 1,
@@ -286,7 +286,7 @@
             "description": "Design and implement the core PandocTypstConverter class with TypeScript interfaces and basic constructor",
             "dependencies": [],
             "details": "Create a new TypeScript class PandocTypstConverter with proper interface definitions for conversion options, template settings, and output configurations. Define types for PandocOptions, TypstSettings, and ConversionResult. Set up the class constructor to accept configuration parameters. Create proper import statements and exports following the existing codebase patterns from main.ts.",
-            "status": "pending",
+            "status": "done",
             "testStrategy": "Verify class instantiation with various configuration options. Test TypeScript compilation without errors."
           },
           {
@@ -675,7 +675,7 @@
     ],
     "metadata": {
       "created": "2025-08-29T14:23:07.961Z",
-      "updated": "2025-08-29T15:52:29.601Z",
+      "updated": "2025-08-29T20:31:05.316Z",
       "description": "Tasks for master context"
     }
   }
