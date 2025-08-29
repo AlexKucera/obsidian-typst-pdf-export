@@ -215,7 +215,7 @@
             "description": "Create the foundational MarkdownPreprocessor class with TypeScript interfaces and basic initialization",
             "dependencies": [],
             "details": "Create src/MarkdownPreprocessor.ts with class definition, constructor accepting vault path and settings. Define TypeScript interfaces for PreprocessorOptions (includeMetadata, preserveFrontmatter, baseUrl), WikilinkConfig (format, extension), and PreprocessingResult (content, metadata, errors). Initialize class properties for regex patterns and processing state. Follow existing plugin architecture patterns from main.ts.",
-            "status": "pending",
+            "status": "done",
             "testStrategy": "Create unit tests for class instantiation and basic property initialization. Test interface type checking and default configuration handling."
           },
           {
@@ -226,7 +226,7 @@
               "4.1"
             ],
             "details": "Implement parseWikilinks() method using regex patterns to handle: simple wikilinks [[note]] converting to [note](note.md), aliased wikilinks [[note|alias]] converting to [alias](note.md), nested brackets and special characters in filenames, relative path resolution within vault structure. Handle edge cases like escaped brackets, malformed links, and non-existent files. Support configurable link formats and extensions.",
-            "status": "pending",
+            "status": "done",
             "testStrategy": "Test with various wikilink formats including nested brackets, special characters, spaces, and malformed syntax. Verify proper path resolution and error handling for missing files."
           },
           {
@@ -237,7 +237,7 @@
               "4.1"
             ],
             "details": "Implement parseEmbeds() method to handle: image embeds ![[image.png]] converting to ![](image.png), note embeds ![[note.md]] converting to standard link references, file type detection and appropriate markdown syntax selection, path resolution for embedded files within vault structure. Support size parameters and display options. Handle edge cases like missing files, unsupported file types, and nested embeds.",
-            "status": "pending",
+            "status": "done",
             "testStrategy": "Test embed conversion with various file types (images, documents, audio). Verify proper path resolution and handling of missing or unsupported files."
           },
           {
@@ -248,7 +248,7 @@
               "4.1"
             ],
             "details": "Implement parseCallouts() method to convert callout syntax: > [!note] to standard blockquotes with CSS class markers, support for different callout types (note, tip, warning, error, etc.), preserve callout content and nested formatting, handle multi-line callouts and nested elements, add appropriate styling markers for Typst conversion. Map Obsidian callout types to equivalent styling in standard markdown with data attributes or CSS classes.",
-            "status": "pending",
+            "status": "in-progress",
             "testStrategy": "Test callout conversion with various types and nested content. Verify preservation of formatting and proper blockquote structure generation."
           },
           {
@@ -262,7 +262,7 @@
               "4.4"
             ],
             "details": "Install and integrate gray-matter library (~4.0.3) for frontmatter parsing. Implement processFrontmatter() method to preserve existing frontmatter and add extracted metadata. Create extractTags() method using regex to find #tag patterns, handle nested tags and special characters, extract tags for metadata inclusion. Combine all preprocessing methods in main process() method with proper error handling and result aggregation. Handle edge cases like malformed frontmatter and tag conflicts.",
-            "status": "pending",
+            "status": "done",
             "testStrategy": "Test frontmatter preservation and tag extraction with various markdown files. Verify proper metadata generation and error handling for malformed content. Integration test combining all preprocessing features."
           }
         ]
@@ -675,7 +675,7 @@
     ],
     "metadata": {
       "created": "2025-08-29T14:23:07.961Z",
-      "updated": "2025-08-29T15:13:25.131Z",
+      "updated": "2025-08-29T15:52:29.601Z",
       "description": "Tasks for master context"
     }
   }
