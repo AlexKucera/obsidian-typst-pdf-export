@@ -1,0 +1,395 @@
+{
+	"auto_complete":
+	{
+		"selected_items":
+		[
+		]
+	},
+	"buffers":
+	[
+	],
+	"build_system": "",
+	"build_system_choices":
+	[
+	],
+	"build_varint": "",
+	"command_palette":
+	{
+		"height": 0.0,
+		"last_filter": "",
+		"selected_items":
+		[
+			[
+				"make",
+				"Make file executable"
+			],
+			[
+				"josn",
+				"JSON Reindent: reindent file or selection"
+			],
+			[
+				"json",
+				"JSON Reindent: reindent file or selection"
+			],
+			[
+				"jso",
+				"JSON Reindent: reindent file or selection"
+			],
+			[
+				"jsoncom",
+				"Preferences: JSONComma Settings"
+			],
+			[
+				"packa",
+				"Package Control: Install Package"
+			],
+			[
+				"prev",
+				"Markdown Preview: Preview in Browser"
+			],
+			[
+				"previ",
+				"Markdown Preview: Preview in Browser"
+			],
+			[
+				"mak",
+				"Make file executable"
+			],
+			[
+				"tem",
+				"Create file from Template"
+			],
+			[
+				"inst",
+				"Package Control: Install Package"
+			]
+		],
+		"width": 0.0
+	},
+	"console":
+	{
+		"height": 0.0,
+		"history":
+		[
+		]
+	},
+	"distraction_free":
+	{
+		"menu_visible": true,
+		"show_minimap": false,
+		"show_open_files": false,
+		"show_tabs": false,
+		"side_bar_visible": false,
+		"status_bar_visible": false
+	},
+	"expanded_folders":
+	[
+		"/Users/alex/Obsidian/Dev/.obsidian/plugins/obsidian-typst-pdf-export"
+	],
+	"file_history":
+	[
+		"/Users/alex/Obsidian/Dev/.obsidian/plugins/obsidian-typst-pdf-export/manifest.json",
+		"/Users/alex/Obsidian/Dev/.obsidian/plugins/obsidian-pdf-export/manifest.json",
+		"/Users/alex/Library/Mobile Documents/iCloud~md~obsidian/Documents/Alex IdeaVault/emails/2023-05-04 - Arbeitskreis zum Gedenken an die Opfer der NS-Zeit in Geinsheim - 10.5., 1930 Uhr.md",
+		"/Users/alex/Projects/scripting/tinkertoys/python/data/Extracting_Email_to_Obsidian.py",
+		"/Users/alex/Projects/ios_development/dialysispal/.taskmaster/tasks/tasks.json",
+		"/Users/alex/Projects/ios_development/dialysispal/.taskmaster/config.json",
+		"/Users/alex/.claude/commands/assistant-primer.md",
+		"/Users/alex/Atomic Note-Taking - Full PDF Ebook (2 Dec 2023).md",
+		"/Users/alex/.claude.json",
+		"/Users/alex/Projects/ios_development/dialysispal/.simone/10_STATE_OF_PROJECT/2025-08-22-11-27-critical-issues.md",
+		"/Users/alex/Library/Mobile Documents/iCloud~com~logseq~logseq/Documents/Alex/assets/Bewegungspark_Geinsheim_1755852377341_0.edn",
+		"/Users/alex/Projects/ios_development/dialysispal/.simone/00_PROJECT_MANIFEST.md",
+		"/Users/alex/Projects/ios_development/dialysispal/.simone/01_PROJECT_DOCS/ARCHITECTURE.md",
+		"/Users/alex/Library/Mobile Documents/iCloud~com~logseq~logseq/Documents/Alex/logseq/config.edn",
+		"/Users/alex/Downloads/Testament.md",
+		"/Users/alex/.logseq/settings/logseq-monokai.json",
+		"/Users/alex/.claude/commands/continue.md",
+		"/Users/alex/Projects/ios_development/dialysispal/.mcp.json",
+		"/Users/alex/Projects/scripting/claude-manager/.taskmaster/config.json",
+		"/Users/alex/Projects/ios_development/dialysispal/.taskmaster/docs/prd.txt",
+		"/Users/alex/Projects/scripting/tinkertoys/configs/starship.toml",
+		"/Users/alex/Projects/ios_development/dialysispal/plan.md",
+		"/Users/alex/Projects/ios_development/dialysispal/.simone/02_REQUIREMENTS/M02_Daily_Data_Entry_MVP/SPECS_TodayView_Implementation.md",
+		"/Users/alex/Projects/ios_development/dialysispal/.simone/02_REQUIREMENTS/M02_Daily_Data_Entry_MVP/SPECS_Time_Aware_Navigation.md",
+		"/Users/alex/Projects/ios_development/dialysispal/.simone/02_REQUIREMENTS/M02_Daily_Data_Entry_MVP/SPECS_AMEND_01_Localization_Migration.md",
+		"/Users/alex/Projects/ios_development/dialysispal/.simone/02_REQUIREMENTS/M02_Daily_Data_Entry_MVP/PRD_Daily_Data_Entry_MVP.md",
+		"/Users/alex/Projects/ios_development/dialysispal/.simone/02_REQUIREMENTS/M02_Daily_Data_Entry_MVP/M02_milestone_meta.md",
+		"/Users/alex/Projects/scripting/claude-manager/templates/comprehensive-suite.json",
+		"/Users/alex/Projects/scripting/claude-manager/templates/task-management.json",
+		"/Users/alex/Library/Containers/ch.sudo.cyberduck/Data/tmp/ch.sudo.cyberduck/editor-1625e3e5-880a-454d-b9b4-43ade3bdb5d3/var/www/virtual/babylond/links.alexanderkucera.de/accounts/fde7da99d3c2/1615039710/.apikey",
+		"/Users/alex/Library/Containers/ch.sudo.cyberduck/Data/tmp/ch.sudo.cyberduck/editor-1625e3e5-880a-454d-b9b4-43ade3bdb5d3/var/www/virtual/babylond/links.alexanderkucera.de/accounts/d0f7ab7fcf51/200013880/.apikey",
+		"/Users/alex/Projects/web_development/kindertagespflege/site/snippets/head.php",
+		"/Users/alex/Projects/web_development/kindertagespflege/site/snippets/blocks/photo_gallery.php",
+		"/Users/alex/Projects/web_development/babylondreams-links/fastapi/config/fastapi-env.sh",
+		"/Users/alex/Library/Containers/ch.sudo.cyberduck/Data/tmp/ch.sudo.cyberduck/editor-6bed4ef6-26e7-4f0b-9294-efab61a8b844/home/babylond/log_collector/1852293247/log_sources.conf",
+		"/Users/alex/Projects/web_development/babylondreams-links/assets/python/webcatcher.py",
+		"/Users/alex/Projects/web_development/babylondreams-links/assets/python/metadata_builder.py",
+		"/Users/alex/Projects/web_development/babylondreams-links/assets/python/file_operations.py",
+		"/Users/alex/Projects/web_development/babylondreams-links/assets/python/file_archiver.py",
+		"/Users/alex/Projects/web_development/babylondreams-links/assets/python/archiver_base.py",
+		"/Users/alex/Projects/web_development/babylondreams-links/assets/python/webarchive.py",
+		"/Users/alex/Projects/scripting/claude-manager/templates/ai-infrastructure.json",
+		"/Users/alex/nginx.txt",
+		"/Users/alex/Library/Containers/ch.sudo.cyberduck/Data/tmp/ch.sudo.cyberduck/editor-1625e3e5-880a-454d-b9b4-43ade3bdb5d3/var/www/virtual/babylond/links.alexanderkucera.de/1300722708/fastapi-env.sh",
+		"/Users/alex/Library/Containers/ch.sudo.cyberduck/Data/tmp/ch.sudo.cyberduck/editor-1625e3e5-880a-454d-b9b4-43ade3bdb5d3/var/www/virtual/babylond/links.alexanderkucera.de/fastapi/services/1519751188/parallel_archiver.py",
+		"/Users/alex/Projects/scripting/claude-manager/.taskmaster/reports/task-complexity-report_falcon.json",
+		"/Users/alex/Projects/scripting/claude-manager/.taskmaster/reports/task-complexity-report_granite.json",
+		"/Users/alex/Projects/scripting/claude-manager/.taskmaster/reports/task-complexity-report_qwen3.json",
+		"/Users/alex/Projects/scripting/claude-manager/.taskmaster/reports/task-complexity-report_codellama.json",
+		"/Users/alex/Projects/scripting/claude-manager/.taskmaster/reports/task-complexity-report_qwen3-coder.json",
+		"/Users/alex/Projects/scripting/claude-manager/.taskmaster/reports/task-complexity-report-Sonnet4.json",
+		"/Users/alex/Projects/scripting/claude-manager/.taskmaster/claude_config.json",
+		"/Users/alex/Projects/scripting/claude-manager/.taskmaster/reports/task-complexity-report_deepseek-coder-v2.json",
+		"/Users/alex/Projects/scripting/claude-manager/.taskmaster/reports/task-complexity-report_mistral.json",
+		"/Users/alex/.claude/claudemd-extensions/python-development.md",
+		"/Users/alex/Projects/scripting/claude-manager/.taskmaster/ollama_config.json",
+		"/Users/alex/Library/Containers/ch.sudo.cyberduck/Data/tmp/ch.sudo.cyberduck/editor-1625e3e5-880a-454d-b9b4-43ade3bdb5d3/var/www/virtual/babylond/links.alexanderkucera.de/fastapi/routers/2058416136/page_routes.py",
+		"/Users/alex/Library/Containers/ch.sudo.cyberduck/Data/tmp/ch.sudo.cyberduck/editor-1625e3e5-880a-454d-b9b4-43ade3bdb5d3/var/www/virtual/babylond/links.alexanderkucera.de/assets/python/-1619180627/start-daemon.sh",
+		"/Users/alex/Projects/web_development/babylondreams-links/assets/python/config/daemon.ini",
+		"/Users/alex/Library/Containers/ch.sudo.cyberduck/Data/tmp/ch.sudo.cyberduck/editor-6bed4ef6-26e7-4f0b-9294-efab61a8b844/home/babylond/etc/services.d/1159105873/links-daemon.ini",
+		"/Users/alex/Projects/web_development/babylondreams-links/fastapi/start-fastapi.sh",
+		"/Users/alex/Library/Containers/ch.sudo.cyberduck/Data/tmp/ch.sudo.cyberduck/editor-6bed4ef6-26e7-4f0b-9294-efab61a8b844/home/babylond/log_collector/-2106355230/log_sources.conf",
+		"/Users/alex/Library/Containers/ch.sudo.cyberduck/Data/tmp/ch.sudo.cyberduck/editor-6bed4ef6-26e7-4f0b-9294-efab61a8b844/home/babylond/etc/services.d/-2035667508/links.ini",
+		"/Users/alex/Library/Containers/ch.sudo.cyberduck/Data/tmp/ch.sudo.cyberduck/editor-6bed4ef6-26e7-4f0b-9294-efab61a8b844/home/babylond/etc/services.d/2111495053/fastapi.ini",
+		"/Users/alex/Library/Containers/ch.sudo.cyberduck/Data/tmp/ch.sudo.cyberduck/editor-6bed4ef6-26e7-4f0b-9294-efab61a8b844/home/babylond/etc/services.d/-166565421/fastapi.ini",
+		"/Users/alex/Projects/web_development/babylondreams-links/fastapi/config/fastapi.ini",
+		"/Users/alex/Library/Containers/ch.sudo.cyberduck/Data/tmp/ch.sudo.cyberduck/editor-6bed4ef6-26e7-4f0b-9294-efab61a8b844/home/babylond/logs/webserver/380664251/error_log_apache",
+		"/Users/alex/Library/Containers/ch.sudo.cyberduck/Data/tmp/ch.sudo.cyberduck/editor-6bed4ef6-26e7-4f0b-9294-efab61a8b844/home/babylond/logs/2033202386/error_log_php",
+		"/Users/alex/Projects/web_development/babylondreams-links/.taskmaster/config.json",
+		"/Users/alex/.config/crush/crush.json",
+		"/Users/alex/Library/Preferences/code-audit-mcp-nodejs/config.json",
+		"/Users/alex/.serena/serena_config.yml",
+		"/Users/alex/Projects/_project-incubator/specs/personal-hypertrophy-fitness-tracker.md",
+		"/Users/alex/Projects/_project-incubator/specs/fitness-app/spec.md",
+		"/Users/alex/Projects/_project-incubator/specs/fitness-app/README.md",
+		"/Users/alex/.claude/CLAUDE.md",
+		"/Users/alex/.claude/commands/task-primer.md",
+		"/Users/alex/Projects/_project-incubator/specs/pdf-knowledge-consolidation-system.md",
+		"/Users/alex/Projects/_project-incubator/specs/docdistill/README.md",
+		"/Users/alex/Projects/scripting/claude-manager/docs/template.json",
+		"/Users/alex/Projects/_project-incubator/specs/pdf-chunker/README.md",
+		"/Users/alex/Projects/scripting/claude-manager/.claude/TM_COMMANDS_GUIDE.md",
+		"/Users/alex/Projects/scripting/claude-manager/.taskmaster/CLAUDE.md",
+		"/Users/alex/Projects/ios_development/dialysispal/.serena/project.yml",
+		"/Users/alex/Projects/scripting/tinkertoys/python/ai/llama_parse.py",
+		"/Users/alex/my_safari_session.txt",
+		"/Users/alex/Projects/ai/llama-fs/.env",
+		"/Users/alex/Projects/scripting/tinkertoys/bash/media/convert_to_gif.sh",
+		"/Users/alex/Projects/ios_development/dialysispal/dialysisPal/PERFORMANCE_BASELINE.md",
+		"/Users/alex/Projects/ios_development/dialysispal/measure_performance.sh",
+		"/Users/alex/Projects/_project-incubator/tools/incubator",
+		"/Users/alex/Library/Containers/ch.sudo.cyberduck/Data/tmp/ch.sudo.cyberduck/editor-1625e3e5-880a-454d-b9b4-43ade3bdb5d3/var/www/virtual/babylond/dialysepal.de/540419020/nocontent.html",
+		"/Users/alex/Projects/scripting/tinkertoys/dotfiles/dotzshrc",
+		"/Users/alex/Projects/scripting/tinkertoys/dotfiles/dotzprofile",
+		"/Users/alex/Projects/scripting/tinkertoys/dotfiles/dotzshenv",
+		"/Users/alex/Projects/scripting/tinkertoys/bash/development/claude_code.sh",
+		"/Users/alex/Projects/scripting/tinkertoys/bash/system/claude_code.sh",
+		"/Users/alex/Projects/ios_development/dialysispal/.gitignore",
+		"/Users/alex/Projects/web_development/babylondreams-links/_asset_creation/Links Sales Plan.md",
+		"/Users/alex/Projects/ios_development/dialysispal/.claude/commands/simone/do_task.md",
+		"/opt/homebrew/lib/node_modules/@byterover/cipher/dist/.env",
+		"/opt/homebrew/lib/node_modules/@byterover/cipher/memAgent/cipher.yml",
+		"/Users/alex/Projects/web_development/kindertagespflege/.gitignore",
+		"/Users/alex/Projects/web_development/kindertagespflege/content/home/home.txt",
+		"/Users/alex/Library/Containers/ch.sudo.cyberduck/Data/tmp/ch.sudo.cyberduck/editor-6bed4ef6-26e7-4f0b-9294-efab61a8b844/home/babylond/.ssh/-172486307/id_ed25519.pub",
+		"/Users/alex/Library/Containers/ch.sudo.cyberduck/Data/tmp/ch.sudo.cyberduck/editor-1625e3e5-880a-454d-b9b4-43ade3bdb5d3/var/www/virtual/babylond/dev.monikakucera.de/content/1759255524/.gitignore",
+		"/Users/alex/Projects/web_development/kindertagespflege/site/plugins/git-content/README.md",
+		"/Users/alex/Library/Containers/ch.sudo.cyberduck/Data/tmp/ch.sudo.cyberduck/editor-1625e3e5-880a-454d-b9b4-43ade3bdb5d3/var/www/virtual/babylond/dev.monikakucera.de/781484132/.htaccess",
+		"/Users/alex/Library/Containers/ch.sudo.cyberduck/Data/tmp/ch.sudo.cyberduck/editor-6bed4ef6-26e7-4f0b-9294-efab61a8b844/home/babylond/git_repos/kindertagespflege.git/hooks/-446071532/post-receive",
+		"/Users/alex/Projects/_project-incubator/specs/dialysispal/README.md",
+		"/Users/alex/Projects/web_development/kindertagespflege/_deploy/post-receive-bidirectional-sync.sh",
+		"/Users/alex/Projects/web_development/kindertagespflege/_deploy/cleanup-production.sh",
+		"/Users/alex/Projects/_project-incubator/docs/project-statuses.md",
+		"/Users/alex/Projects/_project-incubator/conversations/2025-08-01--creation-project-incubator.md",
+		"/Users/alex/Projects/_project-incubator/README.md",
+		"/Users/alex/Projects/web_development/kindertagespflege/_deploy/BIDIRECTIONAL_WORKFLOW.md",
+		"/Users/alex/Library/Containers/ch.sudo.cyberduck/Data/tmp/ch.sudo.cyberduck/editor-1625e3e5-880a-454d-b9b4-43ade3bdb5d3/var/www/virtual/babylond/dev.monikakucera.de/site/config/-1199862546/config.php",
+		"/Users/alex/Library/Containers/ch.sudo.cyberduck/Data/tmp/ch.sudo.cyberduck/editor-1625e3e5-880a-454d-b9b4-43ade3bdb5d3/var/www/virtual/babylond/dev.monikakucera.de/site/config/1803276110/config.php",
+		"/Users/alex/Projects/web_development/kindertagespflege/site/config/config.php",
+		"/Users/alex/Projects/web_development/kindertagespflege/site/config/config.production.php",
+		"/Users/alex/Projects/web_development/kindertagespflege/site/plugins/kirby-uniform/README.md",
+		"/Users/alex/Projects/web_development/kindertagespflege/site/snippets/blocks/welcome_hero.php",
+		"/Users/alex/Projects/web_development/kindertagespflege/site/templates/home.php",
+		"/Users/alex/Projects/web_development/kindertagespflege/content/site.txt",
+		"/Users/alex/Projects/web_development/kindertagespflege/.htaccess",
+		"/Users/alex/Library/Containers/ch.sudo.cyberduck/Data/tmp/ch.sudo.cyberduck/editor-6bed4ef6-26e7-4f0b-9294-efab61a8b844/home/babylond/logs/-139707440/error_log_php",
+		"/Users/alex/Library/Containers/ch.sudo.cyberduck/Data/tmp/ch.sudo.cyberduck/editor-6bed4ef6-26e7-4f0b-9294-efab61a8b844/home/babylond/logs/webserver/1836412810/error_log_apache",
+		"/Users/alex/Library/Containers/ch.sudo.cyberduck/Data/tmp/ch.sudo.cyberduck/editor-6bed4ef6-26e7-4f0b-9294-efab61a8b844/home/babylond/logs/webserver/1316445591/access_log"
+	],
+	"find":
+	{
+		"height": 52.0
+	},
+	"find_in_files":
+	{
+		"height": 132.0,
+		"where_history":
+		[
+		]
+	},
+	"find_state":
+	{
+		"case_sensitive": false,
+		"find_history":
+		[
+		],
+		"highlight": true,
+		"in_selection": false,
+		"preserve_case": false,
+		"regex": false,
+		"replace_history":
+		[
+		],
+		"reverse": false,
+		"scrollbar_highlights": true,
+		"show_context": true,
+		"use_buffer2": true,
+		"use_gitignore": true,
+		"whole_word": false,
+		"wrap": true
+	},
+	"groups":
+	[
+		{
+			"sheets":
+			[
+			]
+		}
+	],
+	"incremental_find":
+	{
+		"height": 23.0
+	},
+	"input":
+	{
+		"height": 0.0
+	},
+	"layout":
+	{
+		"cells":
+		[
+			[
+				0,
+				0,
+				1,
+				1
+			]
+		],
+		"cols":
+		[
+			0.0,
+			1.0
+		],
+		"rows":
+		[
+			0.0,
+			1.0
+		]
+	},
+	"menu_visible": true,
+	"output.Debugger":
+	{
+		"height": 218.0,
+		"history":
+		[
+		]
+	},
+	"output.Debugger Console":
+	{
+		"height": 218.0,
+		"history":
+		[
+		]
+	},
+	"output.LSP Log Panel":
+	{
+		"height": 0.0,
+		"history":
+		[
+		]
+	},
+	"output.SublimeLinter":
+	{
+		"height": 0.0,
+		"history":
+		[
+		]
+	},
+	"output.SublimeLinter Messages":
+	{
+		"height": 110.0,
+		"history":
+		[
+		]
+	},
+	"output.diagnostics":
+	{
+		"height": 0.0,
+		"history":
+		[
+		]
+	},
+	"output.find_results":
+	{
+		"height": 0.0,
+		"history":
+		[
+		]
+	},
+	"output.mdpopups":
+	{
+		"height": 0.0,
+		"history":
+		[
+		]
+	},
+	"pinned_build_system": "",
+	"project": "obsidian-typst-pdf-export.sublime-project",
+	"replace":
+	{
+		"height": 42.0
+	},
+	"save_all_on_build": true,
+	"select_file":
+	{
+		"height": 0.0,
+		"last_filter": "",
+		"selected_items":
+		[
+		],
+		"width": 0.0
+	},
+	"select_project":
+	{
+		"height": 0.0,
+		"last_filter": "",
+		"selected_items":
+		[
+		],
+		"width": 0.0
+	},
+	"select_symbol":
+	{
+		"height": 0.0,
+		"last_filter": "",
+		"selected_items":
+		[
+		],
+		"width": 0.0
+	},
+	"selected_group": 0,
+	"settings":
+	{
+		"lsp_show_inlay_hints": false
+	},
+	"show_minimap": true,
+	"show_open_files": false,
+	"show_tabs": true,
+	"side_bar_visible": true,
+	"side_bar_width": 361.0,
+	"status_bar_visible": true,
+	"template_settings":
+	{
+	}
+}
