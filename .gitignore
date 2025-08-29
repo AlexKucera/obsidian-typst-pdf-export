@@ -45,3 +45,5 @@ node_modules/
 # tasks/ 
 
 reference/*
+
+.serena/cache/*
