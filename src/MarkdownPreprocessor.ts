@@ -431,31 +431,40 @@ export class MarkdownPreprocessor {
 	 * Process image embeds with size parameters
 	 */
 	private processImageEmbed(imagePath: string, sizeOrAlt: string | undefined, result: PreprocessingResult): string {
-		const sanitizedPath = this.sanitizeFilePath(imagePath);
-		
-		// Parse size information if provided
-		if (sizeOrAlt) {
-			const sizeMatch = sizeOrAlt.match(this.EMBED_SIZE_PATTERN);
-			if (sizeMatch) {
-				const width = sizeMatch[1];
-				const height = sizeMatch[2];
-				
-				// Create image with size attributes (optimized for Pandoc → Typst conversion)
-				// Pandoc will convert these to #figure(image("path", width: X, height: Y)) for Typst
-				if (height) {
-					return `<img src="${sanitizedPath}" width="${width}" height="${height}" alt="" />`;
-				} else {
-					return `<img src="${sanitizedPath}" width="${width}" alt="" />`;
-				}
-			} else {
-				// Treat as alt text
-				return `![${sizeOrAlt}](${sanitizedPath})`;
-			}
-		}
-		
-		// Standard image reference - Pandoc will convert to #figure(image("path")) for Typst
-		return `![](${sanitizedPath})`;
+	// Don't sanitize the path - keep it as-is for Pandoc to resolve
+	// Pandoc with --resource-path will handle the path resolution
+	let resolvedPath = imagePath;
+	
+	// If path doesn't start with / or contain :, it's likely a vault-relative path
+	// Keep it as-is since Pandoc will resolve it using --resource-path
+	if (!imagePath.startsWith('/') && !imagePath.includes(':')) {
+		// This is a vault-relative path - keep it exactly as Obsidian stores it
+		resolvedPath = imagePath;
 	}
+	
+	// Parse size information if provided
+	if (sizeOrAlt) {
+		const sizeMatch = sizeOrAlt.match(this.EMBED_SIZE_PATTERN);
+		if (sizeMatch) {
+			const width = sizeMatch[1];
+			const height = sizeMatch[2];
+			
+			// Create image with size attributes (optimized for Pandoc → Typst conversion)
+			// Pandoc will convert these to #figure(image("path", width: X, height: Y)) for Typst
+			if (height) {
+				return `<img src="${resolvedPath}" width="${width}" height="${height}" alt="" />`;
+			} else {
+				return `<img src="${resolvedPath}" width="${width}" alt="" />`;
+			}
+		} else {
+			// Treat as alt text
+			return `![${sizeOrAlt}](${resolvedPath})`;
+		}
+	}
+	
+	// Standard image reference - Pandoc will convert to #figure(image("path")) for Typst
+	return `![](${resolvedPath})`;
+}
 	
 	/**
 	 * Process video embeds

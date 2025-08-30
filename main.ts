@@ -1,5 +1,6 @@
 import { App, Notice, Plugin, PluginSettingTab, Setting, Modal, MarkdownRenderer, TFile, TFolder, Menu } from 'obsidian';
 import { DependencyChecker } from './src/DependencyChecker';
+import { TemplateManager } from './src/template-manager';
 import { spawn, ChildProcess } from 'child_process';
 import { promises as fs } from 'fs';
 import * as path from 'path';
@@ -11,6 +12,8 @@ import * as os from 'os';
 interface PandocOptions {
 	/** Path to pandoc executable (optional, uses PATH if not specified) */
 	pandocPath?: string;
+	/** Path to typst executable (optional, uses PATH if not specified) */
+	typstPath?: string;
 	/** Template file path */
 	template?: string;
 	/** Template variables to pass to pandoc */
@@ -21,6 +24,8 @@ interface PandocOptions {
 	timeout?: number;
 	/** Generate intermediate .typ file for debugging */
 	generateIntermediateTypst?: boolean;
+	/** Vault base path for resolving attachment paths */
+	vaultBasePath?: string;
 }
 
 /**
@@ -167,132 +172,187 @@ class PandocTypstConverter {
 	 * Build pandoc command-line arguments
 	 */
 	private async buildPandocArgs(inputPath: string, outputPath: string): Promise<string[]> {
-		const args: string[] = [];
+const args: string[] = [];
 
-		// Input file
-		args.push(inputPath);
+// Input file
+args.push(inputPath);
 
-		// Output file
-		args.push('-o', outputPath);
+// Output file
+args.push('-o', outputPath);
 
-		// Set PDF engine to Typst
-		args.push('--pdf-engine=typst');
+// Set PDF engine to Typst (use configured path if available)
+if (this.pandocOptions.typstPath) {
+	args.push(`--pdf-engine=${this.pandocOptions.typstPath}`);
+} else {
+	args.push('--pdf-engine=typst');
+}
 
-		// Add template if specified
-		if (this.pandocOptions.template) {
-			args.push('--template', this.pandocOptions.template);
+// Enable standalone mode (required for PDF output)
+args.push('--standalone');
+
+// Add resource paths for attachment resolution
+if (this.pandocOptions.vaultBasePath) {
+	const path = require('path');
+	
+	// Add vault root as primary resource path
+	args.push('--resource-path', this.pandocOptions.vaultBasePath);
+	
+	// Add common attachment directories as additional resource paths
+	const commonAttachmentPaths = [
+		path.join(this.pandocOptions.vaultBasePath, 'attachments'),
+		path.join(this.pandocOptions.vaultBasePath, 'assets'),
+		path.join(this.pandocOptions.vaultBasePath, 'files'),
+		path.join(this.pandocOptions.vaultBasePath, 'images'),
+		path.join(this.pandocOptions.vaultBasePath, '.attachments')
+	];
+	
+	// Check if these directories exist and add them
+	const fs = require('fs');
+	for (const attachPath of commonAttachmentPaths) {
+		if (fs.existsSync(attachPath)) {
+			args.push('--resource-path', attachPath);
 		}
-
-		// Add variables
-		if (this.pandocOptions.variables) {
-			for (const [key, value] of Object.entries(this.pandocOptions.variables)) {
-				args.push('-V', `${key}=${value}`);
-			}
-		}
-
-		// Add Typst engine options
-		if (this.typstSettings.engineOptions) {
-			for (const option of this.typstSettings.engineOptions) {
-				args.push('--pdf-engine-opt', option);
-			}
-		}
-
-		// Generate intermediate Typst file if requested
-		if (this.pandocOptions.generateIntermediateTypst) {
-			const tempDir = await this.ensureTempDirectory();
-			const typstPath = path.join(tempDir, 'intermediate.typ');
-			args.push('--output', typstPath);
-		}
-
-		// Add additional arguments
-		if (this.pandocOptions.additionalArgs) {
-			args.push(...this.pandocOptions.additionalArgs);
-		}
-
-		return args;
 	}
+}
+
+// Use -V template= syntax for Typst templates (not --template)
+if (this.pandocOptions.template) {
+	args.push('-V', `template=${this.pandocOptions.template}`);
+}
+
+// Add variables for document metadata
+if (this.pandocOptions.variables) {
+	for (const [key, value] of Object.entries(this.pandocOptions.variables)) {
+		if (value && value.toString().trim() !== '') {
+			args.push('-V', `${key}=${value}`);
+		}
+	}
+}
+
+// Add Typst engine options
+if (this.typstSettings.engineOptions) {
+	for (const option of this.typstSettings.engineOptions) {
+		args.push('--pdf-engine-opt', option);
+	}
+}
+
+// Generate intermediate Typst file if requested
+if (this.pandocOptions.generateIntermediateTypst) {
+	const tempDir = await this.ensureTempDirectory();
+	const typstPath = path.join(tempDir, 'intermediate.typ');
+	args.push('--output', typstPath);
+}
+
+// Add additional arguments
+if (this.pandocOptions.additionalArgs) {
+	args.push(...this.pandocOptions.additionalArgs);
+}
+
+return args;
+}
 
 	/**
 	 * Execute pandoc process with the given arguments
 	 */
 	private async executePandoc(args: string[], progressCallback?: ProgressCallback): Promise<ConversionResult> {
-		return new Promise((resolve) => {
-			const pandocPath = this.pandocOptions.pandocPath || 'pandoc';
-			const timeout = this.pandocOptions.timeout || 60000;
+return new Promise((resolve) => {
+	const pandocPath = this.pandocOptions.pandocPath || 'pandoc';
+	const timeout = this.pandocOptions.timeout || 60000;
 
-			progressCallback?.('Starting Pandoc process...', 40);
+	// Log the exact command being executed for debugging
+	console.log('Executing Pandoc command:', pandocPath, args.join(' '));
 
-			// Spawn pandoc process
-			const pandocProcess: ChildProcess = spawn(pandocPath, args, {
-				stdio: ['pipe', 'pipe', 'pipe'],
-			});
+	progressCallback?.('Starting Pandoc process...', 40);
 
-			let stdout = '';
-			let stderr = '';
-			let hasTimedOut = false;
-
-			// Set up timeout
-			const timeoutHandle = setTimeout(() => {
-				hasTimedOut = true;
-				pandocProcess.kill('SIGTERM');
-				resolve({
-					success: false,
-					error: `Pandoc process timed out after ${timeout}ms`,
-					exitCode: -1
-				});
-			}, timeout);
-
-			// Collect stdout
-			pandocProcess.stdout?.on('data', (data: Buffer) => {
-				stdout += data.toString();
-				progressCallback?.('Processing document...', 60);
-			});
-
-			// Collect stderr and monitor for progress
-			pandocProcess.stderr?.on('data', (data: Buffer) => {
-				const output = data.toString();
-				stderr += output;
-				
-				// Parse progress information from stderr if available
-				this.parseProgressFromOutput(output, progressCallback);
-			});
-
-			// Handle process completion
-			pandocProcess.on('close', (code: number | null) => {
-				clearTimeout(timeoutHandle);
-				
-				if (hasTimedOut) {
-					return; // Already resolved with timeout error
-				}
-
-				const success = code === 0;
-				const result: ConversionResult = {
-					success,
-					stdout,
-					stderr,
-					exitCode: code || -1
-				};
-
-				if (!success) {
-					result.error = this.extractErrorMessage(stderr, stdout);
-				} else {
-					progressCallback?.('PDF generation complete!', 90);
-				}
-
-				resolve(result);
-			});
-
-			// Handle process errors
-			pandocProcess.on('error', (error: Error) => {
-				clearTimeout(timeoutHandle);
-				resolve({
-					success: false,
-					error: `Failed to start Pandoc process: ${error.message}`,
-					exitCode: -1
-				});
-			});
-		});
+	// Determine working directory - use vault base path if available, fallback to plugin directory
+	const path = require('path');
+	let workingDir: string;
+	
+	if (this.pandocOptions.vaultBasePath) {
+		workingDir = this.pandocOptions.vaultBasePath;
+		console.log('Pandoc working directory (vault):', workingDir);
+	} else {
+		// Fallback to plugin directory
+		const pluginDir = (this.pandocOptions as any).pluginDir || process.cwd();
+		workingDir = pluginDir;
+		console.log('Pandoc working directory (plugin fallback):', workingDir);
 	}
+	
+	// Spawn pandoc process with vault as working directory for attachment resolution
+	const pandocProcess: ChildProcess = spawn(pandocPath, args, {
+		stdio: ['pipe', 'pipe', 'pipe'],
+		cwd: workingDir,
+		env: process.env, // Inherit environment variables
+	});
+
+	let stdout = '';
+	let stderr = '';
+	let hasTimedOut = false;
+
+	// Set up timeout
+	const timeoutHandle = setTimeout(() => {
+		hasTimedOut = true;
+		pandocProcess.kill('SIGTERM');
+		resolve({
+			success: false,
+			error: `Pandoc process timed out after ${timeout}ms`,
+			exitCode: -1
+		});
+	}, timeout);
+
+	// Collect stdout
+	pandocProcess.stdout?.on('data', (data: Buffer) => {
+		stdout += data.toString();
+		progressCallback?.('Processing document...', 60);
+	});
+
+	// Collect stderr and monitor for progress
+	pandocProcess.stderr?.on('data', (data: Buffer) => {
+		const output = data.toString();
+		stderr += output;
+		console.log('Pandoc stderr:', output);
+		
+		// Parse progress information from stderr if available
+		this.parseProgressFromOutput(output, progressCallback);
+	});
+
+	// Handle process completion
+	pandocProcess.on('close', (code: number | null) => {
+		clearTimeout(timeoutHandle);
+		
+		if (hasTimedOut) {
+			return; // Already resolved with timeout error
+		}
+
+		const success = code === 0;
+		const result: ConversionResult = {
+			success,
+			stdout,
+			stderr,
+			exitCode: code || -1
+		};
+
+		if (!success) {
+			result.error = this.extractErrorMessage(stderr, stdout);
+		} else {
+			progressCallback?.('PDF generation complete!', 90);
+		}
+
+		resolve(result);
+	});
+
+	// Handle process errors
+	pandocProcess.on('error', (error: Error) => {
+		clearTimeout(timeoutHandle);
+		console.log('Pandoc process error:', error);
+		resolve({
+			success: false,
+			error: `Failed to start Pandoc process: ${error.message}`,
+			exitCode: -1
+		});
+	});
+});
+}
 
 	/**
 	 * Parse progress information from pandoc output
@@ -467,6 +527,8 @@ interface obsidianTypstPDFExportSettings {
 		preserveFolderStructure: boolean;
 		/** Number of concurrent exports to run (default: 3) */
 		exportConcurrency: number;
+		/** Enable debug mode for verbose logging */
+		debugMode: boolean;
 	};
 }
 
@@ -508,42 +570,61 @@ const DEFAULT_SETTINGS: obsidianTypstPDFExportSettings = {
 	behavior: {
 		openAfterExport: true,
 		preserveFolderStructure: true,
-		exportConcurrency: 3
+		exportConcurrency: 3,
+		debugMode: false
 	}
 }
 
 export default class obsidianTypstPDFExport extends Plugin {
 	settings: obsidianTypstPDFExportSettings;
 	dependencyChecker: DependencyChecker;
+	templateManager: TemplateManager;
 	private converter: PandocTypstConverter;
 
 	async onload() {
-		console.log('Loading Typst PDF Export Plugin...');
+	console.log('Loading Typst PDF Export Plugin...');
 
-		// Load settings first
-		await this.loadSettings();
+	// Load settings first
+	await this.loadSettings();
 
-		// Initialize dependency checker and converter
-		this.dependencyChecker = new DependencyChecker();
-		this.converter = new PandocTypstConverter();
+	// Initialize dependency checker and converter
+	this.dependencyChecker = new DependencyChecker();
+	this.converter = new PandocTypstConverter();
+	
+	// Initialize template manager
+	const pluginDir = (this.manifest as any).dir || path.join(this.app.vault.configDir, 'plugins', this.manifest.id);
+	// Convert to absolute path using vault adapter base path
+	const vaultBasePath = (this.app.vault.adapter as any).basePath || process.cwd();
+	const absolutePluginDir = path.resolve(vaultBasePath, pluginDir);
+	console.log('Plugin directory (relative):', pluginDir);
+	console.log('Vault base path:', vaultBasePath);
+	console.log('Plugin directory (absolute):', absolutePluginDir);
+	console.log('Manifest dir:', (this.manifest as any).dir);
+	console.log('Config dir:', this.app.vault.configDir);
+	this.templateManager = new TemplateManager(this.app, absolutePluginDir);
 
-		// Check dependencies asynchronously (don't block plugin startup)
-		this.checkDependenciesAsync();
+	// Check dependencies asynchronously (don't block plugin startup)
+	this.checkDependenciesAsync();
 
-		// Register commands
-		this.registerCommands();
+	// Register commands
+	this.registerCommands();
 
-		// Add ribbon icon with Lucide icon name
-		this.addRibbonIcon('download', 'Export to PDF with Typst', (event: MouseEvent) => {
-			this.handleRibbonClick(event);
-		});
+	// Add ribbon icon with Lucide icon name
+	this.addRibbonIcon('download', 'Export to PDF with Typst', (event: MouseEvent) => {
+		this.handleRibbonClick(event);
+	});
 
-		// Register context menu events
-		this.registerEvents();
+	// Register context menu events
+	this.registerEvents();
 
-		// This adds a settings tab so the user can configure various aspects of the plugin
-		this.addSettingTab(new TypstPDFExportSettingTab(this.app, this));
-	}
+	// This adds a settings tab so the user can configure various aspects of the plugin
+	this.addSettingTab(new TypstPDFExportSettingTab(this.app, this));
+}
+
+	/**
+	 * Auto-detect dependency paths and update settings if not already configured
+	 */
+	// Method removed - not needed since paths are already correctly configured in settings
 
 	onunload() {
 
@@ -856,6 +937,7 @@ export default class obsidianTypstPDFExport extends Plugin {
 		this.addCommand({
 			id: 'export-current-note',
 			name: 'Export current note to Typst PDF',
+			hotkeys: [{ modifiers: ['Mod', 'Shift'], key: 'e' }],
 			checkCallback: (checking: boolean) => {
 				const activeFile = this.app.workspace.getActiveFile();
 				const canRun = activeFile && activeFile.extension === 'md';
@@ -872,6 +954,7 @@ export default class obsidianTypstPDFExport extends Plugin {
 		this.addCommand({
 			id: 'export-with-previous-settings',
 			name: 'Export with previous settings',
+			hotkeys: [{ modifiers: ['Mod', 'Shift', 'Alt'], key: 'e' }],
 			checkCallback: (checking: boolean) => {
 				const activeFile = this.app.workspace.getActiveFile();
 				const canRun = activeFile && activeFile.extension === 'md' && 
@@ -1195,65 +1278,125 @@ export default class obsidianTypstPDFExport extends Plugin {
 	 * Perform export of a single file using the conversion pipeline
 	 */
 	private async performExport(file: TFile, config: ExportConfig): Promise<void> {
-		try {
-			// Read the file content
-			const content = await this.app.vault.read(file);
-			
-			// Create output directory if it doesn't exist
-			const outputDir = this.settings.outputFolder;
-			if (!await this.app.vault.adapter.exists(outputDir)) {
-				await this.app.vault.adapter.mkdir(outputDir);
-			}
-			
-			// Generate output filename
-			const baseName = file.name.replace(/\.md$/, '');
-			const path = require('path');
-			const outputPath = path.resolve(outputDir, `${baseName}.pdf`);
-			
-			// Create temporary file for the processed markdown
-			const tempDir = require('os').tmpdir();
-			const tempInputFile = path.join(tempDir, `${baseName}_${Date.now()}.md`);
-			
-			// Preprocess the markdown content (handle Obsidian syntax)
-			// For now, use content as-is, but this could be enhanced with preprocessing
-			await require('fs').promises.writeFile(tempInputFile, content, 'utf8');
-			
-			// Set up conversion parameters
-			const pandocOptions: PandocOptions = {
-				pandocPath: this.settings.pandocPath,
-				template: config.template || this.settings.exportDefaults.template,
-				variables: config.templateVariables || {},
-				timeout: 60000
-			};
-			
-			// Perform the conversion
-			new Notice('Converting to PDF...');
-			const result = await this.converter.convertToPDF(tempInputFile, outputPath);
-			
-			// Clean up temporary file
-			try {
-				await require('fs').promises.unlink(tempInputFile);
-			} catch (cleanupError) {
-				console.warn('Failed to clean up temporary file:', cleanupError);
-			}
-			
-			if (result.success) {
-				new Notice(`PDF exported successfully: ${outputPath}`);
-				
-				// Optionally open the PDF after export
-				if (this.settings.behavior.openAfterExport) {
-					require('electron').shell.openPath(outputPath);
-				}
-			} else {
-				new Notice(`Export failed: ${result.error || 'Unknown error'}`, 5000);
-				console.error('Export failed:', result);
-			}
-			
-		} catch (error) {
-			new Notice(`Export failed: ${error instanceof Error ? error.message : String(error)}`, 5000);
-			console.error('Export error:', error);
-		}
+try {
+	// Read the file content
+	const content = await this.app.vault.read(file);
+	
+	// Set up path utilities (used throughout function)
+	const path = require('path');
+	const fs = require('fs');
+	const vaultBasePath = (this.app.vault.adapter as any).basePath || process.cwd();
+	
+	// Create output directory if it doesn't exist
+	const absoluteOutputDir = path.resolve(vaultBasePath, this.settings.outputFolder);
+	if (!fs.existsSync(absoluteOutputDir)) {
+		fs.mkdirSync(absoluteOutputDir, { recursive: true });
 	}
+	
+	// Generate output filename
+	const baseName = file.name.replace(/\.md$/, '');
+	const outputPath = path.join(absoluteOutputDir, `${baseName}.pdf`);
+	
+	console.log('Export: Output directory:', absoluteOutputDir);
+	console.log('Export: Output path:', outputPath);
+	console.log('Export: Vault base path:', vaultBasePath);
+	
+	// Create temporary file for the processed markdown
+	const tempDir = require('os').tmpdir();
+	const tempInputFile = path.join(tempDir, `${baseName}_${Date.now()}.md`);
+	
+	// Preprocess the markdown content using MarkdownPreprocessor
+	const MarkdownPreprocessor = require('./src/MarkdownPreprocessor').MarkdownPreprocessor;
+	const preprocessor = new MarkdownPreprocessor({
+		vaultPath: vaultBasePath,
+		options: {
+			includeMetadata: true,
+			preserveFrontmatter: false,
+			baseUrl: undefined
+		},
+		wikilinkConfig: {
+			format: 'md',
+			extension: '.md'
+		}
+	});
+	
+	const processedResult = await preprocessor.process(content);
+	
+	if (processedResult.errors.length > 0) {
+		console.warn('Preprocessing errors:', processedResult.errors);
+	}
+	if (processedResult.warnings.length > 0) {
+		console.warn('Preprocessing warnings:', processedResult.warnings);
+	}
+	
+	// Write processed markdown to temporary file
+	await require('fs').promises.writeFile(tempInputFile, processedResult.content, 'utf8');
+	
+	// Resolve template name to file path
+	const templateName = config.template || this.settings.exportDefaults.template;
+	console.log('Export: Selected template name:', templateName);
+	const templatePath = this.templateManager.getTemplatePath(templateName);
+	console.log('Export: Resolved template path:', templatePath);
+	
+	if (!templatePath) {
+		throw new Error(`Template '${templateName}' not found. Available templates: ${(await this.templateManager.getAvailableTemplates()).join(', ')}`);
+	}
+	
+	// Verify template file exists and get absolute path
+	const pluginDir = (this.manifest as any).dir || path.join(this.app.vault.configDir, 'plugins', this.manifest.id);
+	const absolutePluginDir = path.resolve(vaultBasePath, pluginDir);
+	const absoluteTemplatePath = path.resolve(absolutePluginDir, templatePath);
+	const templateExists = fs.existsSync(absoluteTemplatePath);
+	console.log('Export: Template file exists:', templateExists);
+	console.log('Export: Absolute template path:', absoluteTemplatePath);
+	if (!templateExists) {
+		throw new Error(`Template file not found at path: ${absoluteTemplatePath}`);
+	}
+	
+	// Set up conversion parameters with vault base path for attachment resolution
+	// Use absolute template path since we're running Pandoc from vault directory
+	const pandocOptions: PandocOptions = {
+		pandocPath: this.settings.pandocPath,
+		typstPath: this.settings.typstPath,
+		template: absoluteTemplatePath, // Use absolute path since working dir is vault
+		variables: config.templateVariables || {},
+		timeout: 60000,
+		vaultBasePath: vaultBasePath // Add vault base path for attachment resolution
+	} as any;
+	
+	console.log('Export: Pandoc options:', pandocOptions);
+	
+	// Create converter with the updated options
+	const converter = new PandocTypstConverter(pandocOptions);
+	
+	// Perform the conversion
+	new Notice('Converting to PDF...');
+	const result = await converter.convertToPDF(tempInputFile, outputPath);
+	
+	// Clean up temporary file
+	try {
+		await require('fs').promises.unlink(tempInputFile);
+	} catch (cleanupError) {
+		console.warn('Failed to clean up temporary file:', cleanupError);
+	}
+	
+	if (result.success) {
+		new Notice(`PDF exported successfully: ${outputPath}`);
+		
+		// Optionally open the PDF after export
+		if (this.settings.behavior.openAfterExport) {
+			require('electron').shell.openPath(outputPath);
+		}
+	} else {
+		new Notice(`Export failed: ${result.error || 'Unknown error'}`, 5000);
+		console.error('Export failed:', result);
+	}
+	
+} catch (error) {
+	new Notice(`Export failed: ${error instanceof Error ? error.message : String(error)}`, 5000);
+	console.error('Export error:', error);
+}
+}
 
 	/**
 	 * Process batch of files with export configuration
@@ -1443,10 +1586,14 @@ class TypstPDFExportSettingTab extends PluginSettingTab {
 
 		containerEl.empty();
 
-		containerEl.createEl('h2', {text: 'Typst PDF Export Settings'});
+		// Main settings heading
+		new Setting(containerEl)
+			.setName('Typst PDF Export Settings')
+			.setHeading();
 
 		// Dependency Status Section
 		new Setting(containerEl)
+			.setName('Dependencies')
 			.setHeading();
 
 		new Setting(containerEl)
@@ -1463,10 +1610,10 @@ class TypstPDFExportSettingTab extends PluginSettingTab {
 
 		// External Tools Section
 		new Setting(containerEl)
+			.setName('External Tools')
 			.setHeading();
 
 		new Setting(containerEl)
-			.setName('External Tools')
 			.setDesc('Configure paths to external tools required for PDF export');
 
 		new Setting(containerEl)
@@ -1478,6 +1625,20 @@ class TypstPDFExportSettingTab extends PluginSettingTab {
 				.onChange(async (value) => {
 					this.plugin.settings.pandocPath = value;
 					await this.plugin.saveSettings();
+				}))
+			.addExtraButton(button => button
+				.setIcon('folder-open')
+				.setTooltip('Browse for Pandoc executable')
+				.onClick(async () => {
+					// TODO: Implement file picker for executable selection
+					new Notice('File picker not yet implemented');
+				}))
+			.addExtraButton(button => button
+				.setIcon('check-circle')
+				.setTooltip('Validate Pandoc installation')
+				.onClick(async () => {
+					// TODO: Implement path validation
+					new Notice('Path validation not yet implemented');
 				}));
 
 		new Setting(containerEl)
@@ -1489,6 +1650,20 @@ class TypstPDFExportSettingTab extends PluginSettingTab {
 				.onChange(async (value) => {
 					this.plugin.settings.typstPath = value;
 					await this.plugin.saveSettings();
+				}))
+			.addExtraButton(button => button
+				.setIcon('folder-open')
+				.setTooltip('Browse for Typst executable')
+				.onClick(async () => {
+					// TODO: Implement file picker for executable selection
+					new Notice('File picker not yet implemented');
+				}))
+			.addExtraButton(button => button
+				.setIcon('check-circle')
+				.setTooltip('Validate Typst installation')
+				.onClick(async () => {
+					// TODO: Implement path validation
+					new Notice('Path validation not yet implemented');
 				}));
 
 		new Setting(containerEl)
@@ -1500,14 +1675,21 @@ class TypstPDFExportSettingTab extends PluginSettingTab {
 				.onChange(async (value) => {
 					this.plugin.settings.outputFolder = value;
 					await this.plugin.saveSettings();
+				}))
+			.addExtraButton(button => button
+				.setIcon('folder-open')
+				.setTooltip('Browse for output folder')
+				.onClick(async () => {
+					// TODO: Implement folder picker
+					new Notice('Folder picker not yet implemented');
 				}));
 
 		// Export Defaults Section
 		new Setting(containerEl)
+			.setName('Export Defaults')
 			.setHeading();
 
 		new Setting(containerEl)
-			.setName('Export Defaults')
 			.setDesc('Default settings for PDF export operations');
 
 		new Setting(containerEl)
@@ -1547,10 +1729,10 @@ class TypstPDFExportSettingTab extends PluginSettingTab {
 
 		// Typography Section
 		new Setting(containerEl)
+			.setName('Typography')
 			.setHeading();
 
 		new Setting(containerEl)
-			.setName('Typography')
 			.setDesc('Font and text formatting settings');
 
 		new Setting(containerEl)
@@ -1624,10 +1806,10 @@ class TypstPDFExportSettingTab extends PluginSettingTab {
 
 		// Page Setup Section
 		new Setting(containerEl)
+			.setName('Page Setup')
 			.setHeading();
 
 		new Setting(containerEl)
-			.setName('Page Setup')
 			.setDesc('PDF page layout and formatting');
 
 		new Setting(containerEl)
@@ -1705,13 +1887,13 @@ class TypstPDFExportSettingTab extends PluginSettingTab {
 					await this.plugin.saveSettings();
 				}));
 
-		// Behavior Section
+		// Advanced Options Section
 		new Setting(containerEl)
+			.setName('Advanced Options')
 			.setHeading();
 
 		new Setting(containerEl)
-			.setName('Behavior')
-			.setDesc('Plugin behavior and automation settings');
+			.setDesc('Advanced plugin behavior and performance settings');
 
 		new Setting(containerEl)
 			.setName('Open PDF after export')
@@ -1743,6 +1925,57 @@ class TypstPDFExportSettingTab extends PluginSettingTab {
 				.onChange(async (value) => {
 					this.plugin.settings.behavior.exportConcurrency = value;
 					await this.plugin.saveSettings();
+				}));
+
+		new Setting(containerEl)
+			.setName('Debug mode')
+			.setDesc('Enable verbose logging for troubleshooting export issues')
+			.addToggle(toggle => toggle
+				.setValue(this.plugin.settings.behavior.debugMode || false)
+				.onChange(async (value) => {
+					this.plugin.settings.behavior.debugMode = value;
+					await this.plugin.saveSettings();
+				}));
+
+		// Template Management Section
+		new Setting(containerEl)
+			.setName('Template Management')
+			.setHeading();
+
+		new Setting(containerEl)
+			.setDesc('Manage custom Typst templates for document styling');
+
+		new Setting(containerEl)
+			.setName('Import template')
+			.setDesc('Import a custom Typst template file (.typ)')
+			.addButton(button => button
+				.setButtonText('Import Template')
+				.setIcon('file-plus')
+				.onClick(async () => {
+					// TODO: Implement template import functionality
+					new Notice('Template import not yet implemented');
+				}));
+
+		new Setting(containerEl)
+			.setName('Export templates')
+			.setDesc('Export current templates for sharing or backup')
+			.addButton(button => button
+				.setButtonText('Export Templates')
+				.setIcon('download')
+				.onClick(async () => {
+					// TODO: Implement template export functionality
+					new Notice('Template export not yet implemented');
+				}));
+
+		new Setting(containerEl)
+			.setName('Reset to defaults')
+			.setDesc('Reset all settings to their default values')
+			.addButton(button => button
+				.setButtonText('Reset Settings')
+				.setWarning()
+				.onClick(async () => {
+					// TODO: Implement settings reset with confirmation
+					new Notice('Settings reset not yet implemented');
 				}));
 	}
 }
@@ -1869,14 +2102,23 @@ export class ExportConfigModal extends Modal {
 	 * This will be implemented when TemplateManager is available
 	 */
 	private async loadAvailableTemplates(): Promise<void> {
-		// TODO: Implement template loading via TemplateManager
-		// For now, use hardcoded defaults
-		this.settings.availableTemplates = [
-			'default',
-			'article', 
-			'report',
-			'single-page'
-		];
+		// Load available templates from TemplateManager via plugin
+		console.log('Modal: Loading available templates...');
+		console.log('TemplateManager exists:', !!this.plugin.templateManager);
+		
+		if (this.plugin.templateManager) {
+			this.settings.availableTemplates = await this.plugin.templateManager.getAvailableTemplates();
+			console.log('Templates loaded from TemplateManager:', this.settings.availableTemplates);
+		} else {
+			// Fallback to hardcoded defaults if TemplateManager not initialized
+			console.log('Using fallback templates');
+			this.settings.availableTemplates = [
+				'default.typ',
+				'article.typ', 
+				'report.typ',
+				'single-page.typ'
+			];
+		}
 		
 		// Update template dropdown if already rendered
 		this.updateTemplateDropdown();
@@ -1887,22 +2129,29 @@ export class ExportConfigModal extends Modal {
 	 * Called after templates are loaded
 	 */
 	private updateTemplateDropdown(): void {
-		if (!this.templateDropdown) {
-			return;
-		}
-		
-		// Clear existing options
-		this.templateDropdown.selectEl.empty();
-		
-		// Add available templates
-		this.settings.availableTemplates.forEach(template => {
-			this.templateDropdown.addOption(template, this.getTemplateDisplayName(template));
-		});
-		
-		// Set current value or default
-		const currentValue = this.settings.template || 'default';
-		this.templateDropdown.setValue(currentValue);
+	console.log('updateTemplateDropdown called');
+	console.log('templateDropdown exists:', !!this.templateDropdown);
+	console.log('Available templates:', this.settings.availableTemplates);
+	
+	if (!this.templateDropdown) {
+		console.log('templateDropdown not yet created');
+		return;
 	}
+	
+	// Clear existing options
+	this.templateDropdown.selectEl.empty();
+	
+	// Add available templates
+	this.settings.availableTemplates.forEach(template => {
+		const displayName = this.getTemplateDisplayName(template);
+		console.log(`Adding template option: ${template} -> ${displayName}`);
+		this.templateDropdown.addOption(template, displayName);
+	});
+	
+	// Set current value or default with proper extension
+	const currentValue = this.settings.template || 'default.typ';
+	this.templateDropdown.setValue(currentValue);
+}
 
 	/**
 	 * Generate the main form UI
@@ -2001,32 +2250,34 @@ export class ExportConfigModal extends Modal {
 	 * Create template selection section
 	 */
 	private createTemplateSection(): void {
-		const section = this.formContainer.createDiv('export-section');
-		section.createEl('h3', { text: 'Template' });
+	const section = this.formContainer.createDiv('export-section');
+	section.createEl('h3', { text: 'Template' });
 
-		new Setting(section)
-			.setName('Typst template')
-			.setDesc('Select template for document styling')
-			.addDropdown(dropdown => {
-				// Add available templates
-				this.settings.availableTemplates.forEach(template => {
-					dropdown.addOption(template, this.getTemplateDisplayName(template));
-				});
-				
-				dropdown
-					.setValue(this.settings.template || 'default')
-					.onChange(value => {
-						this.settings.template = value;
-						this.updatePreview();
-					});
-				
-				// Store reference for updates
-				this.templateDropdown = dropdown;
+	new Setting(section)
+		.setName('Typst template')
+		.setDesc('Select template for document styling')
+		.addDropdown(dropdown => {
+			// Initially populate with available templates
+			this.settings.availableTemplates.forEach(template => {
+				dropdown.addOption(template, this.getTemplateDisplayName(template));
 			});
+			
+			// Set default value with proper extension
+			const defaultTemplate = this.settings.template || 'default.typ';
+			dropdown
+				.setValue(defaultTemplate)
+				.onChange(value => {
+					this.settings.template = value;
+					this.updatePreview();
+				});
+			
+			// Store reference for updates
+			this.templateDropdown = dropdown;
+		});
 
-		// Template variables section
-		this.createTemplateVariablesSection(section);
-	}
+	// Template variables section
+	this.createTemplateVariablesSection(section);
+}
 
 	/**
 	 * Create template variables section
@@ -2381,14 +2632,18 @@ export class ExportConfigModal extends Modal {
 	 * Get display name for template
 	 */
 	private getTemplateDisplayName(template: string): string {
-		const displayNames: Record<string, string> = {
-			'default': 'Default',
-			'article': 'Article',
-			'report': 'Report', 
-			'single-page': 'Single Page'
-		};
-		return displayNames[template] || template.charAt(0).toUpperCase() + template.slice(1);
-	}
+	// Remove .typ extension for display name mapping
+	const templateKey = template.replace('.typ', '');
+	
+	const displayNames: Record<string, string> = {
+		'default': 'Default',
+		'article': 'Article',
+		'report': 'Report', 
+		'single-page': 'Single Page'
+	};
+	
+	return displayNames[templateKey] || templateKey.charAt(0).toUpperCase() + templateKey.slice(1);
+}
 
 	// Properties to store UI element references
 	private templateDropdown?: any;
