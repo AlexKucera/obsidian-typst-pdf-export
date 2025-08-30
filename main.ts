@@ -193,6 +193,7 @@ args.push('--standalone');
 // Add resource paths for attachment resolution
 if (this.pandocOptions.vaultBasePath) {
 	const path = require('path');
+	const fs = require('fs');
 	
 	// Add vault root as primary resource path
 	args.push('--resource-path', this.pandocOptions.vaultBasePath);
@@ -207,11 +208,37 @@ if (this.pandocOptions.vaultBasePath) {
 	];
 	
 	// Check if these directories exist and add them
-	const fs = require('fs');
 	for (const attachPath of commonAttachmentPaths) {
 		if (fs.existsSync(attachPath)) {
 			args.push('--resource-path', attachPath);
+			console.log('Added resource path:', attachPath);
 		}
+	}
+	
+	// Also scan for note-specific attachment folders (Obsidian often creates these)
+	try {
+		const vaultContents = fs.readdirSync(this.pandocOptions.vaultBasePath);
+		for (const item of vaultContents) {
+			const itemPath = path.join(this.pandocOptions.vaultBasePath, item);
+			const stat = fs.statSync(itemPath);
+			if (stat.isDirectory() && !item.startsWith('.') && !item.startsWith('_')) {
+				// Check if this directory contains images
+				try {
+					const dirContents = fs.readdirSync(itemPath);
+					const hasImages = dirContents.some(file => 
+						/\.(png|jpg|jpeg|gif|svg|webp|bmp|ico|tiff)$/i.test(file)
+					);
+					if (hasImages) {
+						args.push('--resource-path', itemPath);
+						console.log('Added note-specific resource path:', itemPath);
+					}
+				} catch (e) {
+					// Ignore directories we can't read
+				}
+			}
+		}
+	} catch (e) {
+		console.warn('Could not scan vault for attachment directories:', e);
 	}
 }
 
@@ -1329,6 +1356,16 @@ try {
 		console.warn('Preprocessing warnings:', processedResult.warnings);
 	}
 	
+	// Debug: Log processed content to see what image paths look like
+	console.log('Export: Original content length:', content.length);
+	console.log('Export: Processed content length:', processedResult.content.length);
+	
+	// Log a sample of processed content to see image references
+	const imageSample = processedResult.content.split('\n').filter(line => 
+		line.includes('![') || line.includes('<img') || line.includes('image(')
+	).slice(0, 5); // First 5 image references
+	console.log('Export: Sample image references in processed content:', imageSample);
+	
 	// Write processed markdown to temporary file
 	await require('fs').promises.writeFile(tempInputFile, processedResult.content, 'utf8');
 	
@@ -1342,7 +1379,7 @@ try {
 		throw new Error(`Template '${templateName}' not found. Available templates: ${(await this.templateManager.getAvailableTemplates()).join(', ')}`);
 	}
 	
-	// Verify template file exists and get absolute path
+	// Verify template file exists and calculate relative path from vault
 	const pluginDir = (this.manifest as any).dir || path.join(this.app.vault.configDir, 'plugins', this.manifest.id);
 	const absolutePluginDir = path.resolve(vaultBasePath, pluginDir);
 	const absoluteTemplatePath = path.resolve(absolutePluginDir, templatePath);
@@ -1353,12 +1390,15 @@ try {
 		throw new Error(`Template file not found at path: ${absoluteTemplatePath}`);
 	}
 	
+	// Calculate template path relative to vault directory (since Pandoc runs from there)
+	const relativeTemplatePath = path.relative(vaultBasePath, absoluteTemplatePath);
+	console.log('Export: Relative template path from vault:', relativeTemplatePath);
+	
 	// Set up conversion parameters with vault base path for attachment resolution
-	// Use absolute template path since we're running Pandoc from vault directory
 	const pandocOptions: PandocOptions = {
 		pandocPath: this.settings.pandocPath,
 		typstPath: this.settings.typstPath,
-		template: absoluteTemplatePath, // Use absolute path since working dir is vault
+		template: relativeTemplatePath, // Use relative path from vault directory
 		variables: config.templateVariables || {},
 		timeout: 60000,
 		vaultBasePath: vaultBasePath // Add vault base path for attachment resolution

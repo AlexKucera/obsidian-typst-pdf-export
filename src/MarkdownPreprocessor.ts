@@ -97,11 +97,11 @@ export class MarkdownPreprocessor {
 				}
 			}
 			
-			// Step 3: Convert wikilinks
-			result.content = this.parseWikilinks(result.content, result);
-			
-			// Step 4: Convert embeds
+			// Step 3: Convert embeds FIRST (before wikilinks to avoid .md extension being added)
 			result.content = this.parseEmbeds(result.content, result);
+			
+			// Step 4: Convert wikilinks (after embeds are processed)
+			result.content = this.parseWikilinks(result.content, result);
 			
 			// Step 5: Convert callouts
 			result.content = this.parseCallouts(result.content, result);
