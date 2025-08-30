@@ -1,4 +1,4 @@
-import { App, Notice, Plugin, PluginSettingTab, Setting, Modal, MarkdownRenderer } from 'obsidian';
+import { App, Notice, Plugin, PluginSettingTab, Setting, Modal, MarkdownRenderer, TFile, TFolder, Menu } from 'obsidian';
 import { DependencyChecker } from './src/DependencyChecker';
 import { spawn, ChildProcess } from 'child_process';
 import { promises as fs } from 'fs';
@@ -465,6 +465,8 @@ interface obsidianTypstPDFExportSettings {
 		openAfterExport: boolean;
 		/** Preserve folder structure in output */
 		preserveFolderStructure: boolean;
+		/** Number of concurrent exports to run (default: 3) */
+		exportConcurrency: number;
 	};
 }
 
@@ -505,45 +507,39 @@ const DEFAULT_SETTINGS: obsidianTypstPDFExportSettings = {
 	
 	behavior: {
 		openAfterExport: true,
-		preserveFolderStructure: true
+		preserveFolderStructure: true,
+		exportConcurrency: 3
 	}
 }
 
 export default class obsidianTypstPDFExport extends Plugin {
 	settings: obsidianTypstPDFExportSettings;
 	dependencyChecker: DependencyChecker;
+	private converter: PandocTypstConverter;
 
 	async onload() {
+		console.log('Loading Typst PDF Export Plugin...');
+
+		// Load settings first
 		await this.loadSettings();
 
-		// Initialize dependency checker
+		// Initialize dependency checker and converter
 		this.dependencyChecker = new DependencyChecker();
+		this.converter = new PandocTypstConverter();
 
-		// Check dependencies on startup (non-blocking)
+		// Check dependencies asynchronously (don't block plugin startup)
 		this.checkDependenciesAsync();
 
-		// Add ribbon icon for quick export access
-		this.addRibbonIcon('file-text', 'Export to PDF with Typst', () => {
-			this.handleExportWithDependencyCheck();
+		// Register commands
+		this.registerCommands();
+
+		// Add ribbon icon with Lucide icon name
+		this.addRibbonIcon('download', 'Export to PDF with Typst', (event: MouseEvent) => {
+			this.handleRibbonClick(event);
 		});
 
-		// Add basic export command
-		this.addCommand({
-			id: 'export-current-note',
-			name: 'Export current note to Typst PDF',
-			callback: () => {
-				this.handleExportWithDependencyCheck();
-			}
-		});
-
-		// Add dependency check command
-		this.addCommand({
-			id: 'check-dependencies',
-			name: 'Check Pandoc and Typst dependencies',
-			callback: () => {
-				this.showDependencyStatus();
-			}
-		});
+		// Register context menu events
+		this.registerEvents();
 
 		// This adds a settings tab so the user can configure various aspects of the plugin
 		this.addSettingTab(new TypstPDFExportSettingTab(this.app, this));
@@ -576,23 +572,6 @@ export default class obsidianTypstPDFExport extends Plugin {
 		}
 	}
 
-	/**
-	 * Handle export with dependency checking
-	 */
-	private async handleExportWithDependencyCheck(): Promise<void> {
-		const result = await this.dependencyChecker.checkAllDependencies(
-			{ customPath: this.settings.pandocPath },
-			{ customPath: this.settings.typstPath }
-		);
-
-		if (!result.allAvailable) {
-			this.showDependencyErrorDialog(result);
-			return;
-		}
-
-		// Dependencies are available, proceed with export
-		new Notice('Typst PDF Export: Dependencies verified! Export functionality will be implemented in future versions.');
-	}
 
 	/**
 	 * Show detailed dependency status
@@ -802,6 +781,12 @@ export default class obsidianTypstPDFExport extends Plugin {
 				behavior.preserveFolderStructure = data.behavior.preserveFolderStructure;
 			}
 			
+			if (typeof data.behavior.exportConcurrency === 'number' && 
+				data.behavior.exportConcurrency > 0 && 
+				data.behavior.exportConcurrency <= 10) {
+				behavior.exportConcurrency = data.behavior.exportConcurrency;
+			}
+			
 			if (Object.keys(behavior).length > 0) {
 				validated.behavior = behavior as any;
 			}
@@ -834,6 +819,11 @@ export default class obsidianTypstPDFExport extends Plugin {
 		
 		if (!migrated.behavior) {
 			migrated.behavior = DEFAULT_SETTINGS.behavior;
+		} else {
+			// Migrate behavior settings - add exportConcurrency if missing
+			if (typeof migrated.behavior.exportConcurrency !== 'number') {
+				migrated.behavior.exportConcurrency = DEFAULT_SETTINGS.behavior.exportConcurrency;
+			}
 		}
 
 		return migrated;
@@ -855,6 +845,434 @@ export default class obsidianTypstPDFExport extends Plugin {
 			console.error('Failed to save Typst PDF Export settings:', error);
 			new Notice('Failed to save settings');
 			throw error;
+		}
+	}
+
+	/**
+	 * Register all commands with proper checkCallback validation
+	 */
+	private registerCommands(): void {
+		// Export current note to Typst PDF
+		this.addCommand({
+			id: 'export-current-note',
+			name: 'Export current note to Typst PDF',
+			checkCallback: (checking: boolean) => {
+				const activeFile = this.app.workspace.getActiveFile();
+				const canRun = activeFile && activeFile.extension === 'md';
+				
+				if (canRun && !checking) {
+					this.handleExportWithDependencyCheck(activeFile);
+				}
+				
+				return !!canRun;
+			}
+		});
+
+		// Export with previous settings
+		this.addCommand({
+			id: 'export-with-previous-settings',
+			name: 'Export with previous settings',
+			checkCallback: (checking: boolean) => {
+				const activeFile = this.app.workspace.getActiveFile();
+				const canRun = activeFile && activeFile.extension === 'md' && 
+					this.settings.exportDefaults && Object.keys(this.settings.exportDefaults).length > 0;
+				
+				if (canRun && !checking) {
+					this.handleExportWithPreviousSettings(activeFile);
+				}
+				
+				return !!canRun;
+			}
+		});
+
+		// Export folder to PDF
+		this.addCommand({
+			id: 'export-folder-to-pdf',
+			name: 'Export folder to PDF',
+			checkCallback: (checking: boolean) => {
+				const activeFile = this.app.workspace.getActiveFile();
+				const canRun = activeFile && activeFile.parent;
+				
+				if (canRun && !checking && activeFile.parent) {
+					this.handleFolderExport(activeFile.parent);
+				}
+				
+				return !!canRun;
+			}
+		});
+
+		// Keep existing dependency check command
+		this.addCommand({
+			id: 'check-dependencies',
+			name: 'Check Pandoc and Typst dependencies',
+			callback: () => {
+				this.showDependencyStatus();
+			}
+		});
+	}
+
+	/**
+	 * Register workspace events for context menus
+	 */
+	private registerEvents(): void {
+		// Register file context menu event
+		this.registerEvent(
+			this.app.workspace.on('file-menu', (menu, file, source) => {
+				if (file instanceof TFile && file.extension === 'md') {
+					menu.addItem((item) => {
+						item
+							.setTitle('Export to Typst PDF')
+							.setIcon('file-pdf')
+							.onClick(() => {
+								this.handleExportWithDependencyCheck(file);
+							});
+					});
+				}
+				
+				// Add folder export option for directories
+				if (file instanceof TFolder) {
+					menu.addItem((item) => {
+						item
+							.setTitle('Export folder to PDF')
+							.setIcon('folder-open')
+							.onClick(() => {
+								this.handleFolderExport(file);
+							});
+					});
+				}
+			})
+		);
+
+		// Register files context menu for multiple file selection
+		this.registerEvent(
+			this.app.workspace.on('files-menu', (menu, files, source) => {
+				const markdownFiles = files.filter(f => f instanceof TFile && f.extension === 'md') as TFile[];
+				
+				if (markdownFiles.length > 0) {
+					menu.addItem((item) => {
+						item
+							.setTitle(`Export ${markdownFiles.length} files to PDF`)
+							.setIcon('file-pdf')
+							.onClick(() => {
+								this.handleBatchExport(markdownFiles);
+							});
+					});
+				}
+			})
+		);
+	}
+
+	/**
+	 * Handle ribbon icon click with context menu
+	 */
+	private handleRibbonClick(event: MouseEvent): void {
+		const activeFile = this.app.workspace.getActiveFile();
+		
+		if (!activeFile || activeFile.extension !== 'md') {
+			new Notice('Please open a markdown file to export');
+			return;
+		}
+
+		// Create context menu for ribbon click
+		const menu = new Menu();
+
+		menu.addItem((item) =>
+			item
+				.setTitle('Export current note')
+				.setIcon('file-pdf')
+				.onClick(() => {
+					this.handleExportWithDependencyCheck(activeFile);
+				})
+		);
+
+		if (this.settings.exportDefaults && Object.keys(this.settings.exportDefaults).length > 0) {
+			menu.addItem((item) =>
+				item
+					.setTitle('Export with previous settings')
+					.setIcon('history')
+					.onClick(() => {
+						this.handleExportWithPreviousSettings(activeFile);
+					})
+			);
+		}
+
+		if (activeFile.parent) {
+			menu.addSeparator();
+			menu.addItem((item) =>
+				item
+					.setTitle('Export folder to PDF')
+					.setIcon('folder-open')
+					.onClick(() => {
+						this.handleFolderExport(activeFile.parent!);
+					})
+			);
+		}
+
+		menu.showAtMouseEvent(event);
+	}
+
+	/**
+	 * Handle export with dependency checking for a specific file
+	 */
+	private async handleExportWithDependencyCheck(file?: TFile | null): Promise<void> {
+		if (!file) {
+			file = this.app.workspace.getActiveFile();
+		}
+		
+		if (!file || file.extension !== 'md') {
+			new Notice('Please select a markdown file to export');
+			return;
+		}
+
+		const result = await this.dependencyChecker.checkAllDependencies(
+			{ customPath: this.settings.pandocPath },
+			{ customPath: this.settings.typstPath }
+		);
+
+		if (!result.allAvailable) {
+			this.showDependencyErrorDialog(result);
+			return;
+		}
+
+		// Get the current file or active file
+		const activeFile = file || this.app.workspace.getActiveFile();
+		if (!activeFile) {
+			new Notice('No file selected for export.');
+			return;
+		}
+
+		// Open the export configuration modal
+		new ExportConfigModal(
+			this.app, 
+			this, 
+			activeFile.path,
+			async (config) => {
+				await this.performExport(activeFile, config);
+			},
+			async () => {
+				// Modal was cancelled - no action needed
+			}
+		).open();
+	}
+
+	/**
+	 * Handle export with previous settings
+	 */
+	private async handleExportWithPreviousSettings(file: TFile): Promise<void> {
+		const result = await this.dependencyChecker.checkAllDependencies(
+			{ customPath: this.settings.pandocPath },
+			{ customPath: this.settings.typstPath }
+		);
+
+		if (!result.allAvailable) {
+			this.showDependencyErrorDialog(result);
+			return;
+		}
+
+		// TODO: Implement direct export using previous settings without modal
+		new Notice('Export with previous settings will be implemented in a future version.');
+	}
+
+	/**
+	 * Handle folder export with batch processing
+	 */
+	private async handleFolderExport(folder: TFolder): Promise<void> {
+		const result = await this.dependencyChecker.checkAllDependencies(
+			{ customPath: this.settings.pandocPath },
+			{ customPath: this.settings.typstPath }
+		);
+
+		if (!result.allAvailable) {
+			this.showDependencyErrorDialog(result);
+			return;
+		}
+
+		// Get all markdown files in the folder recursively
+		const markdownFiles = this.getMarkdownFilesInFolder(folder);
+		
+		if (markdownFiles.length === 0) {
+			new Notice(`No markdown files found in folder: ${folder.name}`);
+			return;
+		}
+
+		// Open export configuration modal for batch mode
+		new ExportConfigModal(
+			this.app, 
+			this, 
+			folder.path,
+			async (config) => {
+				// TODO: Implement batch export with config
+				await this.processBatchFiles(markdownFiles, config);
+			},
+			async () => {
+				// Modal was cancelled - no action needed
+			}
+		).open();
+	}
+
+	/**
+	 * Handle batch export for multiple selected files
+	 */
+	private async handleBatchExport(files: TFile[]): Promise<void> {
+		const result = await this.dependencyChecker.checkAllDependencies(
+			{ customPath: this.settings.pandocPath },
+			{ customPath: this.settings.typstPath }
+		);
+
+		if (!result.allAvailable) {
+			this.showDependencyErrorDialog(result);
+			return;
+		}
+
+		// Open export configuration modal for batch mode  
+		new ExportConfigModal(
+			this.app, 
+			this, 
+			'batch-export',
+			async (config) => {
+				// Process each file individually with the same config
+				for (const file of files) {
+					await this.performExport(file, config);
+				}
+			},
+			async () => {
+				// Modal was cancelled - no action needed
+			}
+		).open();
+	}
+
+	/**
+	 * Get all markdown files in a folder recursively
+	 */
+	private getMarkdownFilesInFolder(folder: TFolder): TFile[] {
+		const markdownFiles: TFile[] = [];
+		
+		const traverse = (currentFolder: TFolder) => {
+			for (const child of currentFolder.children) {
+				if (child instanceof TFile && child.extension === 'md') {
+					markdownFiles.push(child);
+				} else if (child instanceof TFolder) {
+					traverse(child);
+				}
+			}
+		};
+		
+		traverse(folder);
+		return markdownFiles;
+	}
+
+	/**
+	 * Simple concurrency limiter for batch operations (simplified version)
+	 */
+	private async processBatch<T, R>(
+		items: T[],
+		processor: (item: T, index: number) => Promise<R>,
+		concurrency: number = 3
+	): Promise<{ results: (R | Error)[]; errors: number }> {
+		const results: (R | Error)[] = [];
+		let errors = 0;
+
+		// Simple batch processing - process items in chunks
+		for (let i = 0; i < items.length; i += concurrency) {
+			const chunk = items.slice(i, i + concurrency);
+			const promises = chunk.map(async (item, index) => {
+				try {
+					return await processor(item, i + index);
+				} catch (error) {
+					errors++;
+					return error instanceof Error ? error : new Error(String(error));
+				}
+			});
+			
+			const chunkResults = await Promise.all(promises);
+			results.push(...chunkResults);
+		}
+
+		return { results, errors };
+	}
+
+	/**
+	 * Perform export of a single file using the conversion pipeline
+	 */
+	private async performExport(file: TFile, config: ExportConfig): Promise<void> {
+		try {
+			// Read the file content
+			const content = await this.app.vault.read(file);
+			
+			// Create output directory if it doesn't exist
+			const outputDir = this.settings.outputFolder;
+			if (!await this.app.vault.adapter.exists(outputDir)) {
+				await this.app.vault.adapter.mkdir(outputDir);
+			}
+			
+			// Generate output filename
+			const baseName = file.name.replace(/\.md$/, '');
+			const path = require('path');
+			const outputPath = path.resolve(outputDir, `${baseName}.pdf`);
+			
+			// Create temporary file for the processed markdown
+			const tempDir = require('os').tmpdir();
+			const tempInputFile = path.join(tempDir, `${baseName}_${Date.now()}.md`);
+			
+			// Preprocess the markdown content (handle Obsidian syntax)
+			// For now, use content as-is, but this could be enhanced with preprocessing
+			await require('fs').promises.writeFile(tempInputFile, content, 'utf8');
+			
+			// Set up conversion parameters
+			const pandocOptions: PandocOptions = {
+				pandocPath: this.settings.pandocPath,
+				template: config.template || this.settings.exportDefaults.template,
+				variables: config.templateVariables || {},
+				timeout: 60000
+			};
+			
+			// Perform the conversion
+			new Notice('Converting to PDF...');
+			const result = await this.converter.convertToPDF(tempInputFile, outputPath);
+			
+			// Clean up temporary file
+			try {
+				await require('fs').promises.unlink(tempInputFile);
+			} catch (cleanupError) {
+				console.warn('Failed to clean up temporary file:', cleanupError);
+			}
+			
+			if (result.success) {
+				new Notice(`PDF exported successfully: ${outputPath}`);
+				
+				// Optionally open the PDF after export
+				if (this.settings.behavior.openAfterExport) {
+					require('electron').shell.openPath(outputPath);
+				}
+			} else {
+				new Notice(`Export failed: ${result.error || 'Unknown error'}`, 5000);
+				console.error('Export failed:', result);
+			}
+			
+		} catch (error) {
+			new Notice(`Export failed: ${error instanceof Error ? error.message : String(error)}`, 5000);
+			console.error('Export error:', error);
+		}
+	}
+
+	/**
+	 * Process batch of files with export configuration
+	 */
+	private async processBatchFiles(files: TFile[], config: ExportConfig): Promise<void> {
+		new Notice(`Starting batch export of ${files.length} files...`);
+		
+		const processor = async (file: TFile, index: number) => {
+			new Notice(`Processing file ${index + 1}/${files.length}: ${file.name}`);
+			await this.performExport(file, config);
+			return `Exported ${file.name}`;
+		};
+
+		const result = await this.processBatch(files, processor, this.settings.behavior.exportConcurrency);
+		
+		if (result.errors > 0) {
+			new Notice(`Batch export completed with ${result.errors} errors out of ${files.length} files.`);
+		} else {
+			new Notice(`Successfully exported ${files.length} files.`);
 		}
 	}
 }
@@ -1314,6 +1732,18 @@ class TypstPDFExportSettingTab extends PluginSettingTab {
 					this.plugin.settings.behavior.preserveFolderStructure = value;
 					await this.plugin.saveSettings();
 				}));
+
+		new Setting(containerEl)
+			.setName('Export concurrency')
+			.setDesc('Number of files to export simultaneously during batch operations (1-10)')
+			.addSlider(slider => slider
+				.setLimits(1, 10, 1)
+				.setValue(this.plugin.settings.behavior.exportConcurrency)
+				.setDynamicTooltip()
+				.onChange(async (value) => {
+					this.plugin.settings.behavior.exportConcurrency = value;
+					await this.plugin.saveSettings();
+				}));
 	}
 }
 
@@ -1354,9 +1784,9 @@ export class ExportConfigModal extends Modal {
 	private formContainer: HTMLElement;
 	private previewContainer: HTMLElement;
 	private progressContainer: HTMLElement;
-	private progressBar: HTMLElement;
-	private progressText: HTMLElement;
-	private cancelButton: HTMLButtonElement;
+	private progressBar: HTMLElement | null = null;
+	private progressText: HTMLElement | null = null;
+	private cancelButton: HTMLButtonElement | null = null;
 
 	constructor(
 		app: App,
@@ -1399,10 +1829,20 @@ export class ExportConfigModal extends Modal {
 	 */
 	onOpen(): void {
 		this.addModalStyles();
+		
+		// Set modal dimensions to match Obsidian Settings window
+		if (this.modalEl) {
+			this.modalEl.style.width = '1100px';
+			this.modalEl.style.height = '750px';
+			this.modalEl.style.maxWidth = '90vw';
+			this.modalEl.style.maxHeight = '90vh';
+		}
+		
 		this.setTitle(`Export "${this.settings.noteTitle}" to PDF`);
-		this.generateForm();
+		
+		// Load templates FIRST, then generate form and load previous config
 		this.loadAvailableTemplates().then(() => {
-			// Load previous configuration after templates are available
+			this.generateForm();
 			this.loadPreviousConfig();
 		});
 	}
@@ -1447,8 +1887,21 @@ export class ExportConfigModal extends Modal {
 	 * Called after templates are loaded
 	 */
 	private updateTemplateDropdown(): void {
-		// TODO: Implement template dropdown update
-		// This will be implemented in the form generation phase
+		if (!this.templateDropdown) {
+			return;
+		}
+		
+		// Clear existing options
+		this.templateDropdown.selectEl.empty();
+		
+		// Add available templates
+		this.settings.availableTemplates.forEach(template => {
+			this.templateDropdown.addOption(template, this.getTemplateDisplayName(template));
+		});
+		
+		// Set current value or default
+		const currentValue = this.settings.template || 'default';
+		this.templateDropdown.setValue(currentValue);
 	}
 
 	/**
@@ -1469,7 +1922,7 @@ export class ExportConfigModal extends Modal {
 		this.contentContainer.style.gap = '20px';
 		this.contentContainer.style.minHeight = '400px';
 
-		// Form container (left side)
+		// Form container (left side) - CREATE FIRST, then set styles
 		this.formContainer = this.contentContainer.createDiv('export-config-form');
 		this.formContainer.style.flex = '1';
 		this.formContainer.style.minWidth = '400px';
@@ -2829,8 +3282,13 @@ export class ExportConfigModal extends Modal {
 		style.id = styleId;
 		style.textContent = `
 			.export-config-container {
-				min-width: 600px;
-				max-width: 900px;
+				width: 100%;
+				max-width: 100%;
+				min-height: 650px;
+				max-height: 80vh;
+				overflow-y: auto;
+				overflow-x: hidden;
+				box-sizing: border-box;
 			}
 			
 			.export-section {
