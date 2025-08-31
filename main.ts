@@ -1440,6 +1440,12 @@ try {
 		console.log(`Export: Processing ${processedResult.metadata.pdfEmbeds.length} PDF embeds`);
 		await this.processPdfEmbeds(processedResult, vaultBasePath, tempDir, file);
 	}
+
+	// Process image embeds if any were found
+	if (processedResult.metadata.imageEmbeds && processedResult.metadata.imageEmbeds.length > 0) {
+		console.log(`Export: Processing ${processedResult.metadata.imageEmbeds.length} image embeds`);
+		await this.processImageEmbeds(processedResult, vaultBasePath, tempDir, file);
+	}
 	
 	// Debug: Log processed content to see what image paths look like
 	console.log('Export: Original content length:', content.length);
@@ -1670,6 +1676,145 @@ try {
 				const decodedPath = decodeURIComponent(pdfEmbed.sanitizedPath);
 				const fallbackOutput = `[📎 **Download PDF:** ${pdfEmbed.baseName}](${decodedPath})`;
 				updatedContent = updatedContent.replace(pdfEmbed.marker, fallbackOutput);
+			}
+		}
+		
+		// Update the processed result with the new content
+		processedResult.content = updatedContent;
+	}
+
+	/**
+	 * Process regular image embeds by copying them to vault location for Typst access
+	 */
+	private async processImageEmbeds(processedResult: any, vaultBasePath: string, tempDir: string, currentFile?: TFile): Promise<void> {
+		const path = require('path');
+		const fs = require('fs');
+		
+		console.log(`Export: Processing ${processedResult.metadata.imageEmbeds.length} image embeds`);
+		
+		let updatedContent = processedResult.content;
+		
+		// Create vault temp images directory
+		const vaultTempImagesDir = path.join(vaultBasePath, '.obsidian', 'plugins', 'obsidian-typst-pdf-export', 'temp-images');
+		const fs_promises = require('fs').promises;
+		await fs_promises.mkdir(vaultTempImagesDir, { recursive: true });
+		
+		for (const imageEmbed of processedResult.metadata.imageEmbeds) {
+			try {
+				console.log(`Export: Processing image embed: ${imageEmbed.originalPath}`);
+				
+				// Decode the URL-encoded sanitized path back to normal characters
+				const decodedPath = decodeURIComponent(imageEmbed.sanitizedPath);
+				
+				// Try multiple path resolution strategies
+				const possiblePaths = [
+					// Strategy 1: Relative to vault root (standard Obsidian behavior)
+					path.resolve(vaultBasePath, decodedPath),
+					// Strategy 2: Direct path if it's just a filename (check vault root)
+					path.resolve(vaultBasePath, imageEmbed.fileName),
+					// Strategy 3: Relative to current file's directory (for local attachments)
+					currentFile ? path.resolve(vaultBasePath, path.dirname(currentFile.path), decodedPath) : null,
+					currentFile ? path.resolve(vaultBasePath, path.dirname(currentFile.path), imageEmbed.fileName) : null,
+					// Strategy 4: Check common attachment directories
+					path.resolve(vaultBasePath, 'attachments', imageEmbed.fileName),
+					path.resolve(vaultBasePath, 'assets', imageEmbed.fileName),
+					path.resolve(vaultBasePath, 'images', imageEmbed.fileName)
+				].filter(p => p !== null);
+				
+				let fullImagePath = null;
+				let validPath = null;
+				
+				// Try each possible path until we find one that exists
+				for (const possiblePath of possiblePaths) {
+					console.log(`Export: Checking path: ${possiblePath}`);
+					if (fs.existsSync(possiblePath)) {
+						fullImagePath = possiblePath;
+						validPath = possiblePath;
+						console.log(`Export: Found image at: ${fullImagePath}`);
+						break;
+					}
+				}
+				
+				if (!fullImagePath) {
+					console.warn(`Export: Image file not found in any of the expected locations: ${possiblePaths.join(', ')}`);
+					// Replace marker with fallback link or broken image indicator
+					const fallbackOutput = `![⚠️ Image not found: ${imageEmbed.baseName}](${decodedPath})`;
+					updatedContent = updatedContent.replace(imageEmbed.marker, fallbackOutput);
+					continue;
+				}
+				
+				// Copy image to vault temp directory (convert WebP to PNG if needed)
+				const originalImageName = path.basename(fullImagePath);
+				const fileExtension = path.extname(originalImageName).toLowerCase();
+				
+				let vaultImagePath;
+				let finalImageName;
+				
+				if (fileExtension === '.webp') {
+					// Convert WebP to PNG using ImageMagick
+					const pngFileName = originalImageName.replace(/\.webp$/i, '.png');
+					vaultImagePath = path.join(vaultTempImagesDir, pngFileName);
+					finalImageName = pngFileName;
+					
+					console.log(`Export: Converting WebP to PNG: ${originalImageName} -> ${pngFileName}`);
+					
+					const { exec } = require('child_process');
+					const util = require('util');
+					const execAsync = util.promisify(exec);
+					
+					try {
+						// Use full path to convert command to ensure it's found
+						const convertPath = '/opt/homebrew/bin/convert';
+						await execAsync(`"${convertPath}" "${fullImagePath}" "${vaultImagePath}"`);
+						console.log(`Export: Successfully converted WebP to PNG: ${pngFileName}`);
+					} catch (convertError) {
+						console.error(`Export: Failed to convert WebP image: ${convertError.message}`);
+						throw convertError;
+					}
+				} else {
+					// For non-WebP images, copy directly
+					vaultImagePath = path.join(vaultTempImagesDir, originalImageName);
+					finalImageName = originalImageName;
+					await fs_promises.copyFile(fullImagePath, vaultImagePath);
+				}
+				
+				// Get relative path for the copied image from vault base
+				const relativeImagePath = path.relative(vaultBasePath, vaultImagePath);
+				
+				// Create the appropriate markdown output based on size/alt text
+				let imageOutput;
+				if (imageEmbed.sizeOrAlt) {
+					// Check if it's size information (width x height pattern)
+					const sizeMatch = imageEmbed.sizeOrAlt.match(/^(\d+)(?:x(\d+))?$/);
+					if (sizeMatch) {
+						const width = sizeMatch[1];
+						const height = sizeMatch[2];
+						
+						// Create image with size attributes (optimized for Pandoc → Typst conversion)
+						if (height) {
+							imageOutput = `<img src="${relativeImagePath}" width="${width}" height="${height}" alt="${imageEmbed.baseName}" />`;
+						} else {
+							imageOutput = `<img src="${relativeImagePath}" width="${width}" alt="${imageEmbed.baseName}" />`;
+						}
+					} else {
+						// Treat as alt text
+						imageOutput = `![${imageEmbed.sizeOrAlt}](${relativeImagePath})`;
+					}
+				} else {
+					// Standard image reference
+					imageOutput = `![${imageEmbed.baseName}](${relativeImagePath})`;
+				}
+				
+				// Replace the placeholder with the image output
+				updatedContent = updatedContent.replace(imageEmbed.marker, imageOutput);
+				
+				console.log(`Export: Successfully processed image embed: ${imageEmbed.baseName} -> ${finalImageName}`);
+			} catch (error) {
+				console.error(`Export: Error processing image embed ${imageEmbed.baseName}:`, error);
+				// Replace with fallback image reference
+				const decodedPath = decodeURIComponent(imageEmbed.sanitizedPath);
+				const fallbackOutput = `![⚠️ Error loading: ${imageEmbed.baseName}](${decodedPath})`;
+				updatedContent = updatedContent.replace(imageEmbed.marker, fallbackOutput);
 			}
 		}
 		

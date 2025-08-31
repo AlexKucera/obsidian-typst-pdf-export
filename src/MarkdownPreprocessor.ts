@@ -36,6 +36,14 @@ export interface PreprocessingResult {
 			options?: string;
 			marker: string;
 		}>;
+		imageEmbeds?: Array<{
+			originalPath: string;
+			sanitizedPath: string;
+			fileName: string;
+			baseName: string;
+			sizeOrAlt?: string;
+			marker: string;
+		}>;
 	};
 	/** Processing errors and warnings */
 	errors: string[];
@@ -439,40 +447,33 @@ export class MarkdownPreprocessor {
 	 * Process image embeds with size parameters
 	 */
 	private processImageEmbed(imagePath: string, sizeOrAlt: string | undefined, result: PreprocessingResult): string {
-	// Don't sanitize the path - keep it as-is for Pandoc to resolve
-	// Pandoc with --resource-path will handle the path resolution
-	let resolvedPath = imagePath;
-	
-	// If path doesn't start with / or contain :, it's likely a vault-relative path
-	// Keep it as-is since Pandoc will resolve it using --resource-path
-	if (!imagePath.startsWith('/') && !imagePath.includes(':')) {
-		// This is a vault-relative path - keep it exactly as Obsidian stores it
-		resolvedPath = imagePath;
-	}
-	
-	// Parse size information if provided
-	if (sizeOrAlt) {
-		const sizeMatch = sizeOrAlt.match(this.EMBED_SIZE_PATTERN);
-		if (sizeMatch) {
-			const width = sizeMatch[1];
-			const height = sizeMatch[2];
-			
-			// Create image with size attributes (optimized for Pandoc → Typst conversion)
-			// Pandoc will convert these to #figure(image("path", width: X, height: Y)) for Typst
-			if (height) {
-				return `<img src="${resolvedPath}" width="${width}" height="${height}" alt="" />`;
-			} else {
-				return `<img src="${resolvedPath}" width="${width}" alt="" />`;
-			}
-		} else {
-			// Treat as alt text
-			return `![${sizeOrAlt}](${resolvedPath})`;
+		const sanitizedPath = this.sanitizeFilePath(imagePath);
+		
+		// For now, we'll mark this for async processing and return a placeholder
+		// The actual copying will be handled in the main export process
+		const fileName = imagePath.substring(imagePath.lastIndexOf('/') + 1);
+		const baseName = fileName.replace(/\.[^/.]+$/, ""); // Remove extension
+		
+		// Create a marker that the export process can detect and replace
+		const marker = `IMAGE_EMBED_MARKER:${imagePath}:${baseName}:${sizeOrAlt || ''}`;
+		
+		// Add to processing queue for later copying
+		if (!result.metadata.imageEmbeds) {
+			result.metadata.imageEmbeds = [];
 		}
+		result.metadata.imageEmbeds.push({
+			originalPath: imagePath,
+			sanitizedPath: sanitizedPath,
+			fileName: fileName,
+			baseName: baseName,
+			sizeOrAlt: sizeOrAlt,
+			marker: marker
+		});
+		
+		result.warnings.push(`Image embed queued for processing: ${imagePath}`);
+		
+		return marker;
 	}
-	
-	// Standard image reference - Pandoc will convert to #figure(image("path")) for Typst
-	return `![](${resolvedPath})`;
-}
 	
 	/**
 	 * Process video embeds
