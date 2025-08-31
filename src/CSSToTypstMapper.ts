@@ -25,6 +25,7 @@ export interface MappingOptions {
 	useSetRules?: boolean;
 	useShowRules?: boolean;
 	simplifyColors?: boolean;
+	optimizeForPrint?: boolean;
 }
 
 /**
@@ -146,7 +147,7 @@ export class CSSToTypstMapper {
 	/**
 	 * Map individual CSS property to Typst equivalent
 	 */
-	private mapCSSProperty(property: string, value: string, options: MappingOptions): Record<string, string> | null {
+	public mapCSSProperty(property: string, value: string, options: MappingOptions): Record<string, string> | null {
 		const result: Record<string, string> = {};
 
 		switch (property) {
@@ -698,7 +699,7 @@ export class CSSToTypstMapper {
 	/**
 	 * Generate show condition for selector
 	 */
-	private generateShowCondition(selector: string): string | null {
+	private generateShowCondition(selector: string): string | undefined {
 		if (selector.includes('h1')) return 'heading.where(level: 1)';
 		if (selector.includes('h2')) return 'heading.where(level: 2)';
 		if (selector.includes('h3')) return 'heading.where(level: 3)';
@@ -706,7 +707,7 @@ export class CSSToTypstMapper {
 		if (selector.includes('h5')) return 'heading.where(level: 5)';
 		if (selector.includes('h6')) return 'heading.where(level: 6)';
 		
-		return null;
+		return undefined;
 	}
 
 	/**

@@ -40,12 +40,18 @@ export interface PdfConversionResult {
 
 export class PdfToImageConverter {
 	private static instance: PdfToImageConverter;
+	private plugin: any; // Plugin instance for accessing settings
 
-	private constructor() {}
+	private constructor(plugin?: any) {
+		this.plugin = plugin;
+	}
 
-	public static getInstance(): PdfToImageConverter {
+	public static getInstance(plugin?: any): PdfToImageConverter {
 		if (!PdfToImageConverter.instance) {
-			PdfToImageConverter.instance = new PdfToImageConverter();
+			PdfToImageConverter.instance = new PdfToImageConverter(plugin);
+		} else if (plugin && !PdfToImageConverter.instance.plugin) {
+			// Update the plugin reference if it wasn't set initially
+			PdfToImageConverter.instance.plugin = plugin;
 		}
 		return PdfToImageConverter.instance;
 	}
@@ -149,9 +155,15 @@ export class PdfToImageConverter {
 
 			try {
 				// Set environment variables to ensure node can be found
+				// Use configured additional paths or fall back to defaults
+				const additionalPaths = this.plugin?.settings?.executablePaths?.additionalPaths || 
+					['/opt/homebrew/bin', '/usr/local/bin', '/usr/bin'];
+				
 				const env = {
 					...process.env,
-					PATH: process.env.PATH + ':/opt/homebrew/bin:/usr/local/bin:/usr/bin'
+					PATH: process.env.PATH + (additionalPaths.length > 0 
+						? ':' + additionalPaths.join(':')
+						: '')
 				};
 				
 				const result = await execAsync(cliCommand, { env });

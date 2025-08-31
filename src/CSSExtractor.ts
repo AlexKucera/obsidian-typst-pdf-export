@@ -372,3 +372,22 @@ export class CSSExtractor {
 		return extracted.includes(target) || target.includes(extracted);
 	}
 }
+
+// Re-export types from other modules to provide a central import location
+export type { TypstStyleRule, MappingOptions } from './CSSToTypstMapper';
+export type { ThemeVariableMapping, ThemeProfile, ThemeDetectionResult } from './ThemeManager';
+export type { EnhancedThemeProfile, ThemeTestResult } from './PopularThemeSupport';
+export type { PluginStyleProfile, PluginDetectionResult } from './PluginSpecificStyleHandler';
+export type { HybridExportOptions, HybridStyleResult, StyleConflict } from './HybridExportMode';
+
+// Additional types needed by the system
+export type ColorFormat = 'hex' | 'rgb' | 'hsl' | 'named';
+
+export interface ThemeCustomization {
+	colorOverrides?: Record<string, string>;
+	fontOverrides?: Record<string, string>;
+	spacingOverrides?: Record<string, string>;
+	customCSS?: string;
+}
+
+export type ConflictResolution = 'user' | 'theme' | 'merge' | 'skip';

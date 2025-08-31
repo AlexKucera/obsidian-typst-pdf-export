@@ -7,7 +7,7 @@
   paper: "a4",
   margin: (x: 2.5cm, y: 2cm),
   cols: 1,
-  font: ("Times New Roman"),
+  font: ("Concourse OT"),
   fontsize: 12pt,
   sectionnumbering: "1.",
   pagenumbering: none, // Single page doesn't need page numbers

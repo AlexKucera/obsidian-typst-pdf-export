@@ -82,12 +82,12 @@ export class HybridExportMode {
 
 			// Step 2: Detect and extract theme-specific styles
 			if (options.preserveThemeColors !== false) {
-				result.themeInfo = await this.themeManager.detectCurrentTheme();
+				result.themeInfo = await this.themeManager.detectCurrentTheme() || undefined;
 				
 				if (result.themeInfo) {
 					const enhancedTheme = await this.themeSupport.getEnhancedThemeProfile(result.themeInfo.theme.name);
 					if (enhancedTheme) {
-						const themeStyles = await this.themeSupport.extractThemeStyles(enhancedTheme);
+						const themeStyles = await this.themeSupport.extractThemeStyles(result.themeInfo.theme.name);
 						result.extractedStyles.push(...themeStyles);
 					}
 				}

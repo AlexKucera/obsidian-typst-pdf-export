@@ -67,7 +67,7 @@ export class PluginSpecificStyleHandler {
 				
 				// Extract Dataview table styles
 				const dataviewTables = document.querySelectorAll('.dataview.table-view-table');
-				for (const table of dataviewTables) {
+				for (const table of Array.from(dataviewTables)) {
 					const computedStyle = getComputedStyle(table);
 					styles.push({
 						selector: '.dataview.table-view-table',
@@ -162,7 +162,7 @@ export class PluginSpecificStyleHandler {
 				
 				// Extract Templater command styles
 				const templaterCommands = document.querySelectorAll('.cm-templater-command, .templater-command');
-				for (const command of templaterCommands) {
+				for (const command of Array.from(templaterCommands)) {
 					const computedStyle = getComputedStyle(command);
 					styles.push({
 						selector: '.templater-command',
@@ -630,7 +630,7 @@ export class PluginSpecificStyleHandler {
 			
 			for (const mutation of mutations) {
 				if (mutation.type === 'childList') {
-					for (const node of mutation.addedNodes) {
+					for (const node of Array.from(mutation.addedNodes)) {
 						if (node instanceof Element) {
 							// Check if added element contains plugin-specific classes
 							for (const [_, plugin] of this.registeredPlugins) {

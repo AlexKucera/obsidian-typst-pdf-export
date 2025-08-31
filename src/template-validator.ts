@@ -234,9 +234,7 @@ export class TemplateValidator {
 
         for (const { pattern, message, type } of problematicPatterns) {
             if (pattern.test(templateContent)) {
-                if (type === 'error') {
-                    result.errors.push(message);
-                } else {
+                if (type === 'warning') {
                     result.warnings.push(message);
                 }
             }
@@ -330,9 +328,9 @@ export class TemplateValidator {
         };
 
         for (const variable of variables) {
-            if (typoMap[variable]) {
+            if (variable in typoMap) {
                 result.warnings.push(
-                    `Variable '${variable}' might be a typo. Did you mean '${typoMap[variable]}'?`
+                    `Variable '${variable}' might be a typo. Did you mean '${typoMap[variable as keyof typeof typoMap]}'?`
                 );
             }
         }

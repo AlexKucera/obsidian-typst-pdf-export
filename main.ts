@@ -139,7 +139,7 @@ class PandocTypstConverter {
 	 */
 	private async processPdfEmbeds(processedResult: any, vaultBasePath: string, tempDir: string): Promise<void> {
 		const { PdfToImageConverter } = require('./src/PdfToImageConverter');
-		const converter = PdfToImageConverter.getInstance();
+		const converter = PdfToImageConverter.getInstance(this);
 		const path = require('path');
 		
 		for (const pdfEmbed of processedResult.metadata.pdfEmbeds) {
@@ -584,6 +584,14 @@ interface obsidianTypstPDFExportSettings {
 	/** Default output folder for exported PDFs */
 	outputFolder: string;
 	
+	/** Executable paths configuration */
+	executablePaths: {
+		/** Path to ImageMagick convert command (optional, uses PATH if not specified) */
+		imagemagickPath: string;
+		/** Additional paths to append to PATH environment variable */
+		additionalPaths: string[];
+	};
+	
 	/** Export defaults */
 	exportDefaults: {
 		/** Default template to use for exports */
@@ -642,6 +650,11 @@ const DEFAULT_SETTINGS: obsidianTypstPDFExportSettings = {
 	pandocPath: '',
 	typstPath: '',
 	outputFolder: 'exports',
+	
+	executablePaths: {
+		imagemagickPath: '', // Empty means use system PATH
+		additionalPaths: ['/opt/homebrew/bin', '/usr/local/bin', '/usr/bin']
+	},
 	
 	exportDefaults: {
 		template: 'default',
@@ -741,9 +754,11 @@ export default class obsidianTypstPDFExport extends Plugin {
 	 */
 	private async checkDependenciesAsync(): Promise<void> {
 		try {
+			const additionalPaths = this.settings.executablePaths.additionalPaths;
 			const result = await this.dependencyChecker.checkAllDependencies(
-				{ customPath: this.settings.pandocPath },
-				{ customPath: this.settings.typstPath }
+				{ customPath: this.settings.pandocPath, additionalPaths },
+				{ customPath: this.settings.typstPath, additionalPaths },
+				{ customPath: this.settings.executablePaths.imagemagickPath, additionalPaths }
 			);
 
 			if (!result.allAvailable) {
@@ -751,6 +766,7 @@ export default class obsidianTypstPDFExport extends Plugin {
 				const missingTools = [];
 				if (!result.pandoc.isAvailable) missingTools.push('Pandoc');
 				if (!result.typst.isAvailable) missingTools.push('Typst');
+				if (!result.imagemagick.isAvailable) missingTools.push('ImageMagick');
 				
 				new Notice(`Typst PDF Export: ${missingTools.join(' and ')} not found. Use "Check dependencies" command for setup instructions.`, 8000);
 			}
@@ -765,9 +781,11 @@ export default class obsidianTypstPDFExport extends Plugin {
 	 */
 	private async showDependencyStatus(): Promise<void> {
 		try {
+			const additionalPaths = this.settings.executablePaths.additionalPaths;
 			const result = await this.dependencyChecker.checkAllDependencies(
-				{ customPath: this.settings.pandocPath },
-				{ customPath: this.settings.typstPath }
+				{ customPath: this.settings.pandocPath, additionalPaths },
+				{ customPath: this.settings.typstPath, additionalPaths },
+				{ customPath: this.settings.executablePaths.imagemagickPath, additionalPaths }
 			);
 
 			let message = '## Dependency Status\n\n';
@@ -979,6 +997,29 @@ export default class obsidianTypstPDFExport extends Plugin {
 			}
 		}
 
+		// Validate executable paths
+		if (data.executablePaths && typeof data.executablePaths === 'object') {
+			const executablePaths: Partial<obsidianTypstPDFExportSettings['executablePaths']> = {};
+			
+			if (typeof data.executablePaths.imagemagickPath === 'string') {
+				executablePaths.imagemagickPath = data.executablePaths.imagemagickPath;
+			}
+			
+			if (Array.isArray(data.executablePaths.additionalPaths)) {
+				// Validate each path is a string
+				const validPaths = data.executablePaths.additionalPaths.filter(
+					(path: any) => typeof path === 'string'
+				);
+				if (validPaths.length > 0) {
+					executablePaths.additionalPaths = validPaths;
+				}
+			}
+			
+			if (Object.keys(executablePaths).length > 0) {
+				validated.executablePaths = executablePaths as any;
+			}
+		}
+
 		return validated;
 	}
 
@@ -1011,6 +1052,10 @@ export default class obsidianTypstPDFExport extends Plugin {
 			if (typeof migrated.behavior.exportConcurrency !== 'number') {
 				migrated.behavior.exportConcurrency = DEFAULT_SETTINGS.behavior.exportConcurrency;
 			}
+		}
+		
+		if (!migrated.executablePaths) {
+			migrated.executablePaths = DEFAULT_SETTINGS.executablePaths;
 		}
 
 		return migrated;
@@ -1213,9 +1258,11 @@ export default class obsidianTypstPDFExport extends Plugin {
 			return;
 		}
 
+		const additionalPaths = this.settings.executablePaths.additionalPaths;
 		const result = await this.dependencyChecker.checkAllDependencies(
-			{ customPath: this.settings.pandocPath },
-			{ customPath: this.settings.typstPath }
+			{ customPath: this.settings.pandocPath, additionalPaths },
+			{ customPath: this.settings.typstPath, additionalPaths },
+			{ customPath: this.settings.executablePaths.imagemagickPath, additionalPaths }
 		);
 
 		if (!result.allAvailable) {
@@ -1248,9 +1295,11 @@ export default class obsidianTypstPDFExport extends Plugin {
 	 * Handle export with previous settings
 	 */
 	private async handleExportWithPreviousSettings(file: TFile): Promise<void> {
+		const additionalPaths = this.settings.executablePaths.additionalPaths;
 		const result = await this.dependencyChecker.checkAllDependencies(
-			{ customPath: this.settings.pandocPath },
-			{ customPath: this.settings.typstPath }
+			{ customPath: this.settings.pandocPath, additionalPaths },
+			{ customPath: this.settings.typstPath, additionalPaths },
+			{ customPath: this.settings.executablePaths.imagemagickPath, additionalPaths }
 		);
 
 		if (!result.allAvailable) {
@@ -1266,9 +1315,11 @@ export default class obsidianTypstPDFExport extends Plugin {
 	 * Handle folder export with batch processing
 	 */
 	private async handleFolderExport(folder: TFolder): Promise<void> {
+		const additionalPaths = this.settings.executablePaths.additionalPaths;
 		const result = await this.dependencyChecker.checkAllDependencies(
-			{ customPath: this.settings.pandocPath },
-			{ customPath: this.settings.typstPath }
+			{ customPath: this.settings.pandocPath, additionalPaths },
+			{ customPath: this.settings.typstPath, additionalPaths },
+			{ customPath: this.settings.executablePaths.imagemagickPath, additionalPaths }
 		);
 
 		if (!result.allAvailable) {
@@ -1303,9 +1354,11 @@ export default class obsidianTypstPDFExport extends Plugin {
 	 * Handle batch export for multiple selected files
 	 */
 	private async handleBatchExport(files: TFile[]): Promise<void> {
+		const additionalPaths = this.settings.executablePaths.additionalPaths;
 		const result = await this.dependencyChecker.checkAllDependencies(
-			{ customPath: this.settings.pandocPath },
-			{ customPath: this.settings.typstPath }
+			{ customPath: this.settings.pandocPath, additionalPaths },
+			{ customPath: this.settings.typstPath, additionalPaths },
+			{ customPath: this.settings.executablePaths.imagemagickPath, additionalPaths }
 		);
 
 		if (!result.allAvailable) {
@@ -1578,7 +1631,7 @@ try {
 	 */
 	private async processPdfEmbeds(processedResult: any, vaultBasePath: string, tempDir: string, currentFile?: TFile): Promise<void> {
 		const { PdfToImageConverter } = require('./src/PdfToImageConverter');
-		const converter = PdfToImageConverter.getInstance();
+		const converter = PdfToImageConverter.getInstance(this);
 		const path = require('path');
 		const fs = require('fs');
 		
@@ -1763,8 +1816,8 @@ try {
 					const execAsync = util.promisify(exec);
 					
 					try {
-						// Use full path to convert command to ensure it's found
-						const convertPath = '/opt/homebrew/bin/convert';
+						// Use configured ImageMagick path or fall back to system PATH
+						const convertPath = this.settings.executablePaths.imagemagickPath || 'convert';
 						await execAsync(`"${convertPath}" "${fullImagePath}" "${vaultImagePath}"`);
 						console.log(`Export: Successfully converted WebP to PNG: ${pngFileName}`);
 					} catch (convertError) {
@@ -1846,9 +1899,11 @@ class DependencyStatusModal extends Modal {
 
 		try {
 			// Check dependencies
+			const additionalPaths = this.plugin.settings.executablePaths.additionalPaths;
 			const results = await this.plugin.dependencyChecker.checkAllDependencies(
-				{ customPath: this.plugin.settings.pandocPath },
-				{ customPath: this.plugin.settings.typstPath }
+				{ customPath: this.plugin.settings.pandocPath, additionalPaths },
+				{ customPath: this.plugin.settings.typstPath, additionalPaths },
+				{ customPath: this.plugin.settings.executablePaths.imagemagickPath, additionalPaths }
 			);
 
 			// Clear loading indicator
@@ -1873,6 +1928,9 @@ class DependencyStatusModal extends Modal {
 
 			// Typst status
 			this.createDependencySection(contentEl, 'Typst', results.typst);
+
+			// ImageMagick status
+			this.createDependencySection(contentEl, 'ImageMagick', results.imagemagick);
 
 			// Add refresh button
 			const buttonContainer = contentEl.createDiv({ cls: 'dependency-button-container' });
@@ -2067,6 +2125,45 @@ class TypstPDFExportSettingTab extends PluginSettingTab {
 				.onClick(async () => {
 					// TODO: Implement path validation
 					new Notice('Path validation not yet implemented');
+				}));
+
+		new Setting(containerEl)
+			.setName('ImageMagick Convert Path')
+			.setDesc('Path to ImageMagick convert executable (leave empty to use system PATH)')
+			.addText(text => text
+				.setPlaceholder('/opt/homebrew/bin/convert')
+				.setValue(this.plugin.settings.executablePaths.imagemagickPath)
+				.onChange(async (value) => {
+					this.plugin.settings.executablePaths.imagemagickPath = value;
+					await this.plugin.saveSettings();
+				}))
+			.addExtraButton(button => button
+				.setIcon('folder-open')
+				.setTooltip('Browse for ImageMagick convert executable')
+				.onClick(async () => {
+					// TODO: Implement file picker for executable selection
+					new Notice('File picker not yet implemented');
+				}))
+			.addExtraButton(button => button
+				.setIcon('check-circle')
+				.setTooltip('Validate ImageMagick installation')
+				.onClick(async () => {
+					// TODO: Implement path validation
+					new Notice('Path validation not yet implemented');
+				}));
+
+		new Setting(containerEl)
+			.setName('Additional System Paths')
+			.setDesc('Additional paths to search for executables (comma-separated)')
+			.addText(text => text
+				.setPlaceholder('/opt/homebrew/bin, /usr/local/bin')
+				.setValue(this.plugin.settings.executablePaths.additionalPaths.join(', '))
+				.onChange(async (value) => {
+					this.plugin.settings.executablePaths.additionalPaths = value
+						.split(',')
+						.map(p => p.trim())
+						.filter(p => p.length > 0);
+					await this.plugin.saveSettings();
 				}));
 
 		new Setting(containerEl)

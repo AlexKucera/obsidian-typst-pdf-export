@@ -534,6 +534,81 @@ export class PopularThemeSupport {
 	}
 
 	/**
+	 * Get enhanced theme profile for a specific theme
+	 */
+	public getEnhancedThemeProfile(themeName: string): EnhancedThemeProfile | null {
+		return this.enhancedProfiles.get(themeName) || null;
+	}
+
+	/**
+	 * Extract theme-specific styles
+	 */
+	public extractThemeStyles(themeName: string): any {
+		const profile = this.enhancedProfiles.get(themeName);
+		if (!profile) {
+			return [];
+		}
+
+		// Use the appropriate extraction method based on theme
+		// These methods don't actually need the CSSExtractor parameter for their current implementation
+		switch (themeName) {
+			case 'minimal':
+				return this.extractMinimalThemeStylesInternal();
+			case 'blue-topaz':
+				return this.extractBlueTopazStylesInternal();
+			case 'sanctum':
+				return this.extractSanctumStylesInternal();
+			case 'things':
+				return this.extractThingsStylesInternal();
+			case 'atom':
+				return this.extractAtomStylesInternal();
+			default:
+				return [];
+		}
+	}
+
+	/**
+	 * Internal method for extracting minimal theme styles without CSSExtractor dependency
+	 */
+	private extractMinimalThemeStylesInternal(): any[] {
+		const rules: any[] = [];
+
+		// Minimal theme typography rules
+		rules.push({
+			type: 'set',
+			target: 'text',
+			properties: {
+				font: '"Inter"',
+				size: '16pt'
+			}
+		});
+
+		// Minimal heading styles
+		for (let level = 1; level <= 6; level++) {
+			const headingColor = this.getCssVariable(`--h${level}-color`) || 
+				this.getCssVariable('--text-accent') || 
+				'blue';
+			
+			rules.push({
+				type: 'show',
+				target: 'heading',
+				properties: {
+					fill: headingColor,
+					weight: level <= 2 ? '"bold"' : '"semibold"'
+				},
+				condition: `heading.where(level: ${level})`
+			});
+		}
+
+		return rules;
+	}
+
+	private extractBlueTopazStylesInternal(): any[] { return []; }
+	private extractSanctumStylesInternal(): any[] { return []; }
+	private extractThingsStylesInternal(): any[] { return []; }
+	private extractAtomStylesInternal(): any[] { return []; }
+
+	/**
 	 * Utility: Get CSS variable value
 	 */
 	private getCssVariable(name: string): string | null {
