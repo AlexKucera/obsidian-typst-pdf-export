@@ -135,6 +135,82 @@ class PandocTypstConverter {
 	}
 
 	/**
+	 * Process PDF embeds by converting them to images and creating combined output
+	 */
+	private async processPdfEmbeds(processedResult: any, vaultBasePath: string, tempDir: string): Promise<void> {
+		const { PdfToImageConverter } = require('./src/PdfToImageConverter');
+		const converter = PdfToImageConverter.getInstance();
+		const path = require('path');
+		
+		for (const pdfEmbed of processedResult.metadata.pdfEmbeds) {
+			try {
+				console.log(`Export: Processing PDF embed: ${pdfEmbed.originalPath}`);
+				
+				// Resolve full path to the PDF
+				const fullPdfPath = path.resolve(vaultBasePath, pdfEmbed.sanitizedPath);
+				
+				// Check if PDF file exists
+				const fs = require('fs');
+				if (!fs.existsSync(fullPdfPath)) {
+					console.warn(`Export: PDF file not found: ${fullPdfPath}`);
+					// Replace marker with error message
+					processedResult.content = processedResult.content.replace(
+						pdfEmbed.marker,
+						`[⚠️ PDF not found: ${pdfEmbed.fileName}](${pdfEmbed.sanitizedPath})`
+					);
+					continue;
+				}
+				
+				// Convert PDF to image
+				const conversionResult = await converter.convertFirstPageToImage(
+					fullPdfPath,
+					tempDir,
+					{
+						scale: 1.5,
+						maxWidth: 600,
+						maxHeight: 400,
+						format: 'png'
+					}
+				);
+				
+				if (conversionResult.success) {
+					// Get relative path for the generated image
+					const relativeImagePath = path.relative(vaultBasePath, conversionResult.imagePath);
+					
+					// Create combined output: image preview + PDF attachment link
+					const combinedOutput = [
+						`![${pdfEmbed.fileName} - Page 1](${relativeImagePath})`,
+						`[📎 **Download PDF:** ${pdfEmbed.fileName}](${pdfEmbed.sanitizedPath})`
+					].join('\n\n');
+					
+					// Replace marker with combined output
+					processedResult.content = processedResult.content.replace(pdfEmbed.marker, combinedOutput);
+					
+					console.log(`Export: Successfully converted PDF: ${pdfEmbed.fileName} -> ${path.basename(conversionResult.imagePath)}`);
+					
+				} else {
+					console.error(`Export: PDF conversion failed: ${conversionResult.error}`);
+					
+					// Replace marker with fallback link
+					processedResult.content = processedResult.content.replace(
+						pdfEmbed.marker,
+						`[📖 ${pdfEmbed.fileName}](${pdfEmbed.sanitizedPath})\n\n*Note: PDF preview could not be generated*`
+					);
+				}
+				
+			} catch (error) {
+				console.error(`Export: Error processing PDF embed: ${error.message}`);
+				
+				// Replace marker with error fallback
+				processedResult.content = processedResult.content.replace(
+					pdfEmbed.marker,
+					`[⚠️ ${pdfEmbed.fileName}](${pdfEmbed.sanitizedPath})\n\n*Error: Could not process PDF embed*`
+				);
+			}
+		}
+	}
+
+	/**
 	 * Clean up temporary files and directories
 	 */
 	private async cleanup(): Promise<void> {
@@ -190,6 +266,9 @@ if (this.pandocOptions.typstPath) {
 // Enable standalone mode (required for PDF output)
 args.push('--standalone');
 
+// Embed resources (images, etc.) directly into the output
+args.push('--embed-resources');
+
 // Add resource paths for attachment resolution
 if (this.pandocOptions.vaultBasePath) {
 	const path = require('path');
@@ -225,7 +304,7 @@ if (this.pandocOptions.vaultBasePath) {
 				// Check if this directory contains images
 				try {
 					const dirContents = fs.readdirSync(itemPath);
-					const hasImages = dirContents.some(file => 
+					const hasImages = dirContents.some((file: string) => 
 						/\.(png|jpg|jpeg|gif|svg|webp|bmp|ico|tiff)$/i.test(file)
 					);
 					if (hasImages) {
@@ -1356,12 +1435,18 @@ try {
 		console.warn('Preprocessing warnings:', processedResult.warnings);
 	}
 	
+	// Process PDF embeds if any were found
+	if (processedResult.metadata.pdfEmbeds && processedResult.metadata.pdfEmbeds.length > 0) {
+		console.log(`Export: Processing ${processedResult.metadata.pdfEmbeds.length} PDF embeds`);
+		await this.processPdfEmbeds(processedResult, vaultBasePath, tempDir, file);
+	}
+	
 	// Debug: Log processed content to see what image paths look like
 	console.log('Export: Original content length:', content.length);
 	console.log('Export: Processed content length:', processedResult.content.length);
 	
 	// Log a sample of processed content to see image references
-	const imageSample = processedResult.content.split('\n').filter(line => 
+	const imageSample = processedResult.content.split('\n').filter((line: string) => 
 		line.includes('![') || line.includes('<img') || line.includes('image(')
 	).slice(0, 5); // First 5 image references
 	console.log('Export: Sample image references in processed content:', imageSample);
@@ -1413,11 +1498,34 @@ try {
 	new Notice('Converting to PDF...');
 	const result = await converter.convertToPDF(tempInputFile, outputPath);
 	
-	// Clean up temporary file
+	// Clean up temporary files
 	try {
 		await require('fs').promises.unlink(tempInputFile);
 	} catch (cleanupError) {
-		console.warn('Failed to clean up temporary file:', cleanupError);
+		console.warn('Failed to clean up temporary input file:', cleanupError);
+	}
+	
+	// Clean up temporary PDF preview images
+	try {
+		const vaultTempImagesDir = path.join(vaultBasePath, '.obsidian', 'plugins', 'obsidian-typst-pdf-export', 'temp-images');
+		const fs = require('fs').promises;
+		
+		// Check if temp images directory exists
+		try {
+			await fs.access(vaultTempImagesDir);
+			// Remove all files in the temp images directory
+			const files = await fs.readdir(vaultTempImagesDir);
+			for (const file of files) {
+				await fs.unlink(path.join(vaultTempImagesDir, file));
+			}
+			// Remove the directory itself
+			await fs.rmdir(vaultTempImagesDir);
+			console.log('Export: Cleaned up temporary PDF preview images');
+		} catch (dirError) {
+			// Directory doesn't exist, which is fine
+		}
+	} catch (cleanupError) {
+		console.warn('Failed to clean up temporary PDF images:', cleanupError);
 	}
 	
 	if (result.success) {
@@ -1457,6 +1565,116 @@ try {
 		} else {
 			new Notice(`Successfully exported ${files.length} files.`);
 		}
+	}
+
+	/**
+	 * Process PDF embeds by converting first page to images and creating combined output
+	 */
+	private async processPdfEmbeds(processedResult: any, vaultBasePath: string, tempDir: string, currentFile?: TFile): Promise<void> {
+		const { PdfToImageConverter } = require('./src/PdfToImageConverter');
+		const converter = PdfToImageConverter.getInstance();
+		const path = require('path');
+		const fs = require('fs');
+		
+		console.log(`Export: Processing ${processedResult.metadata.pdfEmbeds.length} PDF embeds`);
+		
+		let updatedContent = processedResult.content;
+		
+		for (const pdfEmbed of processedResult.metadata.pdfEmbeds) {
+			try {
+				console.log(`Export: Processing PDF embed: ${pdfEmbed.originalPath}`);
+				
+				// Decode the URL-encoded sanitized path back to normal characters
+				const decodedPath = decodeURIComponent(pdfEmbed.sanitizedPath);
+				
+				// Try multiple path resolution strategies
+				const possiblePaths = [
+					// Strategy 1: Relative to vault root (standard Obsidian behavior)
+					path.resolve(vaultBasePath, decodedPath),
+					// Strategy 2: Relative to current file's directory (for local attachments)
+					currentFile ? path.resolve(vaultBasePath, path.dirname(currentFile.path), decodedPath) : null
+				].filter(p => p !== null);
+				
+				let fullPdfPath = null;
+				let validPath = null;
+				
+				// Try each possible path until we find one that exists
+				for (const possiblePath of possiblePaths) {
+					console.log(`Export: Checking path: ${possiblePath}`);
+					if (fs.existsSync(possiblePath)) {
+						fullPdfPath = possiblePath;
+						validPath = possiblePath;
+						console.log(`Export: Found PDF at: ${fullPdfPath}`);
+						break;
+					}
+				}
+				
+				if (!fullPdfPath) {
+					console.warn(`Export: PDF file not found in any of the expected locations: ${possiblePaths.join(', ')}`);
+					// Replace marker with fallback link
+					const fallbackOutput = `[⚠️ **PDF not found:** ${pdfEmbed.baseName}](${decodedPath})`;
+					updatedContent = updatedContent.replace(pdfEmbed.marker, fallbackOutput);
+					continue;
+				}
+				
+				// Convert PDF first page to image
+				const result = await converter.convertFirstPageToImage(
+					fullPdfPath,
+					tempDir,
+					{
+						scale: 1.5,
+						maxWidth: 800,
+						maxHeight: 600,
+						format: 'png'
+					}
+				);
+				
+				if (result.success) {
+					// Create a temporary images directory within the vault for Typst access
+					const vaultTempImagesDir = path.join(vaultBasePath, '.obsidian', 'plugins', 'obsidian-typst-pdf-export', 'temp-images');
+					const fs_promises = require('fs').promises;
+					await fs_promises.mkdir(vaultTempImagesDir, { recursive: true });
+					
+					// Copy the image from temp directory to vault temp directory
+					const originalImageName = path.basename(result.imagePath);
+					const vaultImagePath = path.join(vaultTempImagesDir, originalImageName);
+					await fs_promises.copyFile(result.imagePath, vaultImagePath);
+					
+					// Get relative path for the generated image from vault base
+					const relativeImagePath = path.relative(vaultBasePath, vaultImagePath);
+					
+					// Use relative path to the original PDF from vault base for download link
+					const relativePdfPath = path.relative(vaultBasePath, validPath);
+					
+					// Create combined output: image preview + download link
+					const combinedOutput = [
+						`![${pdfEmbed.baseName} - Page 1](${relativeImagePath})`,
+						'',
+						`[📎 **Download PDF:** ${pdfEmbed.baseName}](${relativePdfPath})`
+					].join('\n');
+					
+					// Replace the placeholder with the combined output
+					updatedContent = updatedContent.replace(pdfEmbed.marker, combinedOutput);
+					
+					console.log(`Export: Successfully processed PDF embed: ${pdfEmbed.baseName}`);
+				} else {
+					console.error(`Export: Failed to convert PDF: ${result.error}`);
+					// Replace with download link only
+					const relativePdfPath = path.relative(vaultBasePath, validPath);
+					const fallbackOutput = `[📎 **Download PDF:** ${pdfEmbed.baseName}](${relativePdfPath})`;
+					updatedContent = updatedContent.replace(pdfEmbed.marker, fallbackOutput);
+				}
+			} catch (error) {
+				console.error(`Export: Error processing PDF embed ${pdfEmbed.baseName}:`, error);
+				// Replace with download link only as fallback
+				const decodedPath = decodeURIComponent(pdfEmbed.sanitizedPath);
+				const fallbackOutput = `[📎 **Download PDF:** ${pdfEmbed.baseName}](${decodedPath})`;
+				updatedContent = updatedContent.replace(pdfEmbed.marker, fallbackOutput);
+			}
+		}
+		
+		// Update the processed result with the new content
+		processedResult.content = updatedContent;
 	}
 }
 

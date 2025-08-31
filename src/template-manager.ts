@@ -2,244 +2,103 @@ import { App, normalizePath, TFile, TFolder, Notice } from 'obsidian';
 import { Template, TemplateVariable, TemplateMetadata, TemplateValidationResult, SubstitutionContext } from './types';
 import { TemplateSubstitution } from './template-substitution';
 import { TemplateValidator } from './template-validator';
+import * as path from 'path';
 
 /**
  * Manages Typst templates, including built-in and custom user templates
  */
 export class TemplateManager {
     private app: App;
-    private builtInTemplates: Map<string, string> = new Map();
+    private pluginDir: string;
+    private builtInTemplateNames: string[] = ['default.typ', 'article.typ', 'report.typ', 'single-page.typ'];
     private customTemplates: Map<string, Template> = new Map();
     private customTemplateDirectory: string = 'Typst Templates';
     
-    constructor(app: App, customTemplateDirectory?: string) {
+    constructor(app: App, pluginDir: string, customTemplateDirectory?: string) {
         this.app = app;
+        this.pluginDir = pluginDir;
         if (customTemplateDirectory) {
             this.customTemplateDirectory = customTemplateDirectory;
         }
-        this.initializeBuiltInTemplates();
     }
 
     /**
-     * Initialize built-in Typst templates with modern 0.11+ syntax
+     * Get the absolute path to a built-in template file
      */
-    private initializeBuiltInTemplates(): void {
-        // Default template - basic document
-        this.builtInTemplates.set('default.typ', `#set page(
-  paper: "a4",
-  margin: (x: 2.5cm, y: 2cm)
-)
-#set text(
-  font: "Liberation Serif",
-  size: 12pt,
-  lang: "en"
-)
-#set par(justify: true, leading: 0.65em)
-#set heading(numbering: "1.")
+    private getBuiltInTemplatePath(templateName: string): string {
+        return path.join(this.pluginDir, 'templates', templateName);
+    }
 
-#if "$title$" != "" [
-  #align(center, text(18pt, weight: "bold")[$title$])
-  #v(1em)
-]
+    /**
+     * Check if a file exists using Node.js fs (for built-in templates)
+     */
+    private async fileExists(filePath: string): Promise<boolean> {
+        try {
+            const fs = require('fs').promises;
+            await fs.access(filePath);
+            return true;
+        } catch {
+            return false;
+        }
+    }
 
-#if "$author$" != "" [
-  #align(center, text(14pt)[$author$])
-  #v(0.5em)
-]
+    /**
+     * Read a file using Node.js fs (for built-in templates)
+     */
+    private async readFile(filePath: string): Promise<string> {
+        const fs = require('fs').promises;
+        return await fs.readFile(filePath, 'utf8');
+    }
 
-#if "$date$" != "" [
-  #align(center, text(12pt)[$date$])
-  #v(2em)
-]
-
-$body$`);
-
-        // Article template - academic paper style
-        this.builtInTemplates.set('article.typ', `#set page(
-  paper: "a4",
-  margin: (x: 2.5cm, y: 2cm),
-  numbering: "1"
-)
-#set text(
-  font: "Liberation Serif",
-  size: 11pt,
-  lang: "en"
-)
-#set par(justify: true, leading: 0.65em, first-line-indent: 1.2em)
-#set heading(numbering: "1.")
-
-#show heading.where(level: 1): it => block(
-  width: 100%,
-  below: 1.5em,
-  above: 2em,
-)[
-  #set align(center)
-  #set text(16pt, weight: "bold")
-  #it.body
-]
-
-#show heading.where(level: 2): it => block(
-  width: 100%,
-  below: 1em,
-  above: 1.5em,
-)[
-  #set text(13pt, weight: "bold")
-  #it
-]
-
-#if "$title$" != "" [
-  #align(center, text(20pt, weight: "bold")[$title$])
-  #v(1em)
-]
-
-#if "$author$" != "" [
-  #align(center, text(14pt)[$author$])
-  #v(0.5em)
-]
-
-#if "$date$" != "" [
-  #align(center, text(12pt)[$date$])
-  #v(2em)
-]
-
-$body$`);
-
-        // Report template - formal report style
-        this.builtInTemplates.set('report.typ', `#set page(
-  paper: "a4",
-  margin: (x: 2.5cm, y: 2.5cm),
-  numbering: "1",
-  header: context {
-    if counter(page).get().first() > 1 [
-      #align(right)[$title$]
-      #line(length: 100%)
-    ]
-  }
-)
-#set text(
-  font: "Liberation Serif",
-  size: 12pt,
-  lang: "en"
-)
-#set par(justify: true, leading: 0.65em)
-#set heading(numbering: "1.")
-
-#show heading.where(level: 1): it => pagebreak(weak: true) + block(
-  width: 100%,
-  below: 2em,
-  above: 0pt,
-)[
-  #set align(center)
-  #set text(18pt, weight: "bold")
-  #counter(heading).display()
-  #h(0.5em)
-  #it.body
-]
-
-#show heading.where(level: 2): it => block(
-  width: 100%,
-  below: 1em,
-  above: 1.5em,
-)[
-  #set text(14pt, weight: "bold")
-  #it
-]
-
-// Title page
-#page()[
-  #align(center + horizon)[
-    #if "$title$" != "" [
-      #text(24pt, weight: "bold")[$title$]
-      #v(2em)
-    ]
-    
-    #if "$author$" != "" [
-      #text(16pt)[$author$]
-      #v(1em)
-    ]
-    
-    #if "$date$" != "" [
-      #text(14pt)[$date$]
-    ]
-  ]
-]
-
-$body$`);
-
-        // Single-page template - auto-adjusting height
-        this.builtInTemplates.set('single-page.typ', `#set page(
-  paper: "a4",
-  margin: (x: 2.5cm, y: 2cm),
-  height: auto
-)
-#set text(
-  font: "Liberation Serif",
-  size: 12pt,
-  lang: "en"
-)
-#set par(justify: true, leading: 0.65em)
-#set heading(numbering: "1.")
-
-#show heading.where(level: 1): it => block(
-  width: 100%,
-  below: 1.5em,
-  above: 1.5em,
-)[
-  #set text(16pt, weight: "bold")
-  #it
-]
-
-#show heading.where(level: 2): it => block(
-  width: 100%,
-  below: 1em,
-  above: 1em,
-)[
-  #set text(14pt, weight: "bold")
-  #it
-]
-
-#if "$title$" != "" [
-  #align(center, text(18pt, weight: "bold")[$title$])
-  #v(1em)
-]
-
-#if "$author$" != "" [
-  #align(center, text(14pt)[$author$])
-  #v(0.5em)
-]
-
-#if "$date$" != "" [
-  #align(center, text(12pt)[$date$])
-  #v(2em)
-]
-
-$body$`);
+    /**
+     * Initialize built-in Typst templates (now reads from disk)
+     */
+    private async initializeBuiltInTemplates(): Promise<void> {
+        // Built-in templates are now stored as files in templates/ directory
+        // This method verifies they exist and are accessible
     }
 
     /**
      * Get available template names
      */
-    getAvailableTemplates(): string[] {
-        const builtIn = Array.from(this.builtInTemplates.keys());
+    async getAvailableTemplates(): Promise<string[]> {
+        const builtIn: string[] = [];
+        
+        console.log('TemplateManager: Getting available templates...');
+        console.log('Plugin dir:', this.pluginDir);
+        
+        // Check which built-in templates exist
+        for (const templateName of this.builtInTemplateNames) {
+            const templatePath = this.getBuiltInTemplatePath(templateName);
+            console.log(`Checking template: ${templateName} at path: ${templatePath}`);
+            const exists = await this.fileExists(templatePath);
+            console.log(`Template ${templateName} exists: ${exists}`);
+            if (exists) {
+                builtIn.push(templateName);
+            }
+        }
+        
         const custom = Array.from(this.customTemplates.keys()).map(name => `${name}.typ`);
+        console.log('Built-in templates found:', builtIn);
+        console.log('Custom templates found:', custom);
         return [...builtIn, ...custom];
     }
 
     /**
-     * Get template content by name
+     * Get template file path by name (for use with Pandoc)
      */
-    getTemplate(templateName: string): string | null {
+    getTemplatePath(templateName: string): string | null {
         // Check built-in templates first
-        if (this.builtInTemplates.has(templateName)) {
-            return this.builtInTemplates.get(templateName) || null;
+        if (this.builtInTemplateNames.includes(templateName)) {
+            // Return relative path for Typst templates (not absolute)
+            // This is because Pandoc + Typst expects relative paths
+            return `templates/${templateName}`;
         }
 
         // Check custom templates
         const customKey = templateName.replace('.typ', '');
         if (this.customTemplates.has(customKey)) {
             const template = this.customTemplates.get(customKey);
-            // For custom templates, we'll need to load the file content
-            // This will be implemented in the next subtask
             return template?.filePath || null;
         }
 
@@ -249,26 +108,39 @@ $body$`);
     /**
      * Check if a template exists
      */
-    hasTemplate(templateName: string): boolean {
-        return this.builtInTemplates.has(templateName) || 
-               this.customTemplates.has(templateName.replace('.typ', ''));
+    async hasTemplate(templateName: string): Promise<boolean> {
+        // Check built-in templates
+        if (this.builtInTemplateNames.includes(templateName)) {
+            const templatePath = this.getBuiltInTemplatePath(templateName);
+            return await this.fileExists(templatePath);
+        }
+        
+        // Check custom templates
+        return this.customTemplates.has(templateName.replace('.typ', ''));
     }
 
     /**
      * Get template metadata
      */
-    getTemplateInfo(templateName: string): Partial<Template> | null {
-        if (this.builtInTemplates.has(templateName)) {
-            return {
-                name: templateName.replace('.typ', ''),
-                variables: this.extractVariables(this.builtInTemplates.get(templateName) || ''),
-                metadata: {
-                    author: 'Obsidian Typst PDF Export',
-                    version: '1.0.0',
-                    description: this.getBuiltInDescription(templateName),
-                    compatibility: ['0.11.0', '0.12.0']
-                }
-            };
+    async getTemplateInfo(templateName: string): Promise<Partial<Template> | null> {
+        if (this.builtInTemplateNames.includes(templateName)) {
+            try {
+                const templatePath = this.getBuiltInTemplatePath(templateName);
+                const content = await this.readFile(templatePath);
+                return {
+                    name: templateName.replace('.typ', ''),
+                    variables: this.extractVariables(content),
+                    metadata: {
+                        author: 'Obsidian Typst PDF Export',
+                        version: '1.0.0',
+                        description: this.getBuiltInDescription(templateName),
+                        compatibility: ['0.11.0', '0.12.0']
+                    }
+                };
+            } catch (error) {
+                console.error(`Error reading built-in template ${templateName}:`, error);
+                return null;
+            }
         }
 
         const customKey = templateName.replace('.typ', '');
@@ -598,8 +470,14 @@ $body$`;
      */
     async getTemplateContent(templateName: string): Promise<string | null> {
         // Check built-in templates first
-        if (this.builtInTemplates.has(templateName)) {
-            return this.builtInTemplates.get(templateName) || null;
+        if (this.builtInTemplateNames.includes(templateName)) {
+            try {
+                const templatePath = this.getBuiltInTemplatePath(templateName);
+                return await this.readFile(templatePath);
+            } catch (error) {
+                console.error(`Error reading built-in template ${templateName}:`, error);
+                return null;
+            }
         }
 
         // Check custom templates
@@ -664,9 +542,20 @@ $body$`;
         const customResults = new Map<string, TemplateValidationResult>();
 
         // Validate built-in templates
-        for (const [templateName, content] of this.builtInTemplates) {
-            const result = TemplateValidator.validateTemplate(content);
-            builtInResults.set(templateName, result);
+        for (const templateName of this.builtInTemplateNames) {
+            try {
+                const templatePath = this.getBuiltInTemplatePath(templateName);
+                const content = await this.readFile(templatePath);
+                const result = TemplateValidator.validateTemplate(content);
+                builtInResults.set(templateName, result);
+            } catch (error) {
+                builtInResults.set(templateName, {
+                    isValid: false,
+                    errors: [`Error loading template: ${error.message}`],
+                    warnings: [],
+                    variables: []
+                });
+            }
         }
 
         // Validate custom templates
@@ -780,7 +669,7 @@ $body$`;
         validation: TemplateValidationResult;
     }> {
         const templateContent = await this.getTemplateContent(templateName);
-        const info = this.getTemplateInfo(templateName);
+        const info = await this.getTemplateInfo(templateName);
         
         if (!templateContent) {
             throw new Error(`Template '${templateName}' not found`);

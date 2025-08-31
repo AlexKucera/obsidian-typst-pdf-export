@@ -28,6 +28,14 @@ export interface PreprocessingResult {
 		frontmatter?: Record<string, any>;
 		title?: string;
 		wordCount: number;
+		pdfEmbeds?: Array<{
+			originalPath: string;
+			sanitizedPath: string;
+			fileName: string;
+			baseName: string;
+			options?: string;
+			marker: string;
+		}>;
 	};
 	/** Processing errors and warnings */
 	errors: string[];
@@ -504,16 +512,35 @@ export class MarkdownPreprocessor {
 	}
 	
 	/**
-	 * Process PDF embeds
+	 * Process PDF embeds - Convert to image preview with PDF attachment
 	 */
 	private processPdfEmbed(pdfPath: string, options: string | undefined, result: PreprocessingResult): string {
 		const sanitizedPath = this.sanitizeFilePath(pdfPath);
 		
-		// PDFs can be handled similarly to documents
+		// For now, we'll mark this for async processing and return a placeholder
+		// The actual conversion will be handled in the main export process
 		const fileName = pdfPath.substring(pdfPath.lastIndexOf('/') + 1);
-		result.warnings.push(`PDF embed converted to link: ${pdfPath}`);
+		const baseName = fileName.replace(/\.[^/.]+$/, ""); // Remove extension
 		
-		return `[📖 ${fileName}](${sanitizedPath})`;
+		// Create a marker that the export process can detect and replace
+		const marker = `PDF_EMBED_MARKER:${pdfPath}:${baseName}:${options || ''}`;
+		
+		// Add to processing queue for later conversion
+		if (!result.metadata.pdfEmbeds) {
+			result.metadata.pdfEmbeds = [];
+		}
+		result.metadata.pdfEmbeds.push({
+			originalPath: pdfPath,
+			sanitizedPath: sanitizedPath,
+			fileName: fileName,
+			baseName: baseName,
+			options: options,
+			marker: marker
+		});
+		
+		result.warnings.push(`PDF embed queued for image conversion: ${pdfPath}`);
+		
+		return marker;
 	}
 	
 	/**
