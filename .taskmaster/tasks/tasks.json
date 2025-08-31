@@ -548,7 +548,7 @@
         "dependencies": [
           7
         ],
-        "status": "pending",
+        "status": "done",
         "subtasks": [
           {
             "id": 1,
@@ -556,7 +556,7 @@
             "description": "Create command registration infrastructure for 'Export current note to Typst PDF', 'Export with previous settings', and 'Export folder to PDF' commands with proper checkCallback validation",
             "dependencies": [],
             "details": "Implement registerCommand() method following the pattern from the reference better-export-pdf plugin. Register three main commands using this.addCommand() with appropriate checkCallback functions to validate current context (active markdown view, file selection). Set proper command IDs, names, and callback functions that will open the ExportConfigModal. Ensure commands only appear when valid files are selected and handle both single file and folder contexts.",
-            "status": "pending",
+            "status": "done",
             "testStrategy": "Test that commands appear in command palette only when appropriate. Verify commands execute without errors and open the expected modal interface. Test with various file contexts including no active file, markdown files, and folders."
           },
           {
@@ -565,7 +565,7 @@
             "description": "Implement ribbon icon using addRibbonIcon() with Typst logo for quick export access",
             "dependencies": [],
             "details": "Replace the template ribbon icon (currently 'dice') with a Typst-appropriate icon. Use addRibbonIcon() to create a ribbon button that triggers the export modal for the currently active file. Implement proper click handler that checks for active markdown view and opens ExportConfigModal. Add hover tooltip explaining the export functionality. Consider using 'file-pdf' or custom Typst logo icon if available.",
-            "status": "pending",
+            "status": "done",
             "testStrategy": "Test ribbon icon appears correctly and has appropriate tooltip. Verify clicking ribbon icon opens export modal when a markdown file is active, and shows appropriate message when no file is active."
           },
           {
@@ -574,7 +574,7 @@
             "description": "Add context menu items to file explorer using workspace.on('file-menu') event registration following reference plugin patterns",
             "dependencies": [],
             "details": "Implement registerEvents() method using this.registerEvent() to add file menu items. Use this.app.workspace.on('file-menu') to add 'Export to Typst PDF' option for individual files and 'Export folder to PDF' for folders. Follow the pattern from better-export-pdf reference plugin with proper menu item configuration including icons, sections, and onClick handlers. Distinguish between single file and folder export options with appropriate submenu structure if needed.",
-            "status": "pending",
+            "status": "done",
             "testStrategy": "Test context menu items appear for both files and folders in file explorer. Verify menu items execute proper export commands and open correct modal configurations. Test with various file types to ensure only markdown files show export options."
           },
           {
@@ -586,7 +586,7 @@
               "9.3"
             ],
             "details": "Implement folder traversal and batch export functionality using patterns from reference plugin. Create utility functions for folder traversal (following traverseFolder from utils.ts reference). Implement parallel processing using p-limit library for configurable concurrency. Add progress tracking and cancellation support for long-running batch operations. Handle file selection logic to export only markdown files within folders and manage temporary file cleanup.",
-            "status": "pending",
+            "status": "done",
             "testStrategy": "Test batch export with folders containing various file types and sizes. Verify concurrency limits work correctly and progress reporting is accurate. Test cancellation functionality and ensure no temporary files are left after completion or cancellation."
           },
           {
@@ -597,7 +597,7 @@
               "9.1"
             ],
             "details": "Define default keyboard shortcuts for primary export commands in manifest.json or through command registration. Update the plugin settings interface (extending obsidianTypstPDFExportSettings) to include export preferences like default output location, concurrency settings, and previous export configuration storage. Implement settings persistence using loadSettings() and saveSettings() methods. Add settings tab integration for user configuration of shortcuts and export defaults.",
-            "status": "pending",
+            "status": "done",
             "testStrategy": "Test keyboard shortcuts trigger appropriate export commands. Verify settings are properly saved and restored across plugin reloads. Test that previous export settings are remembered and can be reused through 'Export with previous settings' command."
           }
         ]
@@ -613,7 +613,7 @@
           8,
           9
         ],
-        "status": "pending",
+        "status": "done",
         "subtasks": [
           {
             "id": 1,
@@ -621,7 +621,7 @@
             "description": "Build the main settings tab class extending PluginSettingTab with comprehensive section organization and proper TypeScript typing",
             "dependencies": [],
             "details": "Create TypstPDFExportSettingTab class extending Obsidian's PluginSettingTab with proper constructor accepting app and plugin parameters. Define sections for external tools, export preferences, typography, page layout, advanced options, and template management. Set up proper TypeScript interfaces for settings validation and section organization. Follow the pattern from reference better-export-pdf plugin setting.ts with proper containerEl management and section headings using setHeading().",
-            "status": "pending",
+            "status": "done",
             "testStrategy": "Test settings tab can be instantiated and displays without errors. Verify all section headings render correctly and proper TypeScript compilation."
           },
           {
@@ -632,7 +632,7 @@
               "10.1"
             ],
             "details": "Create external tools section using Setting components with text inputs for Pandoc and Typst executable paths. Add validation buttons that check executable accessibility and version requirements using the DependencyChecker class. Include status indicators (green check/red X) showing dependency status. Add browse/file picker functionality for path selection. Include help text with installation links and platform-specific guidance. Handle custom path validation and proper error messaging.",
-            "status": "pending",
+            "status": "done",
             "testStrategy": "Test path validation works for both valid and invalid executable paths. Verify dependency status indicators update correctly. Test file picker integration and help text accessibility."
           },
           {
@@ -643,7 +643,7 @@
               "10.1"
             ],
             "details": "Implement default export preferences section with dropdown for template selection, toggle for export format (standard/single-page), text input for default output directory with folder picker, and dropdown for export mode (typography/style-preserving). Add settings persistence using plugin saveSettings() method. Include preview functionality showing how defaults will be applied. Follow patterns from reference better-export-pdf plugin with proper Setting component usage.",
-            "status": "pending",
+            "status": "done",
             "testStrategy": "Test all default settings persist across plugin reloads. Verify dropdown options match available templates. Test folder picker for output directory selection."
           },
           {
@@ -654,7 +654,7 @@
               "10.1"
             ],
             "details": "Build typography section with dropdown for default fonts, text input for font sizes with validation, and toggle for font embedding options. Create page layout section with dropdown for page size (A4, Letter, etc.), toggle for orientation (portrait/landscape), and text inputs for margin settings (top, bottom, left, right). Add preview functionality showing layout changes. Include validation for numeric inputs and proper unit handling (pt, mm, in).",
-            "status": "pending",
+            "status": "done",
             "testStrategy": "Test font selection and size validation work correctly. Verify page layout settings apply proper validation and show preview updates. Test margin input validation with various units."
           },
           {
@@ -667,7 +667,7 @@
               "10.4"
             ],
             "details": "Build advanced options section with text input for concurrency settings, toggle for debug mode, and text area for custom Pandoc arguments. Create template management section with file picker for importing custom templates, button for exporting current templates, and list display of available templates with delete functionality. Include proper file validation for .typ template files and error handling for template operations. Add help text explaining advanced options and template usage.",
-            "status": "pending",
+            "status": "done",
             "testStrategy": "Test concurrency setting validation and custom argument handling. Verify template import/export functionality works with proper file validation. Test debug mode toggle and advanced option persistence."
           }
         ]
@@ -675,7 +675,7 @@
     ],
     "metadata": {
       "created": "2025-08-29T14:23:07.961Z",
-      "updated": "2025-08-29T21:22:06.861Z",
+      "updated": "2025-08-30T05:57:13.267Z",
       "description": "Tasks for master context"
     }
   }
