@@ -93,9 +93,12 @@
     margin
   }
   
+  
+  // Set page layout with conditional height based on export format
   set page(
     paper: paper,
     margin: page-margin,
+    ..if export_format == "single-page" { (height: auto,) } else { (:) },
     numbering: pagenumbering,
     header: context {
       if counter(page).get().first() > 1 [
@@ -106,7 +109,7 @@
   
   // Set text properties - Sans-serif for clean look
   // Use UI-configured font if available, otherwise use template default
-  let body-font = if font != none and type(font) == "string" { 
+  let body-font = if font != none and type(font) == str { 
     (font, "Concourse OT", "Helvetica Neue", "Arial", "sans-serif") 
   } else { 
     font 
@@ -131,7 +134,7 @@
 
   // Clean heading styles
   // Use UI-configured heading font and size if available
-  let heading-font = if heading_font != none and type(heading_font) == "string" { 
+  let heading-font = if heading_font != none and type(heading_font) == str { 
     (heading_font, "SF Pro Text", "Helvetica Neue", "Arial", "sans-serif") 
   } else if heading_font != none { 
     heading_font 

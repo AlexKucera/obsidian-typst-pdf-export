@@ -26,6 +26,8 @@ interface PandocOptions {
 	generateIntermediateTypst?: boolean;
 	/** Vault base path for resolving attachment paths */
 	vaultBasePath?: string;
+	/** Plugin directory path for resolving plugin-relative paths */
+	pluginDir?: string;
 }
 
 /**
@@ -321,9 +323,24 @@ if (this.pandocOptions.vaultBasePath) {
 	}
 }
 
-// Use -V template= syntax for Typst templates (not --template)
+// Use universal wrapper with --template and pass actual template as template_path variable
 if (this.pandocOptions.template) {
-	args.push('-V', `template=${this.pandocOptions.template}`);
+	// Get absolute path to universal wrapper using plugin directory from pandocOptions
+	const path = require('path');
+	const fs = require('fs');
+	const absolutePluginDir = this.pandocOptions.pluginDir || '';
+	const wrapperPath = path.resolve(absolutePluginDir, 'templates', 'universal-wrapper.pandoc.typ');
+	console.log('Universal wrapper path:', wrapperPath);
+	
+	// Verify wrapper exists
+	if (!fs.existsSync(wrapperPath)) {
+		throw new Error(`Universal wrapper template not found at: ${wrapperPath}`);
+	}
+	
+	args.push('--template', wrapperPath);
+	
+	// Pass the actual template path as a variable  
+	args.push('-V', `template_path=${this.pandocOptions.template}`);
 }
 
 // Add variables for document metadata
@@ -1599,9 +1616,13 @@ try {
 		pandocPath: this.settings.pandocPath,
 		typstPath: this.settings.typstPath,
 		template: relativeTemplatePath, // Use relative path from vault directory
-		variables: config.templateVariables || {},
+		variables: {
+			...config.templateVariables || {},
+			export_format: config.format // Pass the format selection to control page height
+		},
 		timeout: 60000,
-		vaultBasePath: vaultBasePath // Add vault base path for attachment resolution
+		vaultBasePath: vaultBasePath, // Add vault base path for attachment resolution
+		pluginDir: absolutePluginDir // Add plugin directory for universal wrapper path resolution
 	} as any;
 	
 	console.log('Export: Pandoc options:', pandocOptions);
@@ -2660,7 +2681,7 @@ export class ExportConfigModal extends Modal {
 				'default.typ',
 				'article.typ', 
 				'report.typ',
-				'single-page.typ'
+				'modern.typ'
 			];
 		}
 		
@@ -3161,7 +3182,7 @@ export class ExportConfigModal extends Modal {
 		'default': 'Default',
 		'article': 'Article',
 		'report': 'Report', 
-		'single-page': 'Single Page'
+		'modern': 'Modern'
 	};
 	
 	return displayNames[templateKey] || templateKey.charAt(0).toUpperCase() + templateKey.slice(1);

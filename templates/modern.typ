@@ -91,17 +91,28 @@
     margin
   }
   
-  set page(
-    paper: paper,
-    margin: page-margin,
-    height: auto,
-    numbering: pagenumbering,
-    fill: rgb("#fafafa")
-  )
+  // Set page layout with conditional height based on export format
+  if export_format == "single-page" {
+    set page(
+      paper: paper,
+      margin: page-margin,
+      height: auto,  // Auto height for continuous single page
+      numbering: pagenumbering,
+      fill: rgb("#fafafa")
+    )
+  } else {
+    set page(
+      paper: paper,
+      margin: page-margin,
+      // No height specified = uses default paper size height
+      numbering: pagenumbering,
+      fill: rgb("#fafafa")
+    )
+  }
   
   // Modern sans-serif fonts
   // Use UI-configured font if available, otherwise use template default
-  let body-font = if font != none and type(font) == "string" { 
+  let body-font = if font != none and type(font) == str { 
     (font, "Concourse OT", "Helvetica Neue", "Arial", "sans-serif") 
   } else { 
     font 
@@ -126,7 +137,7 @@
 
   // Modern heading styles with color accents
   // Use UI-configured heading font and size if available
-  let heading-font = if heading_font != none and type(heading_font) == "string" { 
+  let heading-font = if heading_font != none and type(heading_font) == str { 
     (heading_font, "SF Pro Text", "Helvetica Neue", "Arial", "sans-serif") 
   } else if heading_font != none { 
     heading_font 

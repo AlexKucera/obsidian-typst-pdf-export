@@ -102,9 +102,11 @@
     margin
   }
   
+  // Set page layout with conditional height based on export format
   set page(
     paper: paper,
     margin: page-margin,
+    ..if export_format == "single-page" { (height: auto,) } else { (:) },
     numbering: pagenumbering,
     header: context {
       let page-num = counter(page).get().first()
@@ -136,7 +138,7 @@
   
   // Business document font
   // Use UI-configured font if available, otherwise use template default
-  let body-font = if font != none and type(font) == "string" { 
+  let body-font = if font != none and type(font) == str { 
     (font, "Concourse OT", "Helvetica Neue", "Arial", "sans-serif") 
   } else { 
     font 
