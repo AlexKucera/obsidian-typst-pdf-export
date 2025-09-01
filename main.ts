@@ -335,6 +335,77 @@ if (this.pandocOptions.variables) {
 	}
 }
 
+// Add typography settings as template variables
+const plugin = (this as any).plugin;
+if (plugin && plugin.settings) {
+	const settings = plugin.settings;
+	
+	// Add typography variables
+	if (settings.typography) {
+		if (settings.typography.fonts) {
+			if (settings.typography.fonts.body) {
+				args.push('-V', `font="${settings.typography.fonts.body}"`);
+			}
+			if (settings.typography.fonts.heading) {
+				args.push('-V', `heading_font="${settings.typography.fonts.heading}"`);
+			}
+			if (settings.typography.fonts.monospace) {
+				args.push('-V', `monospace_font="${settings.typography.fonts.monospace}"`);
+			}
+		}
+		
+		if (settings.typography.fontSizes) {
+			if (settings.typography.fontSizes.body) {
+				args.push('-V', `fontsize=${settings.typography.fontSizes.body}pt`);
+			}
+			if (settings.typography.fontSizes.heading) {
+				args.push('-V', `heading_fontsize=${settings.typography.fontSizes.heading}pt`);
+			}
+			if (settings.typography.fontSizes.small) {
+				args.push('-V', `small_fontsize=${settings.typography.fontSizes.small}pt`);
+			}
+		}
+	}
+	
+	// Add page setup variables
+	if (settings.pageSetup) {
+		if (settings.pageSetup.size) {
+			args.push('-V', `paper=${settings.pageSetup.size}`);
+		}
+		if (settings.pageSetup.orientation) {
+			args.push('-V', `orientation=${settings.pageSetup.orientation}`);
+		}
+		
+		// Convert margin points to cm for Typst (1 point = 0.0352778 cm)
+		if (settings.pageSetup.margins) {
+			const margins = settings.pageSetup.margins;
+			if (margins.top !== undefined) {
+				const topCm = (margins.top * 0.0352778).toFixed(2);
+				args.push('-V', `margin_top=${topCm}cm`);
+			}
+			if (margins.right !== undefined) {
+				const rightCm = (margins.right * 0.0352778).toFixed(2);
+				args.push('-V', `margin_right=${rightCm}cm`);
+			}
+			if (margins.bottom !== undefined) {
+				const bottomCm = (margins.bottom * 0.0352778).toFixed(2);
+				args.push('-V', `margin_bottom=${bottomCm}cm`);
+			}
+			if (margins.left !== undefined) {
+				const leftCm = (margins.left * 0.0352778).toFixed(2);
+				args.push('-V', `margin_left=${leftCm}cm`);
+			}
+		}
+	}
+	
+	// Add export format variable  
+	if (settings.exportDefaults) {
+		if (settings.exportDefaults.format) {
+			args.push('-V', `export_format=${settings.exportDefaults.format}`);
+		}
+	}
+}
+
 // Add Typst engine options
 if (this.typstSettings.engineOptions) {
 	for (const option of this.typstSettings.engineOptions) {
@@ -524,13 +595,6 @@ return new Promise((resolve) => {
  * generating high-quality PDFs with customizable styling.
  */
 
-/** Export mode options for different conversion approaches */
-enum ExportMode {
-	/** Typography-focused export optimizing for readability */
-	Typography = 'typography',
-	/** Style-preserving export maintaining original formatting */
-	StylePreserving = 'style-preserving'
-}
 
 /** Export format options for output structure */
 enum ExportFormat {
@@ -568,8 +632,6 @@ interface ExportConfig {
 	template?: string;
 	/** Override default format */
 	format?: ExportFormat;
-	/** Override default mode */
-	mode?: ExportMode;
 	/** Override output folder */
 	outputFolder?: string;
 	/** Template variables for this export */
@@ -598,8 +660,6 @@ interface obsidianTypstPDFExportSettings {
 		template: string;
 		/** Default export format */
 		format: ExportFormat;
-		/** Default export mode */
-		mode: ExportMode;
 	};
 	
 	/** Typography settings */
@@ -658,15 +718,14 @@ const DEFAULT_SETTINGS: obsidianTypstPDFExportSettings = {
 	
 	exportDefaults: {
 		template: 'default',
-		format: ExportFormat.Standard,
-		mode: ExportMode.Typography
+		format: ExportFormat.Standard
 	},
 	
 	typography: {
 		fonts: {
-			body: 'Times New Roman',
-			heading: 'Arial',
-			monospace: 'Courier New'
+			body: 'Concourse OT',
+			heading: 'SF Pro Text',
+			monospace: 'UbuntuMono Nerd Font Mono'
 		},
 		fontSizes: {
 			body: 11,
@@ -903,9 +962,6 @@ export default class obsidianTypstPDFExport extends Plugin {
 				exportDefaults.format = data.exportDefaults.format;
 			}
 			
-			if (Object.values(ExportMode).includes(data.exportDefaults.mode)) {
-				exportDefaults.mode = data.exportDefaults.mode;
-			}
 			
 			if (Object.keys(exportDefaults).length > 0) {
 				validated.exportDefaults = exportDefaults as any;
@@ -2215,17 +2271,6 @@ class TypstPDFExportSettingTab extends PluginSettingTab {
 					await this.plugin.saveSettings();
 				}));
 
-		new Setting(containerEl)
-			.setName('Export mode')
-			.setDesc('Processing approach for document conversion')
-			.addDropdown(dropdown => dropdown
-				.addOption(ExportMode.Typography, 'Typography-focused (optimized readability)')
-				.addOption(ExportMode.StylePreserving, 'Style-preserving (maintain formatting)')
-				.setValue(this.plugin.settings.exportDefaults.mode)
-				.onChange(async (value) => {
-					this.plugin.settings.exportDefaults.mode = value as ExportMode;
-					await this.plugin.saveSettings();
-				}));
 
 		// Typography Section
 		new Setting(containerEl)
@@ -2540,7 +2585,6 @@ export class ExportConfigModal extends Modal {
 			noteTitle,
 			template: plugin.settings.exportDefaults.template,
 			format: plugin.settings.exportDefaults.format,
-			mode: plugin.settings.exportDefaults.mode,
 			outputFolder: plugin.settings.outputFolder,
 			templateVariables: {},
 			availableTemplates: [], // Will be populated by TemplateManager
@@ -2689,7 +2733,6 @@ export class ExportConfigModal extends Modal {
 		this.progressContainer.style.display = 'none';
 
 		// Generate form sections
-		this.createExportModeSection();
 		this.createFormatSection();
 		this.createTemplateSection();
 		this.createOutputSection();
@@ -2702,27 +2745,6 @@ export class ExportConfigModal extends Modal {
 		this.updatePreview();
 	}
 
-	/**
-	 * Create export mode selection section
-	 */
-	private createExportModeSection(): void {
-		const section = this.formContainer.createDiv('export-section');
-		section.createEl('h3', { text: 'Export Mode' });
-
-		new Setting(section)
-			.setName('Export mode')
-			.setDesc('Choose between typography-focused or style-preserving export')
-			.addDropdown(dropdown => {
-				dropdown
-					.addOption(ExportMode.Typography, 'Typography (optimized for readability)')
-					.addOption(ExportMode.StylePreserving, 'Style-preserving (maintains original formatting)')
-					.setValue(this.settings.mode || ExportMode.Typography)
-					.onChange(value => {
-						this.settings.mode = value as ExportMode;
-						this.updatePreview();
-					});
-			});
-	}
 
 	/**
 	 * Create format selection section
@@ -3171,9 +3193,6 @@ export class ExportConfigModal extends Modal {
 		const configItems = this.configPreview.createDiv('config-items');
 		
 		configItems.createDiv('config-item').innerHTML = 
-			`<strong>Mode:</strong> ${this.settings.mode === ExportMode.Typography ? 'Typography' : 'Style-preserving'}`;
-		
-		configItems.createDiv('config-item').innerHTML = 
 			`<strong>Format:</strong> ${this.settings.format === ExportFormat.Standard ? 'Standard PDF' : 'Single-page PDF'}`;
 			
 		configItems.createDiv('config-item').innerHTML = 
@@ -3234,10 +3253,6 @@ export class ExportConfigModal extends Modal {
 		// Simple estimation based on mode and format
 		// In a real implementation, this could analyze content length
 		let baseSize = 150; // Base size in KB
-		
-		if (this.settings.mode === ExportMode.StylePreserving) {
-			baseSize *= 1.5; // Style-preserving adds overhead
-		}
 		
 		if (this.settings.format === ExportFormat.SinglePage) {
 			baseSize *= 1.2; // Single-page format may be larger
@@ -3470,9 +3485,6 @@ export class ExportConfigModal extends Modal {
 				this.plugin.settings.exportDefaults.format = this.settings.format;
 			}
 			
-			if (this.settings.mode) {
-				this.plugin.settings.exportDefaults.mode = this.settings.mode;
-			}
 
 			// Update output folder preference
 			if (this.settings.outputFolder && this.settings.outputFolder !== this.plugin.settings.outputFolder) {
@@ -3493,7 +3505,6 @@ export class ExportConfigModal extends Modal {
 				config: {
 					template: this.settings.template,
 					format: this.settings.format,
-					mode: this.settings.mode,
 					outputFolder: this.settings.outputFolder,
 					templateVariables: { ...this.settings.templateVariables }
 				}
@@ -3541,9 +3552,6 @@ export class ExportConfigModal extends Modal {
 				this.settings.format = config.format;
 			}
 
-			if (config.mode) {
-				this.settings.mode = config.mode;
-			}
 
 			if (config.outputFolder) {
 				this.settings.outputFolder = config.outputFolder;
@@ -3592,7 +3600,6 @@ export class ExportConfigModal extends Modal {
 		
 		this.settings.template = defaults.template;
 		this.settings.format = defaults.format;
-		this.settings.mode = defaults.mode;
 		this.settings.outputFolder = this.plugin.settings.outputFolder;
 		this.settings.templateVariables = {
 			title: this.settings.noteTitle,
@@ -3613,7 +3620,6 @@ export class ExportConfigModal extends Modal {
 			version: '1.0',
 			template: this.settings.template,
 			format: this.settings.format,
-			mode: this.settings.mode,
 			templateVariables: this.settings.templateVariables,
 			// Don't include outputFolder (local path) or notePath (specific to this instance)
 		};
@@ -3642,9 +3648,6 @@ export class ExportConfigModal extends Modal {
 				this.settings.format = importData.format;
 			}
 
-			if (importData.mode && Object.values(ExportMode).includes(importData.mode)) {
-				this.settings.mode = importData.mode;
-			}
 
 			if (importData.templateVariables) {
 				this.settings.templateVariables = { 
@@ -4169,7 +4172,6 @@ export class ExportConfigModal extends Modal {
 		const exportConfig: ExportConfig = {
 			template: this.settings.template,
 			format: this.settings.format,
-			mode: this.settings.mode,
 			outputFolder: this.settings.outputFolder,
 			templateVariables: this.settings.templateVariables
 		};
