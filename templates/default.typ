@@ -57,7 +57,7 @@
   paper: "a4",
   margin: (x: 1.5cm, y: 1.5cm),
   cols: 1,
-  font: ("Afraty Stencil", "Concourse OT 3", "Helvetica Neue", "Arial", "sans-serif"),
+  font: ("Concourse OT 3", "Helvetica Neue", "Arial"),
   fontsize: 11pt,
   sectionnumbering: "1.",
   pagenumbering: "1",
@@ -110,7 +110,7 @@
   // Set text properties - Sans-serif for clean look
   // Use UI-configured font if available, otherwise use template default
   let body-font = if font != none and type(font) == str { 
-    (font, "Afraty Stencil", "Concourse OT 3", "Helvetica Neue", "Arial", "sans-serif") 
+    (font, "Concourse OT 3", "Helvetica Neue", "Arial") 
   } else { 
     font 
   }
@@ -135,11 +135,11 @@
   // Clean heading styles
   // Use UI-configured heading font and size if available
   let heading-font = if heading_font != none and type(heading_font) == str { 
-    (heading_font, "SF Pro Text", "Helvetica Neue", "Arial", "sans-serif") 
+    (heading_font, "SF Pro Text", "Helvetica Neue", "Arial") 
   } else if heading_font != none { 
     heading_font 
   } else { 
-    ("SF Pro Text", "Helvetica Neue", "Arial", "sans-serif") 
+    ("SF Pro Text", "Helvetica Neue", "Arial") 
   }
   
   let heading-fontsize = if heading_fontsize != none { heading_fontsize } else { 14pt }
