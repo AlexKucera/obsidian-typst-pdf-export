@@ -74,6 +74,7 @@ export class MarkdownPreprocessor {
 	private readonly MULTI_LINE_CALLOUT_PATTERN = /^(>\s*\[!([\w-]+)\]([+-]?)\s*(.*(?:\n(?:>.*|$))*?))/gm;
 	private readonly TAG_PATTERN = /#(?:[^\s#]+)/g;
 	private readonly FRONTMATTER_PATTERN = /^---\s*\n([\s\S]*?)\n---\s*\n/;
+	private readonly EMAIL_BLOCK_PATTERN = /^```email\s*\n([\s\S]*?)^```\s*$/gm;
 	
 	constructor(config: MarkdownPreprocessorConfig) {
 		this.vaultPath = config.vaultPath;
@@ -113,16 +114,19 @@ export class MarkdownPreprocessor {
 				}
 			}
 			
-			// Step 3: Convert embeds FIRST (before wikilinks to avoid .md extension being added)
+			// Step 3: Convert email blocks to Typst format
+			result.content = this.parseEmailBlocks(result.content, result);
+			
+			// Step 4: Convert embeds FIRST (before wikilinks to avoid .md extension being added)
 			result.content = this.parseEmbeds(result.content, result);
 			
-			// Step 4: Convert wikilinks (after embeds are processed)
+			// Step 5: Convert wikilinks (after embeds are processed)
 			result.content = this.parseWikilinks(result.content, result);
 			
-			// Step 5: Convert callouts
+			// Step 6: Convert callouts
 			result.content = this.parseCallouts(result.content, result);
 			
-			// Step 6: Calculate final metadata
+			// Step 7: Calculate final metadata
 			result.metadata.wordCount = this.calculateWordCount(result.content);
 			
 			// Use title from frontmatter if available, otherwise extract from content
@@ -551,6 +555,159 @@ export class MarkdownPreprocessor {
 		// Process multi-line callouts first
 		const processed = this.processMultiLineCallouts(content, result);
 		return processed;
+	}
+
+	/**
+	 * Convert Obsidian email blocks to Typst email-block format
+	 */
+	private parseEmailBlocks(content: string, result: PreprocessingResult): string {
+		return content.replace(this.EMAIL_BLOCK_PATTERN, (match, blockContent) => {
+			try {
+				return this.processEmailBlock(blockContent, result);
+			} catch (error) {
+				result.warnings.push(`Failed to process email block: ${error.message}`);
+				return match; // Return original on error
+			}
+		});
+	}
+
+	/**
+	 * Process individual email block content and convert to Typst format
+	 */
+	private processEmailBlock(blockContent: string, result: PreprocessingResult): string {
+		try {
+			// Split at --- to separate header from body
+			const parts = blockContent.split('---');
+			const yamlHeader = parts[0].trim();
+			const body = parts.length > 1 ? parts.slice(1).join('---').trim() : '';
+			
+			// Parse YAML header
+			const params = this.parseEmailYaml(yamlHeader);
+			
+			// Build Typst function call arguments
+			const args: string[] = [];
+			
+			// Add parameters in the order expected by the Typst template
+			if (params.from) {
+				args.push(`from: "${this.escapeQuotes(params.from)}"`);
+			}
+			if (params.to) {
+				args.push(`to: "${this.escapeQuotes(params.to)}"`);
+			}
+			if (params.subject) {
+				args.push(`subject: "${this.escapeQuotes(params.subject)}"`);
+			}
+			if (params.date) {
+				args.push(`date: "${this.escapeQuotes(params.date)}"`);
+			}
+			
+			// Add body as string parameter (always present, even if empty)
+			// Use the formatBodyForTypst method to preserve paragraphs but keep as string
+			const bodyParam = `"${this.escapeQuotes(body)}"`;
+			
+			// Construct the Typst email-block function call with proper line breaks
+			// Wrap in Pandoc raw blocks so it's treated as Typst code, not markdown text
+			const argsString = args.length > 0 ? args.join(', ') + ', ' : '';
+			return `\n\n\`\`\`{=typst}\n#email-block(${argsString}${bodyParam})\n\`\`\`\n\n`;
+			
+		} catch (error) {
+			result.warnings.push(`Error processing email block content: ${error.message}`);
+			// Return as code block to preserve original content
+			return `\`\`\`\n${blockContent}\n\`\`\``;
+		}
+	}
+
+	/**
+	 * Format email body content for Typst content blocks (not string literals)
+	 */
+	private formatBodyForTypst(body: string): string {
+		if (!body) return '';
+		
+		// Split into paragraphs and format each one
+		const paragraphs = body.split(/\n\s*\n/); // Split on blank lines
+		const formattedParagraphs = paragraphs
+			.map(para => para.trim())
+			.filter(para => para.length > 0)
+			.map(para => {
+				// Escape special Typst characters but preserve the content structure
+				const escaped = para
+					.replace(/\\/g, '\\\\')  // Escape backslashes
+					.replace(/#/g, '\\#')    // Escape hash symbols
+					.replace(/\[/g, '\\[')   // Escape square brackets
+					.replace(/\]/g, '\\]')   // Escape square brackets
+					.replace(/\*/g, '\\*')   // Escape asterisks
+					.replace(/_/g, '\\_');   // Escape underscores
+				
+				return escaped;
+			});
+		
+		// Join paragraphs with proper Typst paragraph breaks
+		return formattedParagraphs.join('\n\n');
+	}
+	
+	/**
+	 * Parse email YAML header, handling edge cases from the email block plugin
+	 */
+	private parseEmailYaml(yamlString: string): Record<string, string> {
+		try {
+			let processedYaml = yamlString;
+			
+			// Handle wikilinks - quote them if not already quoted (from email block plugin logic)
+			if (processedYaml.includes('[[') && !processedYaml.includes('"[[')) {
+				processedYaml = processedYaml.replace(/\[\[/g, '"[[');
+				processedYaml = processedYaml.replace(/\]\]/g, ']]"');
+			}
+			
+			// Handle template variables - quote them if not already quoted
+			if (processedYaml.includes('{{') && !processedYaml.includes('"{{')) {
+				processedYaml = processedYaml.replace(/\{\{/g, '"{{');
+				processedYaml = processedYaml.replace(/\}\}/g, '}}"');
+			}
+			
+			// Use Obsidian's YAML parser (from email block plugin approach)
+			// For now, we'll do simple parsing since we don't have access to Obsidian's parseYaml
+			const params: Record<string, string> = {};
+			const lines = processedYaml.split('\n');
+			
+			for (const line of lines) {
+				const colonIndex = line.indexOf(':');
+				if (colonIndex > 0) {
+					const key = line.substring(0, colonIndex).trim();
+					let value = line.substring(colonIndex + 1).trim();
+					
+					// Remove quotes if present
+					if ((value.startsWith('"') && value.endsWith('"')) || 
+						(value.startsWith("'") && value.endsWith("'"))) {
+						value = value.slice(1, -1);
+					}
+					
+					// Handle array values (convert to comma-separated string)
+					if (value.startsWith('[') && value.endsWith(']')) {
+						value = value.slice(1, -1).replace(/"/g, '').replace(/'/g, '');
+					}
+					
+					params[key] = value;
+				}
+			}
+			
+			return params;
+			
+		} catch (error) {
+			throw new Error(`YAML parsing failed: ${error.message}`);
+		}
+	}
+	
+	/**
+	 * Escape quotes in string content for Typst
+	 */
+	private escapeQuotes(text: string): string {
+		if (!text) return '';
+		return text
+			.replace(/\\/g, '\\\\')   // Escape backslashes first
+			.replace(/"/g, '\\"')     // Escape double quotes
+			.replace(/'/g, "\\'")     // Escape single quotes to prevent smart quote conversion
+			.replace(/\n/g, '\\n')    // Convert newlines to literal \n for string parameters
+			.replace(/\r/g, '\\r');   // Convert carriage returns
 	}
 	
 	/**

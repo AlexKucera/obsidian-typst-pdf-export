@@ -57,7 +57,7 @@
   paper: "a4",
   margin: (x: 1.5cm, y: 1.5cm),
   cols: 1,
-  font: ("Concourse OT", "Helvetica Neue", "Arial", "sans-serif"),
+  font: ("Afraty Stencil", "Concourse OT 3", "Helvetica Neue", "Arial", "sans-serif"),
   fontsize: 11pt,
   sectionnumbering: "1.",
   pagenumbering: "1",
@@ -110,7 +110,7 @@
   // Set text properties - Sans-serif for clean look
   // Use UI-configured font if available, otherwise use template default
   let body-font = if font != none and type(font) == str { 
-    (font, "Concourse OT", "Helvetica Neue", "Arial", "sans-serif") 
+    (font, "Afraty Stencil", "Concourse OT 3", "Helvetica Neue", "Arial", "sans-serif") 
   } else { 
     font 
   }

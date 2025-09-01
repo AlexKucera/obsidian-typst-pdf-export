@@ -258,6 +258,9 @@ args.push(inputPath);
 // Output file
 args.push('-o', outputPath);
 
+// Specify input format as markdown with smart extension disabled
+args.push('--from', 'markdown-smart');
+
 // Set PDF engine to Typst (use configured path if available)
 if (this.pandocOptions.typstPath) {
 	args.push(`--pdf-engine=${this.pandocOptions.typstPath}`);
