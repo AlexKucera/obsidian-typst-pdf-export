@@ -10,7 +10,7 @@ import * as path from 'path';
 export class TemplateManager {
     private app: App;
     private pluginDir: string;
-    private builtInTemplateNames: string[] = ['default.typ', 'article.typ', 'report.typ', 'single-page.typ'];
+    private builtInTemplateNames: string[] = ['default.typ', 'article.typ', 'report.typ', 'modern.typ'];
     private customTemplates: Map<string, Template> = new Map();
     private customTemplateDirectory: string = 'Typst Templates';
     
