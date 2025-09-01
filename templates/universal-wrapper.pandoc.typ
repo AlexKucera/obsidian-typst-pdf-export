@@ -12,7 +12,7 @@
   $if(paper)$paper: "$paper$",$else$paper: "a4",$endif$
   $if(margin)$margin: (x: $margin.x$, y: $margin.y$),$else$$if(margin_top)$margin: (top: $margin_top$, right: $if(margin_right)$$margin_right$$else$1.5cm$endif$, bottom: $if(margin_bottom)$$margin_bottom$$else$1.5cm$endif$, left: $if(margin_left)$$margin_left$$else$1.5cm$endif$),$else$margin: (x: 1.5cm, y: 1.5cm),$endif$$endif$
   $if(cols)$cols: $cols$,$else$cols: 1,$endif$
-  $if(font)$font: "$font$",$else$font: ("Concourse OT", "Helvetica Neue", "Arial", "sans-serif"),$endif$
+  $if(font)$font: ("$font$", "Concourse OT 3", "Helvetica Neue", "Arial"),$else$font: ("Afraty Stencil", "Concourse OT 3", "Helvetica Neue", "Arial"),$endif$
   $if(fontsize)$fontsize: $fontsize$,$else$fontsize: 11pt,$endif$
   $if(sectionnumbering)$sectionnumbering: "$sectionnumbering$",$else$sectionnumbering: "1.",$endif$
   $if(pagenumbering)$pagenumbering: "$pagenumbering$",$else$pagenumbering: "1",$endif$
