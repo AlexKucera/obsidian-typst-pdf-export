@@ -1,0 +1,134 @@
+/**
+ * General Section for Export Configuration Modal
+ * Handles template selection, format options, and output settings
+ */
+
+import { Setting } from 'obsidian';
+import { ModalSection, ModalState, ValidationResult } from '../types';
+import { ExportFormat } from '../../core/settings';
+
+export class GeneralSection implements ModalSection {
+	private container: HTMLElement | null = null;
+	private templateDropdown: any = null;
+	private outputFolderInput: HTMLInputElement | null = null;
+	
+	render(containerEl: HTMLElement, state: ModalState): void {
+		this.container = containerEl.createDiv('export-section');
+		this.container.createEl('h3', { text: 'General Settings' });
+		
+		this.createTemplateSelection(state);
+		this.createFormatSelection(state);
+		this.createOutputSettings(state);
+	}
+	
+	private createTemplateSelection(state: ModalState): void {
+		if (!this.container) return;
+		
+		new Setting(this.container)
+			.setName('Typst template')
+			.setDesc('Select template for document styling')
+			.addDropdown(dropdown => {
+				// Populate with available templates
+				state.settings.availableTemplates.forEach(template => {
+					dropdown.addOption(template, this.getTemplateDisplayName(template));
+				});
+				
+				dropdown
+					.setValue(state.settings.template || 'default.typ')
+					.onChange(value => {
+						state.updateSettings({ template: value });
+					});
+				
+				this.templateDropdown = dropdown;
+			});
+	}
+	
+	private createFormatSelection(state: ModalState): void {
+		if (!this.container) return;
+		
+		new Setting(this.container)
+			.setName('PDF format')
+			.setDesc('Choose document layout format')
+			.addDropdown(dropdown => {
+				dropdown
+					.addOption(ExportFormat.Standard, 'Standard (multi-page PDF)')
+					.addOption(ExportFormat.SinglePage, 'Single-page (continuous layout)')
+					.setValue(state.settings.format || ExportFormat.Standard)
+					.onChange(value => {
+						state.updateSettings({ format: value as ExportFormat });
+					});
+			});
+	}
+	
+	private createOutputSettings(state: ModalState): void {
+		if (!this.container) return;
+		
+		new Setting(this.container)
+			.setName('Output folder')
+			.setDesc('Folder where PDFs will be saved (relative to vault root)')
+			.addText(text => {
+				const input = text
+					.setPlaceholder('exports')
+					.setValue(state.settings.outputFolder || 'exports')
+					.onChange(value => {
+						state.updateSettings({ outputFolder: value });
+					});
+				this.outputFolderInput = input.inputEl;
+			});
+	}
+	
+	private getTemplateDisplayName(template: string): string {
+		// Remove extension and capitalize
+		const name = template.replace(/\.(typ|pandoc\.typ)$/, '');
+		return name.charAt(0).toUpperCase() + name.slice(1).replace(/-/g, ' ');
+	}
+	
+	validate(): ValidationResult {
+		const errors: string[] = [];
+		const warnings: string[] = [];
+		
+		// Validate output folder
+		if (this.outputFolderInput) {
+			const value = this.outputFolderInput.value.trim();
+			if (!value) {
+				errors.push('Output folder is required');
+			} else if (value.startsWith('/') || value.startsWith('\\')) {
+				warnings.push('Output folder should be relative to vault root');
+			}
+		}
+		
+		// Check template selection
+		if (!this.templateDropdown || !this.templateDropdown.getValue()) {
+			errors.push('Template selection is required');
+		}
+		
+		return {
+			isValid: errors.length === 0,
+			errors,
+			warnings
+		};
+	}
+	
+	updateAvailableTemplates(templates: string[]): void {
+		if (!this.templateDropdown) return;
+		
+		const currentValue = this.templateDropdown.getValue();
+		
+		// Clear and repopulate dropdown
+		this.templateDropdown.selectEl.empty();
+		templates.forEach(template => {
+			this.templateDropdown.addOption(template, this.getTemplateDisplayName(template));
+		});
+		
+		// Restore selection if still available
+		if (templates.includes(currentValue)) {
+			this.templateDropdown.setValue(currentValue);
+		} else if (templates.length > 0) {
+			this.templateDropdown.setValue(templates[0]);
+		}
+	}
+	
+	getId(): string {
+		return 'general';
+	}
+}

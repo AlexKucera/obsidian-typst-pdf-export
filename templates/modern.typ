@@ -90,25 +90,16 @@
   } else {
     margin
   }
-  
+
   // Set page layout with conditional height based on export format
-  if export_format == "single-page" {
-    set page(
-      paper: paper,
-      margin: page-margin,
-      height: auto,  // Auto height for continuous single page
-      numbering: pagenumbering,
-      fill: rgb("#fafafa")
-    )
-  } else {
-    set page(
-      paper: paper,
-      margin: page-margin,
-      // No height specified = uses default paper size height
-      numbering: pagenumbering,
-      fill: rgb("#fafafa")
-    )
-  }
+  set page(
+    paper: paper,
+    orientation: orientation,
+    margin: (top: 2.5cm, right: 1.5cm, bottom: 2cm, left: 2.5cm),
+    ..if export_format == "single-page" { (height: auto,) } else { (:) },
+    numbering: pagenumbering,
+    fill: rgb("#fafafa")
+  )
   
   // Modern sans-serif fonts
   // Use UI-configured font if available, otherwise use template default
@@ -179,6 +170,14 @@
     #it.body
   ]
 
+  // Apply monospace font to code blocks and inline code
+  let code-font = if monospace_font != none and type(monospace_font) == str {
+    (monospace_font, "Courier New", "Monaco")
+  } else {
+    ("Courier New", "Monaco")
+  }
+  
+  show raw: set text(font: code-font)
 
   // Modern title header with sidebar design
   if title != none and title != "" [

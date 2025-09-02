@@ -58,12 +58,15 @@ export interface MarkdownPreprocessorConfig {
 	options: PreprocessorOptions;
 	/** Wikilink conversion configuration */
 	wikilinkConfig: WikilinkConfig;
+	/** Note title to add as H1 heading at top (optional) */
+	noteTitle?: string;
 }
 
 export class MarkdownPreprocessor {
 	private vaultPath: string;
 	private options: PreprocessorOptions;
 	private wikilinkConfig: WikilinkConfig;
+	private noteTitle?: string;
 	
 	// Regex patterns for Obsidian syntax
 	private readonly WIKILINK_PATTERN = /\[\[([^\|\]]+)(?:\|([^\]]+))?\]\]/g;
@@ -80,6 +83,7 @@ export class MarkdownPreprocessor {
 		this.vaultPath = config.vaultPath;
 		this.options = config.options;
 		this.wikilinkConfig = config.wikilinkConfig;
+		this.noteTitle = config.noteTitle;
 	}
 	
 	/**
@@ -117,16 +121,19 @@ export class MarkdownPreprocessor {
 			// Step 3: Convert email blocks to Typst format
 			result.content = this.parseEmailBlocks(result.content, result);
 			
-			// Step 4: Convert embeds FIRST (before wikilinks to avoid .md extension being added)
+			// Step 4: Filter out unnecessary links (Open: links and Mail.app links)
+			result.content = this.filterUnnecessaryLinks(result.content, result);
+			
+			// Step 5: Convert embeds FIRST (before wikilinks to avoid .md extension being added)
 			result.content = this.parseEmbeds(result.content, result);
 			
-			// Step 5: Convert wikilinks (after embeds are processed)
+			// Step 6: Convert wikilinks (after embeds are processed)
 			result.content = this.parseWikilinks(result.content, result);
 			
-			// Step 6: Convert callouts
+			// Step 7: Convert callouts
 			result.content = this.parseCallouts(result.content, result);
 			
-			// Step 7: Calculate final metadata
+			// Step 8: Calculate final metadata
 			result.metadata.wordCount = this.calculateWordCount(result.content);
 			
 			// Use title from frontmatter if available, otherwise extract from content
@@ -151,7 +158,14 @@ export class MarkdownPreprocessor {
 			const parsed = matter(content);
 			
 			if (parsed.data && Object.keys(parsed.data).length > 0) {
-				result.metadata.frontmatter = parsed.data;
+				// Replace frontmatter title with filename if noteTitle is provided
+				if (this.noteTitle) {
+					const frontmatterCopy = { ...parsed.data };
+					frontmatterCopy.title = this.noteTitle;
+					result.metadata.frontmatter = frontmatterCopy;
+				} else {
+					result.metadata.frontmatter = parsed.data;
+				}
 				
 				// Extract tags from frontmatter if they exist
 				if (parsed.data.tags) {
@@ -178,21 +192,45 @@ export class MarkdownPreprocessor {
 					}
 				}
 				
-				// Extract title from frontmatter if available
-				if (parsed.data.title && typeof parsed.data.title === 'string') {
+				// Extract title - use noteTitle if available, otherwise frontmatter title
+				if (this.noteTitle) {
+					result.metadata.title = this.noteTitle;
+				} else if (parsed.data.title && typeof parsed.data.title === 'string') {
 					result.metadata.title = parsed.data.title.trim();
 				}
 				
 				if (this.options.preserveFrontmatter) {
-					// Keep the frontmatter in the content
-					return content;
+					// Keep the frontmatter in the content, but reconstruct it with the modified title
+					if (this.noteTitle) {
+						const yaml = require('js-yaml');
+						const frontmatterCopy = { ...parsed.data };
+						frontmatterCopy.title = this.noteTitle;
+						const newFrontmatter = yaml.dump(frontmatterCopy);
+						return `---\n${newFrontmatter}---\n${parsed.content}`;
+					} else {
+						return content;
+					}
 				} else {
-					// Return content without frontmatter
-					return parsed.content;
+					// Return content without frontmatter, but add title as frontmatter for Pandoc
+					if (this.noteTitle) {
+						const yaml = require('js-yaml');
+						const titleFrontmatter = yaml.dump({ title: this.noteTitle });
+						console.log('Replacing frontmatter with title:', titleFrontmatter);
+						return `---\n${titleFrontmatter}---\n${parsed.content}`;
+					} else {
+						return parsed.content;
+					}
 				}
 			} else {
-				// No frontmatter found, return original content
-				return content;
+				// No frontmatter found - add title frontmatter if we have a noteTitle
+				if (this.noteTitle) {
+					const yaml = require('js-yaml');
+					const titleFrontmatter = yaml.dump({ title: this.noteTitle });
+					console.log('Adding title frontmatter:', titleFrontmatter);
+					return `---\n${titleFrontmatter}---\n${content}`;
+				} else {
+					return content;
+				}
 			}
 		} catch (error: any) {
 			result.warnings.push(`Failed to parse frontmatter with gray-matter: ${error.message}`);
@@ -216,12 +254,31 @@ export class MarkdownPreprocessor {
 						}
 					}
 					
+					// Replace title with noteTitle if provided
+					if (this.noteTitle) {
+						frontmatter.title = this.noteTitle;
+					}
+					
 					result.metadata.frontmatter = frontmatter;
 					
 					if (this.options.preserveFrontmatter) {
-						return content;
+						// Reconstruct frontmatter with modified title
+						if (this.noteTitle) {
+							const yaml = require('js-yaml');
+							const newFrontmatter = yaml.dump(frontmatter);
+							return content.replace(this.FRONTMATTER_PATTERN, `---\n${newFrontmatter}---\n`);
+						} else {
+							return content;
+						}
 					} else {
-						return content.replace(this.FRONTMATTER_PATTERN, '');
+						// Add title as frontmatter for Pandoc even when not preserving original
+						if (this.noteTitle) {
+							const yaml = require('js-yaml');
+							const titleFrontmatter = yaml.dump({ title: this.noteTitle });
+							return content.replace(this.FRONTMATTER_PATTERN, `---\n${titleFrontmatter}---\n`);
+						} else {
+							return content.replace(this.FRONTMATTER_PATTERN, '');
+						}
 					}
 				} catch (fallbackError: any) {
 					result.warnings.push(`Fallback frontmatter parsing also failed: ${fallbackError.message}`);
@@ -517,7 +574,7 @@ export class MarkdownPreprocessor {
 	}
 	
 	/**
-	 * Process PDF embeds - Convert to image preview with PDF attachment
+	 * Process PDF embeds - Convert to image preview with PDF attachment using Typst's pdf.embed
 	 */
 	private processPdfEmbed(pdfPath: string, options: string | undefined, result: PreprocessingResult): string {
 		const sanitizedPath = this.sanitizeFilePath(pdfPath);
@@ -527,8 +584,8 @@ export class MarkdownPreprocessor {
 		const fileName = pdfPath.substring(pdfPath.lastIndexOf('/') + 1);
 		const baseName = fileName.replace(/\.[^/.]+$/, ""); // Remove extension
 		
-		// Create a marker that the export process can detect and replace
-		const marker = `PDF_EMBED_MARKER:${pdfPath}:${baseName}:${options || ''}`;
+		// Create a marker that the export process can detect and replace with Typst code
+		const marker = `TYPST_PDF_EMBED_MARKER:${pdfPath}:${baseName}:${options || ''}`;
 		
 		// Add to processing queue for later conversion
 		if (!result.metadata.pdfEmbeds) {
@@ -543,7 +600,7 @@ export class MarkdownPreprocessor {
 			marker: marker
 		});
 		
-		result.warnings.push(`PDF embed queued for image conversion: ${pdfPath}`);
+		result.warnings.push(`PDF embed queued for processing with Typst pdf.embed: ${pdfPath}`);
 		
 		return marker;
 	}
@@ -570,6 +627,25 @@ export class MarkdownPreprocessor {
 			}
 		});
 	}
+	
+	/**
+	 * Filter out unnecessary links from the markdown content
+	 * This includes [[filename|Open: filename]] links and [Open in Mail.app](message://) links
+	 */
+	private filterUnnecessaryLinks(content: string, result: PreprocessingResult): string {
+		// Remove [[filename|Open: filename]] links from general content
+		let filtered = content.replace(/\[\[.*?\|Open:.*?\]\]/g, '');
+		
+		// Remove [Open in Mail.app](message://) links from general content
+		filtered = filtered.replace(/\[Open in Mail\.app\]\(message:\/\/[^)]+\)/g, '');
+		
+		// Clean up any resulting excessive newlines
+		filtered = filtered.replace(/\n{3,}/g, '\n\n');
+		
+		result.warnings.push('Filtered out unnecessary Open: and Mail.app links from content');
+		
+		return filtered;
+	}
 
 	/**
 	 * Process individual email block content and convert to Typst format
@@ -579,7 +655,15 @@ export class MarkdownPreprocessor {
 			// Split at --- to separate header from body
 			const parts = blockContent.split('---');
 			const yamlHeader = parts[0].trim();
-			const body = parts.length > 1 ? parts.slice(1).join('---').trim() : '';
+			let body = parts.length > 1 ? parts.slice(1).join('---').trim() : '';
+			
+			// Filter out unnecessary links from the body
+			// Remove [[filename|Open: filename]] links
+			body = body.replace(/\[\[.*?\|Open:.*?\]\]/g, '');
+			// Remove [Open in Mail.app](message://) links
+			body = body.replace(/\[Open in Mail\.app\]\(message:\/\/[^)]+\)/g, '');
+			// Clean up any resulting double newlines
+			body = body.replace(/\n{3,}/g, '\n\n').trim();
 			
 			// Parse YAML header
 			const params = this.parseEmailYaml(yamlHeader);
@@ -602,8 +686,8 @@ export class MarkdownPreprocessor {
 			}
 			
 			// Add body as string parameter (always present, even if empty)
-			// Use the formatBodyForTypst method to preserve paragraphs but keep as string
-			const bodyParam = `"${this.escapeQuotes(body)}"`;
+			// Use the escapeQuotes method to preserve paragraphs but keep as string
+			const bodyParam = `"${this.escapeBodyForTypst(body)}"`;
 			
 			// Construct the Typst email-block function call with proper line breaks
 			// Wrap in Pandoc raw blocks so it's treated as Typst code, not markdown text
@@ -708,6 +792,42 @@ export class MarkdownPreprocessor {
 			.replace(/'/g, "\\'")     // Escape single quotes to prevent smart quote conversion
 			.replace(/\n/g, '\\n')    // Convert newlines to literal \n for string parameters
 			.replace(/\r/g, '\\r');   // Convert carriage returns
+	}
+	
+	/**
+	 * Escape text for Typst string parameters while preserving actual newlines
+	 * Used specifically for email body content where we want to keep paragraph breaks
+	 * Also cleans up problematic Unicode characters that cause formatting issues
+	 */
+	private escapeBodyForTypst(text: string): string {
+		if (!text) return '';
+		
+		// First, clean up problematic Unicode characters
+		let cleaned = text
+			// Replace various Unicode spaces with regular spaces
+			.replace(/[\u00A0\u1680\u2000-\u200B\u202F\u205F\u3000\uFEFF]/g, ' ')
+			// Replace Unicode line separators with regular newlines
+			.replace(/[\u2028\u2029]/g, '\n') // Line Separator and Paragraph Separator
+			// Replace Unicode hyphens/dashes with regular hyphen
+			.replace(/[\u2010-\u2015\u2212]/g, '-')
+			// Remove or replace problematic symbols that can cause layout issues
+			.replace(/[\u2020\u2021]/g, '') // Remove dagger symbols
+			.replace(/[\u2022\u2023\u2043]/g, '• ') // Replace various bullets with standard bullet
+			// Remove zero-width characters
+			.replace(/[\u200B-\u200D\uFEFF]/g, '')
+			// Remove other problematic Unicode characters that can cause spacing issues
+			.replace(/[\u00AD\u061C\u180E\u2066-\u2069]/g, '')
+			// Normalize multiple spaces to single space (but preserve newlines)
+			.replace(/[ \t]+/g, ' ')
+			// Preserve paragraph breaks but clean up excessive newlines
+			.replace(/\n{3,}/g, '\n\n');
+		
+		// Then escape for Typst string safety
+		return cleaned
+			.replace(/\\/g, '\\\\')   // Escape backslashes first
+			.replace(/"/g, '\\"')     // Escape double quotes
+			.replace(/'/g, "\\'");    // Escape single quotes
+		// Note: DO NOT replace newlines - they should be preserved for proper formatting
 	}
 	
 	/**

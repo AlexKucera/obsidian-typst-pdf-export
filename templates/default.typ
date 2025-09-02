@@ -2,38 +2,38 @@
 #let email-block(from: none, to: none, subject: none, date: none, body) = {
   block(
     width: 100%, 
-    inset: 6pt, 
-    stroke: 1pt + gray, 
+    inset: 16pt, 
+    stroke: 0.5pt + blue, 
     radius: 5pt,
     breakable: true
   )[
     #grid(
       columns: (auto, 1fr),
-      row-gutter: 3pt,
+      row-gutter: 13pt,
       column-gutter: 8pt,
       if from != none [
-        #text(style: "italic", size: 0.9em)[From:]
+        #text(style: "italic", size: 1em)[From:]
       ] else [],
       if from != none [
-        #text(size: 0.9em)[#from]
+        #text(size: 1em)[#from]
       ] else [],
       if to != none [
-        #text(style: "italic", size: 0.9em)[To:]
+        #text(style: "italic", size: 1em)[To:]
       ] else [],
       if to != none [
-        #text(size: 0.9em)[#to]
+        #text(size: 1em)[#to]
       ] else [],
       if subject != none [
-        #text(style: "italic", size: 0.9em)[Subject:]
+        #text(style: "italic", size: 1em)[Subject:]
       ] else [],
       if subject != none [
-        #text(size: 0.9em)[#subject]
+        #text(size: 1em)[#subject]
       ] else [],
       if date != none [
-        #text(style: "italic", size: 0.9em)[Date:]
+        #text(style: "italic", size: 1em)[Date:]
       ] else [],
       if date != none [
-        #text(size: 0.9em)[#date]
+        #text(size: 1em)[#date]
       ] else [],
     )
     #if body != none [
@@ -55,7 +55,7 @@
   lang: "en",
   region: "US", 
   paper: "a4",
-  margin: (x: 1.5cm, y: 1.5cm),
+  margin: (x: 1.5cm, y: 1cm),
   cols: 1,
   font: ("Concourse OT 3", "Helvetica Neue", "Arial"),
   fontsize: 11pt,
@@ -66,7 +66,7 @@
   monospace_font: none,
   heading_fontsize: none,
   small_fontsize: none,
-  margin_top: none,
+  margin_top: 9cm,
   margin_right: none,
   margin_bottom: none,
   margin_left: none,
@@ -84,7 +84,7 @@
   // Use UI-configured margins if available, otherwise fall back to template defaults
   let page-margin = if margin_top != none {
     (
-      top: if margin_top != none { margin_top } else { 1.5cm },
+      top: if margin_top != none { margin_top } else { 9cm },
       right: if margin_right != none { margin_right } else { 1.5cm },
       bottom: if margin_bottom != none { margin_bottom } else { 1.5cm },
       left: if margin_left != none { margin_left } else { 1.5cm },
@@ -97,7 +97,8 @@
   // Set page layout with conditional height based on export format
   set page(
     paper: paper,
-    margin: page-margin,
+    flipped: false,
+    margin: (top: 2.5cm, right: 1.5cm, bottom: 2cm, left: 2.5cm),
     ..if export_format == "single-page" { (height: auto,) } else { (:) },
     numbering: pagenumbering,
     header: context {
@@ -125,7 +126,7 @@
   )
   
   // Set paragraph properties - Clean spacing
-  set par(justify: true, leading: 0.6em)
+  set par(justify: false, leading: 0.6em)
   
   // Set heading numbering
   if sectionnumbering != none {
@@ -162,10 +163,18 @@
     #it
   ]
 
+  // Apply monospace font to code blocks and inline code
+  let code-font = if monospace_font != none and type(monospace_font) == str {
+    (monospace_font, "Courier New", "Monaco")
+  } else {
+    ("Courier New", "Monaco")
+  }
+  
+  show raw: set text(font: code-font)
 
   // Title block - Clean and minimal
   if title != none and title != "" [
-    #align(center, text(16pt, weight: "bold")[#title])
+    #align(left, text(16pt, weight: "bold")[#title])
     #v(0.8em)
   ]
 

@@ -99,6 +99,7 @@
   // Set page layout with conditional height based on export format
   set page(
     paper: paper,
+    orientation: orientation,
     margin: page-margin,
     ..if export_format == "single-page" { (height: auto,) } else { (:) },
     numbering: pagenumbering,
@@ -136,7 +137,7 @@
   )
   
   // Magazine-style paragraphs
-  set par(justify: true, leading: 0.7em, first-line-indent: 0.8em)
+  set par(justify: false, leading: 0.7em, first-line-indent: 0.8em)
   
   // No heading numbering for magazine style
   if sectionnumbering != none {
@@ -182,6 +183,14 @@
     #it.body #h(0.5em) #line(length: 3cm, stroke: 1pt + rgb("#93c5fd"))
   ]
 
+  // Apply monospace font to code blocks and inline code
+  let code-font = if monospace_font != none and type(monospace_font) == str {
+    (monospace_font, "Courier New", "Monaco")
+  } else {
+    ("Courier New", "Monaco")
+  }
+  
+  show raw: set text(font: code-font)
 
   // Decorative title block with background
   if title != none and title != "" [

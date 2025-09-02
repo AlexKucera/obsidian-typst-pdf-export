@@ -67,7 +67,7 @@
   paper: "a4",
   margin: (x: 3cm, y: 2.5cm),
   cols: 1,
-  font: ("Concourse OT", "Helvetica Neue", "Arial", "sans-serif"),
+  font: ("Concourse OT 3", "Helvetica Neue", "Arial"),
   fontsize: 11pt,
   sectionnumbering: "1.",
   pagenumbering: "1",
@@ -105,6 +105,7 @@
   // Set page layout with conditional height based on export format
   set page(
     paper: paper,
+    orientation: orientation,
     margin: page-margin,
     ..if export_format == "single-page" { (height: auto,) } else { (:) },
     numbering: pagenumbering,
@@ -139,7 +140,7 @@
   // Business document font
   // Use UI-configured font if available, otherwise use template default
   let body-font = if font != none and type(font) == str { 
-    (font, "Concourse OT", "Helvetica Neue", "Arial", "sans-serif") 
+    (font, "Concourse OT 3", "Helvetica Neue", "Arial") 
   } else { 
     font 
   }
@@ -153,8 +154,9 @@
     region: region
   )
   
-  // Professional paragraph formatting
-  set par(justify: true, leading: 0.7em, first-line-indent: 0pt)
+  // Professional paragraph formatting - use left alignment instead of full justification
+  // Full justification can create ugly gaps in short lines and attachment text
+  set par(justify: false, leading: 0.7em, first-line-indent: 0pt)
   
   // Chapter-style numbering
   if sectionnumbering != none {
@@ -172,7 +174,7 @@
       inset: 12pt,
       stroke: (left: 4pt + rgb("#1f2937")),
     )[
-      #set text(font: ("SF Pro Text", "Helvetica Neue", "Arial", "sans-serif"), size: 18pt, weight: "bold", fill: rgb("#1f2937"))
+      #set text(font: ("SF Pro Text", "Helvetica Neue", "Arial"), size: 18pt, weight: "bold", fill: rgb("#1f2937"))
       #grid(
         columns: (auto, 1fr),
         column-gutter: 12pt,
@@ -189,7 +191,7 @@
     inset: (bottom: 6pt),
     stroke: (bottom: 1pt + rgb("#e5e7eb")),
   )[
-    #set text(font: ("SF Pro Text", "Helvetica Neue", "Arial", "sans-serif"), size: 14pt, weight: "semibold", fill: rgb("#374151"))
+    #set text(font: ("SF Pro Text", "Helvetica Neue", "Arial"), size: 14pt, weight: "semibold", fill: rgb("#374151"))
     #counter(heading).display()
     #h(0.8em)
     #it.body
@@ -206,6 +208,14 @@
     #it.body
   ]
 
+  // Apply monospace font to code blocks and inline code
+  let code-font = if monospace_font != none and type(monospace_font) == str {
+    (monospace_font, "Courier New", "Monaco")
+  } else {
+    ("Courier New", "Monaco")
+  }
+  
+  show raw: set text(font: code-font)
 
   // Professional title page
   if title != none and title != "" [
