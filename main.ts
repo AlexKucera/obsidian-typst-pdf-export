@@ -13,7 +13,8 @@ import {
 	Notice,
 	Menu,
 	MarkdownView,
-	Editor
+	Editor,
+	AbstractInputSuggest
 } from 'obsidian';
 
 import { obsidianTypstPDFExportSettings, DEFAULT_SETTINGS, ExportFormat } from './src/core/settings';
@@ -27,7 +28,7 @@ import * as fs from 'fs';
 export class obsidianTypstPDFExport extends Plugin {
 	settings: obsidianTypstPDFExportSettings;
 	private converter: PandocTypstConverter;
-	private templateManager: TemplateManager;
+	templateManager: TemplateManager;
 	private currentExportController: AbortController | null = null;
 	
 	async onload() {
@@ -263,6 +264,9 @@ export class obsidianTypstPDFExport extends Plugin {
 	 * Export a file with specific configuration
 	 */
 	private async exportFileWithConfig(file: TFile, config: ExportConfig): Promise<void> {
+		// Get plugin directory and vault base path
+		const vaultPath = (this.app.vault.adapter as any).basePath;
+		
 		try {
 			// Create abort controller for cancellation
 			this.currentExportController = new AbortController();
@@ -272,9 +276,6 @@ export class obsidianTypstPDFExport extends Plugin {
 			
 			// Read file content
 			const content = await this.app.vault.read(file);
-			
-			// Get plugin directory and vault base path
-			const vaultPath = (this.app.vault.adapter as any).basePath;
 			const pluginDir = path.join(vaultPath, '.obsidian', 'plugins', 'obsidian-typst-pdf-export');
 			
 			// Create temp directory for processing
@@ -453,13 +454,14 @@ export class obsidianTypstPDFExport extends Plugin {
 	/**
 	 * Show dependency status modal
 	 */
-	private async showDependencyStatus(): Promise<void> {
+	async showDependencyStatus(): Promise<void> {
 		const { exec } = require('child_process');
 		const { promisify } = require('util');
 		const execAsync = promisify(exec);
 		
 		let pandocVersion = 'Not found';
 		let typstVersion = 'Not found';
+		let imagemagickVersion = 'Not found';
 		
 		// Check Pandoc
 		try {
@@ -485,16 +487,34 @@ export class obsidianTypstPDFExport extends Plugin {
 			console.error('Typst check failed:', error);
 		}
 		
+		// Check ImageMagick/convert
+		try {
+			const convertPath = this.settings.executablePaths.imagemagickPath || 'convert';
+			const { stdout } = await execAsync(`${convertPath} --version`);
+			const match = stdout.match(/ImageMagick\s+([\d.-]+)/);
+			if (match) {
+				imagemagickVersion = match[1];
+			}
+		} catch (error) {
+			console.error('ImageMagick check failed:', error);
+		}
+		
 		// Show results in a notice
+		const missingDeps = [];
+		if (pandocVersion === 'Not found') missingDeps.push('Pandoc');
+		if (typstVersion === 'Not found') missingDeps.push('Typst');
+		if (imagemagickVersion === 'Not found') missingDeps.push('ImageMagick');
+		
 		const message = `Dependency Status:
 Pandoc: ${pandocVersion}
 Typst: ${typstVersion}
+ImageMagick: ${imagemagickVersion}
 
-${pandocVersion === 'Not found' || typstVersion === 'Not found' ? 
-	'Missing dependencies! Please install them and check the paths in settings.' : 
+${missingDeps.length > 0 ? 
+	`Missing dependencies: ${missingDeps.join(', ')}. Please install them and check the paths in settings.` : 
 	'All dependencies found!'}`;
 		
-		new Notice(message, 10000); // Show for 10 seconds
+		new Notice(message, 12000); // Show for 12 seconds (longer due to more content)
 	}
 
 	private async checkDependenciesAsync(): Promise<void> {
@@ -526,6 +546,13 @@ ${pandocVersion === 'Not found' || typstVersion === 'Not found' ?
 				execSync('typst --version', { encoding: 'utf8', env });
 			} catch {
 				missingDeps.push('Typst');
+			}
+			
+			// Check ImageMagick
+			try {
+				execSync('convert --version', { encoding: 'utf8', env });
+			} catch {
+				missingDeps.push('ImageMagick');
 			}
 			
 			// Only show notice if dependencies are missing
@@ -794,6 +821,34 @@ ${pandocVersion === 'Not found' || typstVersion === 'Not found' ?
 /**
  * Settings Tab
  */
+class FolderSuggest extends AbstractInputSuggest<string> {
+	private folders: string[];
+	private inputElement: HTMLInputElement;
+
+	constructor(app: App, inputEl: HTMLInputElement) {
+		super(app, inputEl);
+		this.inputElement = inputEl;
+		this.folders = ["/"].concat(this.app.vault.getAllFolders().map(folder => folder.path));
+	}
+
+	getSuggestions(inputStr: string): string[] {
+		const inputLower = inputStr.toLowerCase();
+		return this.folders.filter(folder => 
+			folder.toLowerCase().includes(inputLower)
+		);
+	}
+
+	renderSuggestion(folder: string, el: HTMLElement): void {
+		el.createEl("div", { text: folder });
+	}
+
+	selectSuggestion(folder: string): void {
+		this.inputElement.value = folder;
+		this.inputElement.dispatchEvent(new Event('input'));
+		this.close();
+	}
+}
+
 class ObsidianTypstPDFExportSettingTab extends PluginSettingTab {
 	plugin: obsidianTypstPDFExport;
 	
@@ -817,12 +872,26 @@ class ObsidianTypstPDFExportSettingTab extends PluginSettingTab {
 		// Typography defaults section
 		this.createTypographyDefaultsSection(containerEl);
 		
+		// Page setup section
+		this.createPageSetupSection(containerEl);
+		
 		// Behavior section
 		this.createBehaviorSection(containerEl);
 	}
 	
 	private createExecutablePathsSection(containerEl: HTMLElement): void {
 		containerEl.createEl('h3', { text: 'Executable Paths' });
+		
+		// Add dependency check button
+		new Setting(containerEl)
+			.setName('Dependencies')
+			.setDesc('Check the status of external dependencies')
+			.addButton(button => button
+				.setButtonText('Check Dependencies')
+				.setCta()
+				.onClick(async () => {
+					await this.plugin.showDependencyStatus();
+				}));
 		
 		new Setting(containerEl)
 			.setName('Pandoc path')
@@ -845,6 +914,31 @@ class ObsidianTypstPDFExportSettingTab extends PluginSettingTab {
 					this.plugin.settings.typstPath = value;
 					await this.plugin.saveSettings();
 				}));
+		
+		new Setting(containerEl)
+			.setName('ImageMagick convert path')
+			.setDesc('Path to ImageMagick convert executable (leave empty to use system PATH)')
+			.addText(text => text
+				.setPlaceholder('convert')
+				.setValue(this.plugin.settings.executablePaths.imagemagickPath)
+				.onChange(async (value) => {
+					this.plugin.settings.executablePaths.imagemagickPath = value;
+					await this.plugin.saveSettings();
+				}));
+		
+		new Setting(containerEl)
+			.setName('Additional system paths')
+			.setDesc('Additional paths to search for executables (comma-separated)')
+			.addText(text => text
+				.setPlaceholder('/opt/homebrew/bin, /usr/local/bin')
+				.setValue(this.plugin.settings.executablePaths.additionalPaths.join(', '))
+				.onChange(async (value) => {
+					this.plugin.settings.executablePaths.additionalPaths = value
+						.split(',')
+						.map(p => p.trim())
+						.filter(p => p.length > 0);
+					await this.plugin.saveSettings();
+				}));
 	}
 	
 	private createExportDefaultsSection(containerEl: HTMLElement): void {
@@ -853,13 +947,31 @@ class ObsidianTypstPDFExportSettingTab extends PluginSettingTab {
 		new Setting(containerEl)
 			.setName('Default template')
 			.setDesc('Default Typst template for exports')
-			.addText(text => text
-				.setPlaceholder('default')
-				.setValue(this.plugin.settings.exportDefaults.template)
-				.onChange(async (value) => {
-					this.plugin.settings.exportDefaults.template = value;
-					await this.plugin.saveSettings();
-				}));
+			.addDropdown(async (dropdown) => {
+				try {
+					const templates = await this.plugin.templateManager.getAvailableTemplates();
+					// Filter out universal-wrapper.pandoc.typ as requested
+					const filteredTemplates = templates.filter(template => 
+						template !== 'universal-wrapper.pandoc.typ'
+					);
+					
+					filteredTemplates.forEach(template => {
+						dropdown.addOption(template, template);
+					});
+					
+					dropdown
+						.setValue(this.plugin.settings.exportDefaults.template)
+						.onChange(async (value) => {
+							this.plugin.settings.exportDefaults.template = value;
+							await this.plugin.saveSettings();
+						});
+				} catch (error) {
+					console.error('Failed to load templates:', error);
+					// Fallback to text input
+					dropdown.addOption('default.typ', 'default.typ');
+					dropdown.setValue(this.plugin.settings.exportDefaults.template);
+				}
+			});
 		
 		new Setting(containerEl)
 			.setName('Default format')
@@ -876,13 +988,17 @@ class ObsidianTypstPDFExportSettingTab extends PluginSettingTab {
 		new Setting(containerEl)
 			.setName('Output folder')
 			.setDesc('Default folder for exported PDFs (relative to vault root)')
-			.addText(text => text
-				.setPlaceholder('exports')
-				.setValue(this.plugin.settings.outputFolder)
-				.onChange(async (value) => {
-					this.plugin.settings.outputFolder = value;
-					await this.plugin.saveSettings();
-				}));
+			.addText(text => {
+				text
+					.setPlaceholder('exports')
+					.setValue(this.plugin.settings.outputFolder)
+					.onChange(async (value) => {
+						this.plugin.settings.outputFolder = value;
+						await this.plugin.saveSettings();
+					});
+
+				new FolderSuggest(this.app, text.inputEl);
+			});
 	}
 	
 	private createTypographyDefaultsSection(containerEl: HTMLElement): void {
@@ -891,32 +1007,68 @@ class ObsidianTypstPDFExportSettingTab extends PluginSettingTab {
 		new Setting(containerEl)
 			.setName('Body font')
 			.setDesc('Default font for body text')
-			.addText(text => text
-				.setValue(this.plugin.settings.typography.fonts.body)
-				.onChange(async (value) => {
-					this.plugin.settings.typography.fonts.body = value;
-					await this.plugin.saveSettings();
-				}));
+			.addDropdown(async (dropdown) => {
+				try {
+					const fonts = await this.getAvailableFonts();
+					fonts.forEach(font => {
+						dropdown.addOption(font, font);
+					});
+					
+					dropdown
+						.setValue(this.plugin.settings.typography.fonts.body)
+						.onChange(async (value) => {
+							this.plugin.settings.typography.fonts.body = value;
+							await this.plugin.saveSettings();
+						});
+				} catch (error) {
+					console.error('Failed to load fonts:', error);
+					dropdown.addOption(this.plugin.settings.typography.fonts.body, this.plugin.settings.typography.fonts.body);
+				}
+			});
 		
 		new Setting(containerEl)
 			.setName('Heading font')
 			.setDesc('Default font for headings')
-			.addText(text => text
-				.setValue(this.plugin.settings.typography.fonts.heading)
-				.onChange(async (value) => {
-					this.plugin.settings.typography.fonts.heading = value;
-					await this.plugin.saveSettings();
-				}));
+			.addDropdown(async (dropdown) => {
+				try {
+					const fonts = await this.getAvailableFonts();
+					fonts.forEach(font => {
+						dropdown.addOption(font, font);
+					});
+					
+					dropdown
+						.setValue(this.plugin.settings.typography.fonts.heading)
+						.onChange(async (value) => {
+							this.plugin.settings.typography.fonts.heading = value;
+							await this.plugin.saveSettings();
+						});
+				} catch (error) {
+					console.error('Failed to load fonts:', error);
+					dropdown.addOption(this.plugin.settings.typography.fonts.heading, this.plugin.settings.typography.fonts.heading);
+				}
+			});
 		
 		new Setting(containerEl)
 			.setName('Monospace font')
 			.setDesc('Default font for code and monospace text')
-			.addText(text => text
-				.setValue(this.plugin.settings.typography.fonts.monospace)
-				.onChange(async (value) => {
-					this.plugin.settings.typography.fonts.monospace = value;
-					await this.plugin.saveSettings();
-				}));
+			.addDropdown(async (dropdown) => {
+				try {
+					const fonts = await this.getAvailableFonts();
+					fonts.forEach(font => {
+						dropdown.addOption(font, font);
+					});
+					
+					dropdown
+						.setValue(this.plugin.settings.typography.fonts.monospace)
+						.onChange(async (value) => {
+							this.plugin.settings.typography.fonts.monospace = value;
+							await this.plugin.saveSettings();
+						});
+				} catch (error) {
+					console.error('Failed to load fonts:', error);
+					dropdown.addOption(this.plugin.settings.typography.fonts.monospace, this.plugin.settings.typography.fonts.monospace);
+				}
+			});
 		
 		new Setting(containerEl)
 			.setName('Body font size')
@@ -929,28 +1081,79 @@ class ObsidianTypstPDFExportSettingTab extends PluginSettingTab {
 					this.plugin.settings.typography.fontSizes.body = value;
 					await this.plugin.saveSettings();
 				}));
+	}
+	
+	private createPageSetupSection(containerEl: HTMLElement): void {
+		containerEl.createEl('h3', { text: 'Page Setup' });
 		
 		new Setting(containerEl)
-			.setName('Heading font size')
-			.setDesc('Default font size for headings (in points)')
-			.addSlider(slider => slider
-				.setLimits(10, 24, 0.5)
-				.setValue(this.plugin.settings.typography.fontSizes.heading)
-				.setDynamicTooltip()
+			.setName('Page size')
+			.setDesc('Paper size for PDF output')
+			.addDropdown(dropdown => dropdown
+				.addOption('a4', 'A4')
+				.addOption('a5', 'A5')
+				.addOption('letter', 'US Letter')
+				.addOption('legal', 'US Legal')
+				.addOption('a3', 'A3')
+				.setValue(this.plugin.settings.pageSetup.size)
 				.onChange(async (value) => {
-					this.plugin.settings.typography.fontSizes.heading = value;
+					this.plugin.settings.pageSetup.size = value;
 					await this.plugin.saveSettings();
 				}));
 		
 		new Setting(containerEl)
-			.setName('Small font size')
-			.setDesc('Default font size for small text (in points)')
-			.addSlider(slider => slider
-				.setLimits(6, 12, 0.5)
-				.setValue(this.plugin.settings.typography.fontSizes.small)
-				.setDynamicTooltip()
+			.setName('Page orientation')
+			.setDesc('Page orientation')
+			.addDropdown(dropdown => dropdown
+				.addOption('portrait', 'Portrait')
+				.addOption('landscape', 'Landscape')
+				.setValue(this.plugin.settings.pageSetup.orientation)
 				.onChange(async (value) => {
-					this.plugin.settings.typography.fontSizes.small = value;
+					this.plugin.settings.pageSetup.orientation = value as 'portrait' | 'landscape';
+					await this.plugin.saveSettings();
+				}));
+		
+		new Setting(containerEl)
+			.setName('Top margin')
+			.setDesc('Top page margin in centimeters')
+			.addText(text => text
+				.setPlaceholder('2.54')
+				.setValue(this.formatSingleMarginForDisplay(this.plugin.settings.pageSetup.margins.top))
+				.onChange(async (value) => {
+					this.plugin.settings.pageSetup.margins.top = this.parseMarginValue(value, 72);
+					await this.plugin.saveSettings();
+				}));
+
+		new Setting(containerEl)
+			.setName('Bottom margin')
+			.setDesc('Bottom page margin in centimeters')
+			.addText(text => text
+				.setPlaceholder('2.54')
+				.setValue(this.formatSingleMarginForDisplay(this.plugin.settings.pageSetup.margins.bottom))
+				.onChange(async (value) => {
+					this.plugin.settings.pageSetup.margins.bottom = this.parseMarginValue(value, 72);
+					await this.plugin.saveSettings();
+				}));
+
+		new Setting(containerEl)
+			.setName('Left margin')
+			.setDesc('Left page margin in centimeters')
+			.addText(text => text
+				.setPlaceholder('2.54')
+				.setValue(this.formatSingleMarginForDisplay(this.plugin.settings.pageSetup.margins.left))
+				.onChange(async (value) => {
+					this.plugin.settings.pageSetup.margins.left = this.parseMarginValue(value, 72);
+					await this.plugin.saveSettings();
+				}));
+
+		new Setting(containerEl)
+			.setName('Right margin')
+			.setDesc('Right page margin in centimeters')
+			.addText(text => text
+				.setPlaceholder('2.54')
+				.setValue(this.formatSingleMarginForDisplay(this.plugin.settings.pageSetup.margins.right))
+				.onChange(async (value) => {
+					this.plugin.settings.pageSetup.margins.right = this.parseMarginValue(value, 72);
 					await this.plugin.saveSettings();
 				}));
 	}
@@ -987,6 +1190,53 @@ class ObsidianTypstPDFExportSettingTab extends PluginSettingTab {
 					this.plugin.settings.behavior.debugMode = value;
 					await this.plugin.saveSettings();
 				}));
+	}
+	
+	// Helper methods for fonts
+	private async getAvailableFonts(): Promise<string[]> {
+		try {
+			const { exec } = require('child_process');
+			const { promisify } = require('util');
+			const execAsync = promisify(exec);
+			
+			const typstPath = this.plugin.settings.typstPath || 'typst';
+			const { stdout } = await execAsync(`${typstPath} fonts`);
+			
+			const fonts = stdout
+				.split('\n')
+				.map((line: string) => line.trim())
+				.filter((line: string) => line.length > 0)
+				.sort();
+			
+			return fonts;
+		} catch (error) {
+			console.error('Failed to get fonts from typst:', error);
+			// Return common fallback fonts
+			return [
+				'Times New Roman',
+				'Arial',
+				'Helvetica',
+				'Georgia',
+				'Courier New',
+				'Monaco',
+				'SF Pro Text',
+				'SF Mono',
+				'Concourse OT',
+				'UbuntuMono Nerd Font Mono'
+			];
+		}
+	}
+	
+	// Helper methods for margin conversion
+	private formatSingleMarginForDisplay(marginPoints: number): string {
+		// Convert from points to CM (1 point = 0.035278 cm)
+		const marginCm = (marginPoints * 0.035278).toFixed(2);
+		return marginCm;
+	}
+	
+	private parseMarginValue(value: string, defaultPoints: number): number {
+		const cm = parseFloat(value.trim());
+		return isNaN(cm) ? defaultPoints : cm / 0.035278; // Convert CM to points
 	}
 }
 
