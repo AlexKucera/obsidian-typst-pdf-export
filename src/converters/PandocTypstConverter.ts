@@ -255,213 +255,256 @@ export class PandocTypstConverter {
 	 * Build pandoc command-line arguments
 	 */
 	private async buildPandocArgs(inputPath: string, outputPath: string): Promise<string[]> {
-		const args: string[] = [];
+	const args: string[] = [];
 
-		// Input file
-		args.push(inputPath);
+	// Input file
+	args.push(inputPath);
 
-		// Output file
-		args.push('-o', outputPath);
+	// Output file
+	args.push('-o', outputPath);
 
-		// Specify input format as markdown with smart extension disabled
-		args.push('--from', 'markdown-smart');
+	// Specify input format as markdown with smart extension disabled
+	args.push('--from', 'markdown-smart');
 
-		// Set PDF engine to Typst (use configured path if available)
-		if (this.pandocOptions.typstPath) {
-			args.push(`--pdf-engine=${this.pandocOptions.typstPath}`);
-		} else {
-			args.push('--pdf-engine=typst');
+	// Set PDF engine to Typst (use configured path if available)
+	if (this.pandocOptions.typstPath) {
+		args.push(`--pdf-engine=${this.pandocOptions.typstPath}`);
+	} else {
+		args.push('--pdf-engine=typst');
+	}
+
+	// Enable standalone mode (required for PDF output)
+	args.push('--standalone');
+
+	// Embed resources (images, etc.) directly into the output
+	args.push('--embed-resources');
+
+	// Add resource paths for attachment resolution
+	if (this.pandocOptions.vaultBasePath) {
+		const fs = require('fs');
+		
+		// Add vault root as primary resource path
+		args.push('--resource-path', this.pandocOptions.vaultBasePath);
+		
+		// Add common attachment directories as additional resource paths
+		const commonAttachmentPaths = [
+			path.join(this.pandocOptions.vaultBasePath, 'attachments'),
+			path.join(this.pandocOptions.vaultBasePath, 'assets'),
+			path.join(this.pandocOptions.vaultBasePath, 'files'),
+			path.join(this.pandocOptions.vaultBasePath, 'images'),
+			path.join(this.pandocOptions.vaultBasePath, '.attachments')
+		];
+		
+		// Check if these directories exist and add them
+		for (const attachPath of commonAttachmentPaths) {
+			if (fs.existsSync(attachPath)) {
+				args.push('--resource-path', attachPath);
+				console.log('Added resource path:', attachPath);
+			}
 		}
+		
+		// Also scan for note-specific attachment folders (Obsidian often creates these)
+		try {
+			const vaultContents = fs.readdirSync(this.pandocOptions.vaultBasePath);
+			for (const item of vaultContents) {
+				const itemPath = path.join(this.pandocOptions.vaultBasePath, item);
+				const stat = fs.statSync(itemPath);
+				if (stat.isDirectory() && !item.startsWith('.') && !item.startsWith('_')) {
+					// Check if this directory contains images
+					try {
+						const dirContents = fs.readdirSync(itemPath);
+						const hasImages = dirContents.some((file: string) => 
+							/\.(png|jpg|jpeg|gif|svg|webp|bmp|ico|tiff)$/i.test(file)
+						);
+						if (hasImages) {
+							args.push('--resource-path', itemPath);
+							console.log('Added note-specific resource path:', itemPath);
+						}
+					} catch (e) {
+						// Ignore directories we can't read
+					}
+				}
+			}
+		} catch (e) {
+			console.warn('Could not scan vault for attachment directories:', e);
+		}
+	}
 
-		// Enable standalone mode (required for PDF output)
-		args.push('--standalone');
+	// Use universal wrapper with --template and pass actual template as template_path variable
+	if (this.pandocOptions.template) {
+		// Get absolute path to universal wrapper using plugin directory from pandocOptions
+		const fs = require('fs');
+		const absolutePluginDir = this.pandocOptions.pluginDir || '';
+		const wrapperPath = path.resolve(absolutePluginDir, 'templates', 'universal-wrapper.pandoc.typ');
+		console.log('Universal wrapper path:', wrapperPath);
+		
+		// Verify wrapper exists
+		if (!fs.existsSync(wrapperPath)) {
+			throw new Error(`Universal wrapper template not found at: ${wrapperPath}`);
+		}
+		
+		args.push('--template', wrapperPath);
+		
+		// Pass the actual template path as a variable
+		// Make the path relative to the vault (working directory) for Typst
+		let templatePathForTypst = this.pandocOptions.template;
+		if (this.pandocOptions.vaultBasePath && path.isAbsolute(templatePathForTypst)) {
+			// If template path is absolute and inside vault, make it relative
+			if (templatePathForTypst.startsWith(this.pandocOptions.vaultBasePath)) {
+				templatePathForTypst = path.relative(this.pandocOptions.vaultBasePath, templatePathForTypst);
+			}
+		}
+		args.push('-V', `template_path=${templatePathForTypst}`);
+	}
 
-		// Embed resources (images, etc.) directly into the output
-		args.push('--embed-resources');
+	// Add variables from the ExportConfig (these take priority)
+	// These come from the modal and include all the new template variables
+	if (this.pandocOptions.variables) {
+		for (const [key, value] of Object.entries(this.pandocOptions.variables)) {
+			if (value !== null && value !== undefined && value.toString().trim() !== '') {
+				// Handle special variable name mappings for Typst compatibility
+				let variableName = key;
+				switch (key) {
+					case 'bodyFont':
+						variableName = 'font';
+						break;
+					case 'headingFont':
+						variableName = 'heading_font';
+						break;
+					case 'monospaceFont':
+						variableName = 'monospace_font';
+						break;
+					case 'bodyFontSize':
+						variableName = 'fontsize';
+						break;
+					case 'pageSize':
+						variableName = 'paper';
+						break;
+					case 'marginTop':
+						variableName = 'margin_top';
+						break;
+					case 'marginBottom':
+						variableName = 'margin_bottom';
+						break;
+					case 'marginLeft':
+						variableName = 'margin_left';
+						break;
+					case 'marginRight':
+						variableName = 'margin_right';
+						break;
+					// Keep other variables as-is (orientation, flipped, width, etc.)
+				}
+				
+				args.push('-V', `${variableName}=${value}`);
+			}
+		}
+	}
 
-		// Add resource paths for attachment resolution
-		if (this.pandocOptions.vaultBasePath) {
-			const fs = require('fs');
-			
-			// Add vault root as primary resource path
-			args.push('--resource-path', this.pandocOptions.vaultBasePath);
-			
-			// Add common attachment directories as additional resource paths
-			const commonAttachmentPaths = [
-				path.join(this.pandocOptions.vaultBasePath, 'attachments'),
-				path.join(this.pandocOptions.vaultBasePath, 'assets'),
-				path.join(this.pandocOptions.vaultBasePath, 'files'),
-				path.join(this.pandocOptions.vaultBasePath, 'images'),
-				path.join(this.pandocOptions.vaultBasePath, '.attachments')
-			];
-			
-			// Check if these directories exist and add them
-			for (const attachPath of commonAttachmentPaths) {
-				if (fs.existsSync(attachPath)) {
-					args.push('--resource-path', attachPath);
-					console.log('Added resource path:', attachPath);
+	// Add fallback typography and page setup from plugin settings
+	// Only add these if not already provided by ExportConfig variables
+	if (this.plugin && this.plugin.settings) {
+		const settings: obsidianTypstPDFExportSettings = this.plugin.settings;
+		const existingVars = this.pandocOptions.variables || {};
+		
+		// Add typography variables only if not already present in variables
+		if (settings.typography) {
+			if (settings.typography.fonts) {
+				// Only add if not already in variables from ExportConfig
+				if (!existingVars.bodyFont && !existingVars.font && settings.typography.fonts.body) {
+					args.push('-V', `font=${settings.typography.fonts.body}`);
+				}
+				if (!existingVars.headingFont && !existingVars.heading_font && settings.typography.fonts.heading) {
+					args.push('-V', `heading_font=${settings.typography.fonts.heading}`);
+				}
+				if (!existingVars.monospaceFont && !existingVars.monospace_font && settings.typography.fonts.monospace) {
+					args.push('-V', `monospace_font=${settings.typography.fonts.monospace}`);
 				}
 			}
 			
-			// Also scan for note-specific attachment folders (Obsidian often creates these)
+			if (settings.typography.fontSizes) {
+				if (!existingVars.bodyFontSize && !existingVars.fontsize && settings.typography.fontSizes.body) {
+					args.push('-V', `fontsize=${settings.typography.fontSizes.body}pt`);
+				}
+				if (!existingVars.heading_fontsize && settings.typography.fontSizes.heading) {
+					args.push('-V', `heading_fontsize=${settings.typography.fontSizes.heading}pt`);
+				}
+				if (!existingVars.small_fontsize && settings.typography.fontSizes.small) {
+					args.push('-V', `small_fontsize=${settings.typography.fontSizes.small}pt`);
+				}
+			}
+		}
+		
+		// Add page setup variables only if not already present
+		if (settings.pageSetup) {
+			if (!existingVars.pageSize && !existingVars.paper && settings.pageSetup.size) {
+				args.push('-V', `paper=${settings.pageSetup.size}`);
+			}
+			if (!existingVars.orientation && settings.pageSetup.orientation) {
+				args.push('-V', `orientation=${settings.pageSetup.orientation}`);
+			}
+			
+			// Add margin fallbacks only if not already specified
+			if (settings.pageSetup.margins) {
+				const margins = settings.pageSetup.margins;
+				if (!existingVars.marginTop && !existingVars.margin_top && margins.top !== undefined) {
+					const topCm = (margins.top * 0.0352778).toFixed(2);
+					args.push('-V', `margin_top=${topCm}cm`);
+				}
+				if (!existingVars.marginRight && !existingVars.margin_right && margins.right !== undefined) {
+					const rightCm = (margins.right * 0.0352778).toFixed(2);
+					args.push('-V', `margin_right=${rightCm}cm`);
+				}
+				if (!existingVars.marginBottom && !existingVars.margin_bottom && margins.bottom !== undefined) {
+					const bottomCm = (margins.bottom * 0.0352778).toFixed(2);
+					args.push('-V', `margin_bottom=${bottomCm}cm`);
+				}
+				if (!existingVars.marginLeft && !existingVars.margin_left && margins.left !== undefined) {
+					const leftCm = (margins.left * 0.0352778).toFixed(2);
+					args.push('-V', `margin_left=${leftCm}cm`);
+				}
+			}
+		}
+		
+		// Add export format variable  
+		if (!existingVars.export_format && settings.exportDefaults && settings.exportDefaults.format) {
+			args.push('-V', `export_format=${settings.exportDefaults.format}`);
+		}
+	}
+
+	// Add Typst engine options
+	if (this.typstSettings.engineOptions) {
+		for (const option of this.typstSettings.engineOptions) {
+			args.push('--pdf-engine-opt', option);
+		}
+	}
+
+	// Generate intermediate Typst file if requested
+	if (this.pandocOptions.generateIntermediateTypst) {
+		const tempDir = await this.ensureTempDirectory();
+		const typstPath = path.join(tempDir, 'intermediate.typ');
+		args.push('--output', typstPath);
+		
+		// Also create a copy to keep for debugging
+		const debugTypstPath = path.join(tempDir, 'debug.typ');
+		this.cleanupHandlers.push(() => {
 			try {
-				const vaultContents = fs.readdirSync(this.pandocOptions.vaultBasePath);
-				for (const item of vaultContents) {
-					const itemPath = path.join(this.pandocOptions.vaultBasePath, item);
-					const stat = fs.statSync(itemPath);
-					if (stat.isDirectory() && !item.startsWith('.') && !item.startsWith('_')) {
-						// Check if this directory contains images
-						try {
-							const dirContents = fs.readdirSync(itemPath);
-							const hasImages = dirContents.some((file: string) => 
-								/\.(png|jpg|jpeg|gif|svg|webp|bmp|ico|tiff)$/i.test(file)
-							);
-							if (hasImages) {
-								args.push('--resource-path', itemPath);
-								console.log('Added note-specific resource path:', itemPath);
-							}
-						} catch (e) {
-							// Ignore directories we can't read
-						}
-					}
+				const fs = require('fs');
+				if (fs.existsSync(typstPath)) {
+					fs.copyFileSync(typstPath, debugTypstPath);
 				}
 			} catch (e) {
-				console.warn('Could not scan vault for attachment directories:', e);
+				console.warn('Could not create debug Typst file:', e);
 			}
-		}
-
-		// Use universal wrapper with --template and pass actual template as template_path variable
-		if (this.pandocOptions.template) {
-			// Get absolute path to universal wrapper using plugin directory from pandocOptions
-			const fs = require('fs');
-			const absolutePluginDir = this.pandocOptions.pluginDir || '';
-			const wrapperPath = path.resolve(absolutePluginDir, 'templates', 'universal-wrapper.pandoc.typ');
-			console.log('Universal wrapper path:', wrapperPath);
-			
-			// Verify wrapper exists
-			if (!fs.existsSync(wrapperPath)) {
-				throw new Error(`Universal wrapper template not found at: ${wrapperPath}`);
-			}
-			
-			args.push('--template', wrapperPath);
-			
-			// Pass the actual template path as a variable
-			// Make the path relative to the vault (working directory) for Typst
-			let templatePathForTypst = this.pandocOptions.template;
-			if (this.pandocOptions.vaultBasePath && path.isAbsolute(templatePathForTypst)) {
-				// If template path is absolute and inside vault, make it relative
-				if (templatePathForTypst.startsWith(this.pandocOptions.vaultBasePath)) {
-					templatePathForTypst = path.relative(this.pandocOptions.vaultBasePath, templatePathForTypst);
-				}
-			}
-			args.push('-V', `template_path=${templatePathForTypst}`);
-		}
-
-		// Add variables for document metadata
-		// These variables come from the ExportConfig and include font settings from the modal
-		if (this.pandocOptions.variables) {
-			for (const [key, value] of Object.entries(this.pandocOptions.variables)) {
-				if (value && value.toString().trim() !== '') {
-					// Don't add quotes around the value - pandoc handles this
-					args.push('-V', `${key}=${value}`);
-				}
-			}
-		}
-
-		// Only add typography settings from plugin settings if they're not already in variables
-		// This prevents duplicate font variables
-		if (this.plugin && this.plugin.settings) {
-			const settings: obsidianTypstPDFExportSettings = this.plugin.settings;
-			const existingVars = this.pandocOptions.variables || {};
-			
-			// Add typography variables only if not already present in variables
-			if (settings.typography) {
-				if (settings.typography.fonts) {
-					// Only add if not already in variables from ExportConfig
-					if (!existingVars.font && settings.typography.fonts.body) {
-						args.push('-V', `font=${settings.typography.fonts.body}`);
-					}
-					if (!existingVars.heading_font && settings.typography.fonts.heading) {
-						args.push('-V', `heading_font=${settings.typography.fonts.heading}`);
-					}
-					if (!existingVars.monospace_font && settings.typography.fonts.monospace) {
-						args.push('-V', `monospace_font=${settings.typography.fonts.monospace}`);
-					}
-				}
-				
-				if (settings.typography.fontSizes) {
-					if (!existingVars.fontsize && settings.typography.fontSizes.body) {
-						args.push('-V', `fontsize=${settings.typography.fontSizes.body}pt`);
-					}
-					if (!existingVars.heading_fontsize && settings.typography.fontSizes.heading) {
-						args.push('-V', `heading_fontsize=${settings.typography.fontSizes.heading}pt`);
-					}
-					if (!existingVars.small_fontsize && settings.typography.fontSizes.small) {
-						args.push('-V', `small_fontsize=${settings.typography.fontSizes.small}pt`);
-					}
-				}
-			}
-			
-			// Add page setup variables
-			if (settings.pageSetup) {
-				if (settings.pageSetup.size) {
-					args.push('-V', `paper=${settings.pageSetup.size}`);
-				}
-				if (settings.pageSetup.orientation) {
-					args.push('-V', `orientation=${settings.pageSetup.orientation}`);
-				}
-				
-				// Convert margin points to cm for Typst (1 point = 0.0352778 cm)
-				if (settings.pageSetup.margins) {
-					const margins = settings.pageSetup.margins;
-					if (margins.top !== undefined) {
-						const topCm = (margins.top * 0.0352778).toFixed(2);
-						args.push('-V', `margin_top=${topCm}cm`);
-					}
-					if (margins.right !== undefined) {
-						const rightCm = (margins.right * 0.0352778).toFixed(2);
-						args.push('-V', `margin_right=${rightCm}cm`);
-					}
-					if (margins.bottom !== undefined) {
-						const bottomCm = (margins.bottom * 0.0352778).toFixed(2);
-						args.push('-V', `margin_bottom=${bottomCm}cm`);
-					}
-					if (margins.left !== undefined) {
-						const leftCm = (margins.left * 0.0352778).toFixed(2);
-						args.push('-V', `margin_left=${leftCm}cm`);
-					}
-				}
-			}
-			
-			// Add export format variable  
-			if (settings.exportDefaults) {
-				if (settings.exportDefaults.format) {
-					args.push('-V', `export_format=${settings.exportDefaults.format}`);
-				}
-			}
-		}
-
-		// Add Typst engine options
-		if (this.typstSettings.engineOptions) {
-			for (const option of this.typstSettings.engineOptions) {
-				args.push('--pdf-engine-opt', option);
-			}
-		}
-
-		// Generate intermediate Typst file if requested
-		if (this.pandocOptions.generateIntermediateTypst) {
-			const tempDir = await this.ensureTempDirectory();
-			const typstPath = path.join(tempDir, 'intermediate.typ');
-			args.push('--output', typstPath);
-		}
-
-		// Add additional arguments
-		if (this.pandocOptions.additionalArgs) {
-			args.push(...this.pandocOptions.additionalArgs);
-		}
-
-		return args;
+		});
 	}
+
+	// Add working directory for relative paths
+	if (this.pandocOptions.vaultBasePath) {
+		process.chdir(this.pandocOptions.vaultBasePath);
+	}
+
+	return args;
+}
 
 	/**
 	 * Execute pandoc process with the given arguments

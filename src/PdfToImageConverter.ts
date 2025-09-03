@@ -90,6 +90,11 @@ export class PdfToImageConverter {
 			// Ensure output directory exists
 			await fs.mkdir(outputDir, { recursive: true });
 
+			// Calculate relative path from vault to temp directory for pdf2img
+			// pdf2img doesn't handle absolute paths correctly, needs relative paths
+			const vaultPath = process.cwd(); // This should be the vault directory
+			const relativeOutputDir = path.relative(vaultPath, outputDir);
+
 			// Generate output file name for the first page
 			const pdfBaseName = path.basename(pdfPath, path.extname(pdfPath));
 			// pdf2img uses the pattern: "filename-1.png" for first page
@@ -147,7 +152,7 @@ export class PdfToImageConverter {
 				`"${pdf2imgPath}"`,
 				`"${pdfPath}"`,
 				'--scale', opts.scale.toString(),
-				'--output', `"${outputDir}"`,
+				'--output', `"${relativeOutputDir}"`,
 				'--pages', '1' // Only convert the first page
 			].join(' ');
 
@@ -166,7 +171,9 @@ export class PdfToImageConverter {
 						: '')
 				};
 				
-				const result = await execAsync(cliCommand, { env });
+				const result = await execAsync(cliCommand, { 
+					env
+				});
 				console.log(`PDF conversion stdout: ${result.stdout}`);
 				if (result.stderr) {
 					console.warn(`PDF conversion stderr: ${result.stderr}`);
@@ -183,16 +190,52 @@ export class PdfToImageConverter {
 			}
 
 			// Check if the expected output file exists
+			let actualOutputPath = expectedOutputPath;
 			try {
 				await fs.access(expectedOutputPath);
 			} catch (error) {
-				return {
-					imagePath: '',
-					originalDimensions: { width: 0, height: 0 },
-					imageDimensions: { width: 0, height: 0 },
-					success: false,
-					error: `Generated image file not found: ${expectedOutputPath}`
-				};
+				// Debug: List what files are actually in the output directory
+				try {
+					const files = await fs.readdir(outputDir);
+					console.log(`Files in output directory (${outputDir}):`, files);
+					
+					// Look for any PNG files that might match
+					const pngFiles = files.filter(f => f.endsWith('.png'));
+					if (pngFiles.length > 0) {
+						console.log(`Found PNG files:`, pngFiles);
+						
+						// Try to find a file that matches the pattern (with or without exact name)
+						// pdf2img might sanitize filenames differently
+						const matchingFile = pngFiles.find(f => {
+							// Try exact match first
+							if (f === expectedOutputFileName) return true;
+							// Try partial match by removing special characters
+							const simplifiedExpected = expectedOutputFileName.replace(/[^a-zA-Z0-9.-]/g, '');
+							const simplifiedActual = f.replace(/[^a-zA-Z0-9.-]/g, '');
+							return simplifiedActual === simplifiedExpected;
+						}) || pngFiles[0]; // Fallback to first PNG file
+						
+						if (matchingFile) {
+							actualOutputPath = path.join(outputDir, matchingFile);
+							console.log(`Using found PNG file: ${actualOutputPath}`);
+						}
+					}
+				} catch (listError) {
+					console.error(`Failed to list output directory:`, listError);
+				}
+				
+				// Final check if we found an alternative file
+				try {
+					await fs.access(actualOutputPath);
+				} catch (finalError) {
+					return {
+						imagePath: '',
+						originalDimensions: { width: 0, height: 0 },
+						imageDimensions: { width: 0, height: 0 },
+						success: false,
+						error: `Generated image file not found: ${actualOutputPath}. Expected: ${expectedOutputPath}`
+					};
+				}
 			}
 
 			// Rename to our desired format if needed
@@ -204,17 +247,17 @@ export class PdfToImageConverter {
 				// Convert PNG to JPEG if needed
 				try {
 					const sharp = require('sharp');
-					const inputBuffer = await fs.readFile(expectedOutputPath);
+					const inputBuffer = await fs.readFile(actualOutputPath);
 					buffer = await sharp(inputBuffer)
 						.jpeg({ quality: opts.quality })
 						.toBuffer();
 					await fs.writeFile(finalOutputPath, buffer);
 					// Clean up the original PNG
-					await fs.unlink(expectedOutputPath);
+					await fs.unlink(actualOutputPath);
 				} catch (sharpError) {
 					console.warn('Sharp not available for JPEG conversion, keeping PNG format');
 					// Just rename the file
-					await fs.rename(expectedOutputPath, finalOutputPath);
+					await fs.rename(actualOutputPath, finalOutputPath);
 					buffer = await fs.readFile(finalOutputPath);
 				}
 			} else {

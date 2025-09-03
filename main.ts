@@ -22,6 +22,7 @@ import { PandocTypstConverter } from './src/converters/PandocTypstConverter';
 import { ExportConfigModal } from './src/modal/ExportConfigModal';
 import { ExportConfig, ExportConfigModalSettings } from './src/modal/types';
 import { TemplateManager } from './src/templates/TemplateManager';
+import { FolderSuggest } from './src/components/FolderSuggest';
 import * as path from 'path';
 import * as fs from 'fs';
 
@@ -55,7 +56,107 @@ export class obsidianTypstPDFExport extends Plugin {
 		// Check dependencies on startup (async, don't await)
 		this.checkDependenciesAsync();
 		
+		// Cache available fonts (async, don't await)
+		this.cacheAvailableFonts();
+		
 		console.log('Obsidian Typst PDF Export plugin loaded');
+	}
+
+	/**
+	 * Cache available fonts from typst to a file for quick access
+	 */
+	private async cacheAvailableFonts(): Promise<void> {
+		try {
+			const { exec } = require('child_process');
+			const { promisify } = require('util');
+			const execAsync = promisify(exec);
+			
+			const typstPath = this.settings.typstPath || 'typst';
+			const { stdout } = await execAsync(`${typstPath} fonts`);
+			
+			const fonts = stdout
+				.split('\n')
+				.map((line: string) => line.trim())
+				.filter((line: string) => line.length > 0)
+				.sort();
+			
+			// Write fonts to cache file in plugin data directory
+			const cacheData = {
+				fonts: fonts,
+				timestamp: Date.now(),
+				typstPath: typstPath
+			};
+			
+			await this.app.vault.adapter.write('.obsidian/plugins/obsidian-typst-pdf-export/fonts-cache.json', 
+				JSON.stringify(cacheData, null, 2));
+			console.log('Cached', fonts.length, 'fonts from typst');
+		} catch (error) {
+			console.error('Failed to cache fonts from typst:', error);
+			// Create fallback cache file
+			const fallbackFonts = [
+				'Times New Roman',
+				'Arial',
+				'Helvetica', 
+				'Georgia',
+				'Courier New',
+				'Monaco',
+				'SF Pro Text',
+				'SF Mono',
+				'Concourse OT',
+				'UbuntuMono Nerd Font Mono',
+				'Source Code Pro'
+			];
+			
+			const cacheData = {
+				fonts: fallbackFonts,
+				timestamp: Date.now(),
+				typstPath: 'fallback',
+				error: error.message
+			};
+			
+			await this.app.vault.adapter.write('.obsidian/plugins/obsidian-typst-pdf-export/fonts-cache.json',
+				JSON.stringify(cacheData, null, 2));
+		}
+	}
+
+	/**
+	 * Get cached fonts list
+	 */
+	async getCachedFonts(): Promise<string[]> {
+		try {
+			const cacheContent = await this.app.vault.adapter.read('.obsidian/plugins/obsidian-typst-pdf-export/fonts-cache.json');
+			const cacheData = JSON.parse(cacheContent);
+			
+			// Check if cache is older than 24 hours or typst path changed
+			const isStale = Date.now() - cacheData.timestamp > 24 * 60 * 60 * 1000;
+			const pathChanged = cacheData.typstPath !== (this.settings.typstPath || 'typst');
+			
+			if (isStale || pathChanged) {
+				// Refresh cache in background
+				this.cacheAvailableFonts();
+			}
+			
+			return cacheData.fonts || [];
+		} catch (error) {
+			console.error('Failed to read fonts cache:', error);
+			// Try to recreate cache
+			await this.cacheAvailableFonts();
+			
+			// Return fallback fonts
+			return [
+				'Times New Roman',
+				'Arial', 
+				'Helvetica',
+				'Georgia',
+				'Courier New',
+				'Monaco',
+				'SF Pro Text',
+				'SF Mono',
+				'Concourse OT',
+				'UbuntuMono Nerd Font Mono',
+				'Source Code Pro'
+			];
+		}
 	}
 	
 	private registerCommands(): void {
@@ -210,37 +311,61 @@ export class obsidianTypstPDFExport extends Plugin {
 	 * Show the export configuration modal
 	 */
 	private async showExportModal(view: MarkdownView): Promise<void> {
-		const file = view.file;
-		if (!file) {
-			new Notice('No active file to export');
-			return;
-		}
-		
-		// Prepare modal settings
-		const modalSettings: Partial<ExportConfigModalSettings> = {
-			notePath: file.path,
-			noteTitle: file.basename,
-			template: this.settings.exportDefaults.template,
-			format: this.settings.exportDefaults.format,
-			outputFolder: this.settings.outputFolder,
-			availableTemplates: await this.templateManager.getAvailableTemplates()
-		};
-		
-		// Show modal
-		const modal = new ExportConfigModal(
-			this.app,
-			this,
-			modalSettings,
-			async (config: ExportConfig) => {
-				await this.exportFileWithConfig(file, config);
-			},
-			() => {
-				this.cancelExport();
-			}
-		);
-		
-		modal.open();
+	const file = view.file;
+	if (!file) {
+		new Notice('No active file to export');
+		return;
 	}
+	
+	// Get available templates first
+	const availableTemplates = await this.templateManager.getAvailableTemplates();
+	
+	// Prepare modal settings with hierarchy: plugin defaults as base
+	const modalSettings: Partial<ExportConfigModalSettings> = {
+		notePath: file.path,
+		noteTitle: file.basename,
+		// Plugin defaults from settings tab
+		template: this.settings.exportDefaults.template,
+		format: this.settings.exportDefaults.format,
+		outputFolder: this.settings.outputFolder,
+		openAfterExport: this.settings.behavior.openAfterExport,
+		preserveFolderStructure: this.settings.behavior.preserveFolderStructure,
+		availableTemplates: availableTemplates,
+		// Template variables from plugin defaults
+		templateVariables: {
+			pageSize: this.settings.exportDefaults.pageSize,
+			orientation: this.settings.exportDefaults.orientation,
+			flipped: this.settings.exportDefaults.orientation === 'landscape',
+			marginTop: this.settings.exportDefaults.marginTop,
+			marginBottom: this.settings.exportDefaults.marginBottom,
+			marginLeft: this.settings.exportDefaults.marginLeft,
+			marginRight: this.settings.exportDefaults.marginRight,
+			bodyFont: this.settings.exportDefaults.bodyFont,
+			headingFont: this.settings.exportDefaults.headingFont,
+			monospaceFont: this.settings.exportDefaults.monospaceFont,
+			bodyFontSize: this.settings.exportDefaults.bodyFontSize,
+			// Auto-adjust width for single-page landscape mode
+			...(this.settings.exportDefaults.orientation === 'landscape' && this.settings.exportDefaults.format === 'single-page' 
+				? { width: 'auto' } 
+				: {})
+		}
+	};
+	
+	// Show modal - ModalState will handle localStorage hierarchy automatically
+	const modal = new ExportConfigModal(
+		this.app,
+		this,
+		modalSettings,
+		async (config: ExportConfig) => {
+			await this.exportFileWithConfig(file, config);
+		},
+		() => {
+			this.cancelExport();
+		}
+	);
+	
+	modal.open();
+}
 	
 	/**
 	 * Export a file with default configuration
@@ -250,11 +375,23 @@ export class obsidianTypstPDFExport extends Plugin {
 			template: this.settings.exportDefaults.template,
 			format: this.settings.exportDefaults.format,
 			outputFolder: this.settings.outputFolder,
-			typography: {
-				fontFamily: this.settings.typography.fonts.body,
-				fontSize: `${this.settings.typography.fontSizes.body}pt`,
-				lineHeight: '1.5'
-			}
+			templateVariables: {
+				// Page setup
+				pageSize: this.settings.exportDefaults.pageSize,
+				orientation: this.settings.exportDefaults.orientation,
+				flipped: this.settings.exportDefaults.orientation === 'landscape',
+				marginTop: this.settings.exportDefaults.marginTop,
+				marginBottom: this.settings.exportDefaults.marginBottom,
+				marginLeft: this.settings.exportDefaults.marginLeft,
+				marginRight: this.settings.exportDefaults.marginRight,
+				// Typography
+				bodyFont: this.settings.exportDefaults.bodyFont,
+				headingFont: this.settings.exportDefaults.headingFont,
+				monospaceFont: this.settings.exportDefaults.monospaceFont,
+				bodyFontSize: this.settings.exportDefaults.bodyFontSize
+			},
+			openAfterExport: this.settings.behavior.openAfterExport,
+			preserveFolderStructure: this.settings.behavior.preserveFolderStructure
 		};
 		
 		await this.exportFileWithConfig(file, config);
@@ -278,9 +415,14 @@ export class obsidianTypstPDFExport extends Plugin {
 			const content = await this.app.vault.read(file);
 			const pluginDir = path.join(vaultPath, '.obsidian', 'plugins', 'obsidian-typst-pdf-export');
 			
-			// Create temp directory for processing
-			const os = require('os');
-			const tempDir = os.tmpdir();
+			// Create temp directory for processing - use plugin's temp directory
+			const tempDir = path.join(pluginDir, 'temp-images');
+			
+			// Ensure temp directory exists
+			const fs = require('fs');
+			if (!fs.existsSync(tempDir)) {
+				fs.mkdirSync(tempDir, { recursive: true });
+			}
 			
 			// Preprocess the markdown content using MarkdownPreprocessor
 			const { MarkdownPreprocessor } = await import('./src/MarkdownPreprocessor');
@@ -333,12 +475,7 @@ export class obsidianTypstPDFExport extends Plugin {
 				outputPath,
 				{
 					template: templatePath,
-					variables: {
-						...config.templateVariables,
-						font: config.typography?.fontFamily || this.settings.typography.fonts.body,
-						fontsize: config.typography?.fontSize || `${this.settings.typography.fontSizes.body}pt`,
-						lineheight: config.typography?.lineHeight || '1.5'
-					},
+					variables: config.templateVariables || {},
 					pluginDir: pluginDir,
 					vaultBasePath: vaultPath
 				},
@@ -821,34 +958,6 @@ ${missingDeps.length > 0 ?
 /**
  * Settings Tab
  */
-class FolderSuggest extends AbstractInputSuggest<string> {
-	private folders: string[];
-	private inputElement: HTMLInputElement;
-
-	constructor(app: App, inputEl: HTMLInputElement) {
-		super(app, inputEl);
-		this.inputElement = inputEl;
-		this.folders = ["/"].concat(this.app.vault.getAllFolders().map(folder => folder.path));
-	}
-
-	getSuggestions(inputStr: string): string[] {
-		const inputLower = inputStr.toLowerCase();
-		return this.folders.filter(folder => 
-			folder.toLowerCase().includes(inputLower)
-		);
-	}
-
-	renderSuggestion(folder: string, el: HTMLElement): void {
-		el.createEl("div", { text: folder });
-	}
-
-	selectSuggestion(folder: string): void {
-		this.inputElement.value = folder;
-		this.inputElement.dispatchEvent(new Event('input'));
-		this.close();
-	}
-}
-
 class ObsidianTypstPDFExportSettingTab extends PluginSettingTab {
 	plugin: obsidianTypstPDFExport;
 	
@@ -1194,37 +1303,7 @@ class ObsidianTypstPDFExportSettingTab extends PluginSettingTab {
 	
 	// Helper methods for fonts
 	private async getAvailableFonts(): Promise<string[]> {
-		try {
-			const { exec } = require('child_process');
-			const { promisify } = require('util');
-			const execAsync = promisify(exec);
-			
-			const typstPath = this.plugin.settings.typstPath || 'typst';
-			const { stdout } = await execAsync(`${typstPath} fonts`);
-			
-			const fonts = stdout
-				.split('\n')
-				.map((line: string) => line.trim())
-				.filter((line: string) => line.length > 0)
-				.sort();
-			
-			return fonts;
-		} catch (error) {
-			console.error('Failed to get fonts from typst:', error);
-			// Return common fallback fonts
-			return [
-				'Times New Roman',
-				'Arial',
-				'Helvetica',
-				'Georgia',
-				'Courier New',
-				'Monaco',
-				'SF Pro Text',
-				'SF Mono',
-				'Concourse OT',
-				'UbuntuMono Nerd Font Mono'
-			];
-		}
+		return await this.plugin.getCachedFonts();
 	}
 	
 	// Helper methods for margin conversion

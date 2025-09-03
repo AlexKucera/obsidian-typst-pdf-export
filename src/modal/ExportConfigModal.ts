@@ -9,7 +9,8 @@ import { ExportConfig, ExportConfigModalSettings, ModalSection } from './types';
 import { ModalState } from './state/ModalState';
 import { GeneralSection } from './sections/GeneralSection';
 import { TypographySection } from './sections/TypographySection';
-import { LayoutSection } from './sections/LayoutSection';
+import { PageSetupSection } from './sections/PageSetupSection';
+import { BehaviorSection } from './sections/BehaviorSection';
 import { TemplateManager } from '../templates/TemplateManager';
 
 export class ExportConfigModal extends Modal {
@@ -27,6 +28,7 @@ export class ExportConfigModal extends Modal {
 	private progressText: HTMLElement;
 	private submitButton: HTMLButtonElement;
 	private cancelButton: HTMLButtonElement;
+	private resetButton: HTMLButtonElement;
 	
 	constructor(
 		app: App,
@@ -54,8 +56,9 @@ export class ExportConfigModal extends Modal {
 		// Register all modal sections
 		const sections = [
 			new GeneralSection(),
+			new PageSetupSection(),
 			new TypographySection(),
-			new LayoutSection()
+			new BehaviorSection()
 		];
 		
 		sections.forEach(section => {
@@ -110,41 +113,8 @@ export class ExportConfigModal extends Modal {
 		
 		// Render each section
 		this.sections.forEach(section => {
-			section.render(this.formContainer, this.state);
+			section.render(this.formContainer, this.state, this.app);
 		});
-		
-		// Add preview section
-		this.createPreviewSection();
-	}
-	
-	private createPreviewSection(): void {
-		const previewSection = this.formContainer.createDiv('export-section preview-section');
-		previewSection.createEl('h3', { text: 'Preview' });
-		
-		const previewContainer = previewSection.createDiv('export-preview');
-		
-		// Output path preview
-		const outputPreview = previewContainer.createDiv('preview-item');
-		outputPreview.createEl('span', { text: 'Output: ', cls: 'preview-label' });
-		const outputPath = outputPreview.createEl('code', { cls: 'preview-value' });
-		
-		// Template preview
-		const templatePreview = previewContainer.createDiv('preview-item');
-		templatePreview.createEl('span', { text: 'Template: ', cls: 'preview-label' });
-		const templateName = templatePreview.createEl('code', { cls: 'preview-value' });
-		
-		// Update preview on state change
-		const updatePreview = () => {
-			const config = this.state.buildExportConfig();
-			outputPath.textContent = `${config.outputFolder}/${this.getOutputFilename()}`;
-			templateName.textContent = config.template || 'default.typ';
-		};
-		
-		// Initial update
-		updatePreview();
-		
-		// Listen for changes
-		this.state.onChange(updatePreview);
 	}
 	
 	private createProgressContainer(): void {
@@ -171,15 +141,25 @@ export class ExportConfigModal extends Modal {
 	private createActionButtons(): void {
 		const buttonContainer = this.contentContainer.createDiv('export-config-buttons');
 		
+		// Reset button (left side)
+		this.resetButton = buttonContainer.createEl('button', {
+			text: 'Reset to Defaults',
+			cls: 'mod-muted'
+		});
+		this.resetButton.addEventListener('click', () => this.handleReset());
+		
+		// Right side buttons container
+		const rightButtons = buttonContainer.createDiv('right-buttons');
+		
 		// Cancel button
-		this.cancelButton = buttonContainer.createEl('button', {
+		this.cancelButton = rightButtons.createEl('button', {
 			text: 'Cancel',
 			cls: 'mod-cancel'
 		});
 		this.cancelButton.addEventListener('click', () => this.handleCancel());
 		
 		// Export button
-		this.submitButton = buttonContainer.createEl('button', {
+		this.submitButton = rightButtons.createEl('button', {
 			text: 'Export',
 			cls: 'mod-cta'
 		});
@@ -211,6 +191,19 @@ export class ExportConfigModal extends Modal {
 		// This is called whenever the state is updated
 	}
 	
+	private handleReset(): void {
+		// Reset state to defaults
+		this.state.reset();
+		
+		// Re-render sections to update UI
+		this.renderSections();
+		
+		// Reload templates to update the dropdown
+		this.loadAvailableTemplates();
+		
+		new Notice('Settings reset to defaults');
+	}
+	
 	private async handleSubmit(): Promise<void> {
 		// Validate all sections
 		const validationResults = this.validateAllSections();
@@ -233,6 +226,7 @@ export class ExportConfigModal extends Modal {
 		
 		// Disable buttons
 		this.submitButton.disabled = true;
+		this.resetButton.disabled = true;
 		this.cancelButton.textContent = 'Close';
 		
 		try {
@@ -248,6 +242,7 @@ export class ExportConfigModal extends Modal {
 			console.error('Export failed:', error);
 			this.showProgress(`Export failed: ${error.message}`, -1);
 			this.submitButton.disabled = false;
+			this.resetButton.disabled = false;
 		}
 	}
 	
@@ -386,29 +381,6 @@ export class ExportConfigModal extends Modal {
 				color: var(--text-muted);
 			}
 			
-			.export-preview {
-				background: var(--background-secondary);
-				padding: 15px;
-				border-radius: 5px;
-			}
-			
-			.preview-item {
-				margin-bottom: 10px;
-			}
-			
-			.preview-label {
-				font-weight: 500;
-				margin-right: 10px;
-			}
-			
-			.preview-value {
-				background: var(--background-primary);
-				padding: 2px 6px;
-				border-radius: 3px;
-				font-family: var(--font-monospace);
-				font-size: 0.9em;
-			}
-			
 			.export-progress-container {
 				padding: 40px;
 				text-align: center;
@@ -442,7 +414,12 @@ export class ExportConfigModal extends Modal {
 				padding: 20px;
 				border-top: 1px solid var(--background-modifier-border);
 				display: flex;
-				justify-content: flex-end;
+				justify-content: space-between;
+				align-items: center;
+			}
+			
+			.export-config-buttons .right-buttons {
+				display: flex;
 				gap: 10px;
 			}
 			
@@ -463,26 +440,7 @@ export class ExportConfigModal extends Modal {
 				padding-left: 20px;
 			}
 			
-			.margin-preset-button {
-				margin: 0 5px;
-				padding: 2px 10px;
-				font-size: 0.85em;
-			}
-			
 			.margins-container {
-				background: var(--background-secondary-alt);
-				padding: 15px;
-				border-radius: 5px;
-				margin-top: 15px;
-			}
-			
-			.margin-presets {
-				margin-top: 15px;
-				padding-top: 15px;
-				border-top: 1px solid var(--background-modifier-border);
-			}
-			
-			.font-sizes {
 				background: var(--background-secondary-alt);
 				padding: 15px;
 				border-radius: 5px;

@@ -8,16 +8,16 @@ import { ExportFormat } from '../../core/settings';
 
 export class ModalState implements IModalState {
 	settings: ExportConfigModalSettings;
-	typography: {
-		fontFamily: string;
-		fontSize: string;
-		lineHeight: string;
-	};
+	templateVariables: Record<string, any>;
 	
 	private changeListeners: Set<() => void> = new Set();
+	private static readonly STORAGE_KEY = 'typst-export-modal-state';
 	
 	constructor(initialSettings: Partial<ExportConfigModalSettings>) {
-		// Initialize with defaults
+		// Load from localStorage if available
+		const savedState = this.loadFromStorage();
+		
+		// Initialize with defaults, then saved state, then passed settings
 		this.settings = {
 			notePath: '',
 			noteTitle: '',
@@ -30,25 +30,43 @@ export class ModalState implements IModalState {
 			progressPercent: 0,
 			currentOperation: '',
 			canCancel: false,
+			openAfterExport: false,
+			preserveFolderStructure: false,
+			...savedState?.settings,
 			...initialSettings
 		};
 		
-		// Initialize typography with defaults that will be passed to template
-		this.typography = {
-			fontFamily: 'Concourse OT',
-			fontSize: '11pt',
-			lineHeight: '1.5'
+		// Initialize template variables with defaults, then saved state
+		this.templateVariables = {
+			pageSize: 'a4',
+			orientation: 'portrait',
+			flipped: false,
+			marginTop: '1in',
+			marginBottom: '0.8in',
+			marginLeft: '1in',
+			marginRight: '0.6in',
+			bodyFont: 'Concourse OT',
+			headingFont: 'Concourse OT',
+			monospaceFont: 'Source Code Pro',
+			bodyFontSize: '11pt',
+			...savedState?.templateVariables,
+			...this.settings.templateVariables
 		};
+		
+		// Update settings to include merged template variables
+		this.settings.templateVariables = this.templateVariables;
 	}
 	
 	/**
-	 * Update typography settings
+	 * Update template variables
 	 */
-	updateTypography(updates: Partial<ModalState['typography']>): void {
-		this.typography = {
-			...this.typography,
+	updateTemplateVariables(updates: Record<string, any>): void {
+		this.templateVariables = {
+			...this.templateVariables,
 			...updates
 		};
+		this.settings.templateVariables = this.templateVariables;
+		this.saveToStorage();
 		this.notifyChange();
 	}
 	
@@ -60,19 +78,9 @@ export class ModalState implements IModalState {
 			template: this.settings.template,
 			format: this.settings.format,
 			outputFolder: this.settings.outputFolder,
-			templateVariables: {
-				...this.settings.templateVariables,
-				// Add typography settings to template variables
-				font: this.typography.fontFamily,
-				fontsize: this.typography.fontSize,
-				lineheight: this.typography.lineHeight
-			},
-			// Include typography in the export config
-			typography: {
-				fontFamily: this.typography.fontFamily,
-				fontSize: this.typography.fontSize,
-				lineHeight: this.typography.lineHeight
-			}
+			templateVariables: this.templateVariables,
+			openAfterExport: this.settings.openAfterExport,
+			preserveFolderStructure: this.settings.preserveFolderStructure
 		};
 		
 		return config;
@@ -107,17 +115,7 @@ export class ModalState implements IModalState {
 			...this.settings,
 			...updates
 		};
-		this.notifyChange();
-	}
-	
-	/**
-	 * Update template variables
-	 */
-	updateTemplateVariables(updates: Record<string, any>): void {
-		this.settings.templateVariables = {
-			...this.settings.templateVariables,
-			...updates
-		};
+		this.saveToStorage();
 		this.notifyChange();
 	}
 	
@@ -134,16 +132,74 @@ export class ModalState implements IModalState {
 	 * Reset state to defaults
 	 */
 	reset(): void {
-		this.settings.templateVariables = {};
-		this.settings.progressPercent = 0;
-		this.settings.currentOperation = '';
-		this.settings.isExporting = false;
-		this.settings.canCancel = false;
-		this.typography = {
-			fontFamily: 'Concourse OT',
-			fontSize: '11pt',
-			lineHeight: '1.5'
+		// Reset to plugin defaults, not localStorage defaults
+		this.settings = {
+			...this.settings,
+			template: 'default.typ',
+			format: ExportFormat.Standard,
+			outputFolder: 'exports',
+			templateVariables: {},
+			progressPercent: 0,
+			currentOperation: '',
+			isExporting: false,
+			canCancel: false,
+			openAfterExport: false,
+			preserveFolderStructure: false
 		};
+		
+		this.templateVariables = {
+			pageSize: 'a4',
+			orientation: 'portrait',
+			flipped: false,
+			marginTop: '1in',
+			marginBottom: '0.8in',
+			marginLeft: '1in',
+			marginRight: '0.6in',
+			bodyFont: 'Concourse OT',
+			headingFont: 'Concourse OT',
+			monospaceFont: 'Source Code Pro',
+			bodyFontSize: '11pt'
+		};
+		
+		this.settings.templateVariables = this.templateVariables;
+		this.saveToStorage();
 		this.notifyChange();
+	}
+	
+	/**
+	 * Save current state to localStorage
+	 */
+	private saveToStorage(): void {
+		const stateToSave = {
+			settings: {
+				template: this.settings.template,
+				format: this.settings.format,
+				outputFolder: this.settings.outputFolder,
+				openAfterExport: this.settings.openAfterExport,
+				preserveFolderStructure: this.settings.preserveFolderStructure
+			},
+			templateVariables: this.templateVariables
+		};
+		
+		try {
+			localStorage.setItem(ModalState.STORAGE_KEY, JSON.stringify(stateToSave));
+		} catch (error) {
+			console.warn('Failed to save modal state to localStorage:', error);
+		}
+	}
+	
+	/**
+	 * Load state from localStorage
+	 */
+	private loadFromStorage(): { settings: Partial<ExportConfigModalSettings>, templateVariables: Record<string, any> } | null {
+		try {
+			const saved = localStorage.getItem(ModalState.STORAGE_KEY);
+			if (saved) {
+				return JSON.parse(saved);
+			}
+		} catch (error) {
+			console.warn('Failed to load modal state from localStorage:', error);
+		}
+		return null;
 	}
 }
