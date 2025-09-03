@@ -1220,82 +1220,98 @@ class ObsidianTypstPDFExportSettingTab extends PluginSettingTab {
 			}));
 }
 	
-	private createPageSetupSection(containerEl: HTMLElement): void {
-		containerEl.createEl('h3', { text: 'Page Setup' });
-		
+	/**
+	 * Helper method to create a margin input setting
+	 */
+	private createMarginInput(
+		containerEl: HTMLElement,
+		name: string,
+		placeholder: string,
+		getCurrentValue: () => number,
+		setNewValue: (value: number) => void,
+		defaultValue: number
+	): void {
 		new Setting(containerEl)
-			.setName('Page size')
-			.setDesc('Paper size for PDF output')
-			.addDropdown(dropdown => {
-				// Add all supported paper sizes
-				SUPPORTED_PAPER_SIZES.forEach(paperSize => {
-					dropdown.addOption(paperSize.key, paperSize.displayName);
-				});
-				
-				return dropdown
-					.setValue(this.plugin.settings.pageSetup.size)
-					.onChange(async (value) => {
-						this.plugin.settings.pageSetup.size = value;
-						await this.plugin.saveSettings();
-					});
-			});
-		
-		new Setting(containerEl)
-			.setName('Page orientation')
-			.setDesc('Page orientation')
-			.addDropdown(dropdown => dropdown
-				.addOption('portrait', 'Portrait')
-				.addOption('landscape', 'Landscape')
-				.setValue(this.plugin.settings.pageSetup.orientation)
-				.onChange(async (value) => {
-					this.plugin.settings.pageSetup.orientation = value as 'portrait' | 'landscape';
-					await this.plugin.saveSettings();
-				}));
-		
-		new Setting(containerEl)
-			.setName('Top margin')
-			.setDesc('Top page margin in centimeters')
+			.setName(name)
+			.setDesc(`${name.toLowerCase()} in centimeters`)
 			.addText(text => text
-				.setPlaceholder('2.5')
-				.setValue(this.formatSingleMarginForDisplay(this.plugin.settings.pageSetup.margins.top))
+				.setPlaceholder(placeholder)
+				.setValue(this.formatSingleMarginForDisplay(getCurrentValue()))
 				.onChange(async (value) => {
-					this.plugin.settings.pageSetup.margins.top = this.parseMarginValue(value, 2.5);
-					await this.plugin.saveSettings();
-				}));
-
-		new Setting(containerEl)
-			.setName('Bottom margin')
-			.setDesc('Bottom page margin in centimeters')
-			.addText(text => text
-				.setPlaceholder('2.0')
-				.setValue(this.formatSingleMarginForDisplay(this.plugin.settings.pageSetup.margins.bottom))
-				.onChange(async (value) => {
-					this.plugin.settings.pageSetup.margins.bottom = this.parseMarginValue(value, 2.0);
-					await this.plugin.saveSettings();
-				}));
-
-		new Setting(containerEl)
-			.setName('Left margin')
-			.setDesc('Left page margin in centimeters')
-			.addText(text => text
-				.setPlaceholder('2.5')
-				.setValue(this.formatSingleMarginForDisplay(this.plugin.settings.pageSetup.margins.left))
-				.onChange(async (value) => {
-					this.plugin.settings.pageSetup.margins.left = this.parseMarginValue(value, 2.5);
-					await this.plugin.saveSettings();
-				}));
-
-		new Setting(containerEl)
-			.setName('Right margin')
-			.setDesc('Right page margin in centimeters')
-			.addText(text => text
-				.setPlaceholder('1.5')
-				.setValue(this.formatSingleMarginForDisplay(this.plugin.settings.pageSetup.margins.right))
-				.onChange(async (value) => {
-					this.plugin.settings.pageSetup.margins.right = this.parseMarginValue(value, 1.5);
+					setNewValue(this.parseMarginValue(value, defaultValue));
 					await this.plugin.saveSettings();
 				}));
 	}
+
+	private createPageSetupSection(containerEl: HTMLElement): void {
+	containerEl.createEl('h3', { text: 'Page Setup' });
+	
+	new Setting(containerEl)
+		.setName('Page size')
+		.setDesc('Paper size for PDF output')
+		.addDropdown(dropdown => {
+			// Add all supported paper sizes
+			SUPPORTED_PAPER_SIZES.forEach(paperSize => {
+				dropdown.addOption(paperSize.key, paperSize.displayName);
+			});
+			
+			return dropdown
+				.setValue(this.plugin.settings.pageSetup.size)
+				.onChange(async (value) => {
+					this.plugin.settings.pageSetup.size = value;
+					await this.plugin.saveSettings();
+				});
+		});
+	
+	new Setting(containerEl)
+		.setName('Page orientation')
+		.setDesc('Page orientation')
+		.addDropdown(dropdown => dropdown
+			.addOption('portrait', 'Portrait')
+			.addOption('landscape', 'Landscape')
+			.setValue(this.plugin.settings.pageSetup.orientation)
+			.onChange(async (value) => {
+				this.plugin.settings.pageSetup.orientation = value as 'portrait' | 'landscape';
+				await this.plugin.saveSettings();
+			}));
+	
+	// Test with helper method for top margin only
+	this.createMarginInput(
+		containerEl,
+		'Top margin',
+		'2.5',
+		() => this.plugin.settings.pageSetup.margins.top,
+		(value) => { this.plugin.settings.pageSetup.margins.top = value; },
+		2.5
+	);
+
+	this.createMarginInput(
+		containerEl,
+		'Bottom margin',
+		'2.0',
+		() => this.plugin.settings.pageSetup.margins.bottom,
+		(value) => { this.plugin.settings.pageSetup.margins.bottom = value; },
+		2.0
+	);
+
+	this.createMarginInput(
+		containerEl,
+		'Left margin',
+		'2.5',
+		() => this.plugin.settings.pageSetup.margins.left,
+		(value) => { this.plugin.settings.pageSetup.margins.left = value; },
+		2.5
+	);
+
+	this.createMarginInput(
+		containerEl,
+		'Right margin',
+		'1.5',
+		() => this.plugin.settings.pageSetup.margins.right,
+		(value) => { this.plugin.settings.pageSetup.margins.right = value; },
+		1.5
+	);
+}
 	
 	private createBehaviorSection(containerEl: HTMLElement): void {
 		containerEl.createEl('h3', { text: 'Behavior' });
