@@ -7,6 +7,7 @@ import { Setting, App } from 'obsidian';
 import { ModalSection, ModalState, ValidationResult } from '../modalTypes';
 import { ExportFormat } from '../../../core/settings';
 import { FolderSuggest } from '../../components/FolderSuggest';
+import { SecurityUtils } from '../../../core/SecurityUtils';
 
 export class GeneralSection implements ModalSection {
 	private container: HTMLElement | null = null;
@@ -101,10 +102,8 @@ export class GeneralSection implements ModalSection {
 		// Validate output folder
 		if (this.outputFolderInput) {
 			const value = this.outputFolderInput.value.trim();
-			if (!value) {
-				errors.push('Output folder is required');
-			} else if (value.startsWith('/') || value.startsWith('\\')) {
-				warnings.push('Output folder should be relative to vault root');
+			if (!SecurityUtils.validateOutputPath(value)) {
+				errors.push(SecurityUtils.getPathValidationError(value));
 			}
 		}
 		

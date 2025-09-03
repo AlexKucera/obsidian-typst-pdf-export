@@ -22,6 +22,7 @@ import {
 import { obsidianTypstPDFExportSettings, DEFAULT_SETTINGS, ExportFormat } from './src/core/settings';
 import { FALLBACK_FONTS, PLUGIN_DIRS } from './src/core/constants';
 import { DependencyChecker } from './src/core/DependencyChecker';
+import { SecurityUtils } from './src/core/SecurityUtils';
 import { ModalSettingsHelper } from './src/core/ModalSettingsHelper';
 import { ExportErrorHandler } from './src/core/ExportErrorHandler';
 import { TempDirectoryManager } from './src/core/TempDirectoryManager';
@@ -937,6 +938,11 @@ ${dependencyResult.allAvailable
 	 * Prepare the output path for a file
 	 */
 	private prepareOutputPath(file: TFile, outputFolder: string): string {
+		// Validate output folder for security
+		if (!SecurityUtils.validateOutputPath(outputFolder)) {
+			throw new Error(`Invalid output folder path: ${outputFolder}. Path contains invalid characters or traversal attempts.`);
+		}
+		
 		const vaultPath = (this.app.vault.adapter as any).basePath;
 		const outputDir = path.join(vaultPath, outputFolder);
 		
@@ -1045,6 +1051,10 @@ class ObsidianTypstPDFExportSettingTab extends PluginSettingTab {
 				.setPlaceholder('pandoc')
 				.setValue(this.plugin.settings.pandocPath)
 				.onChange(async (value) => {
+					if (!SecurityUtils.validateExecutablePath(value)) {
+						new Notice(`Invalid Pandoc path: ${SecurityUtils.getExecutablePathValidationError(value)}`);
+						return;
+					}
 					this.plugin.settings.pandocPath = value;
 					await this.plugin.saveSettings();
 				}));
@@ -1056,6 +1066,10 @@ class ObsidianTypstPDFExportSettingTab extends PluginSettingTab {
 				.setPlaceholder('typst')
 				.setValue(this.plugin.settings.typstPath)
 				.onChange(async (value) => {
+					if (!SecurityUtils.validateExecutablePath(value)) {
+						new Notice(`Invalid Typst path: ${SecurityUtils.getExecutablePathValidationError(value)}`);
+						return;
+					}
 					this.plugin.settings.typstPath = value;
 					await this.plugin.saveSettings();
 				}));
@@ -1067,6 +1081,10 @@ class ObsidianTypstPDFExportSettingTab extends PluginSettingTab {
 				.setPlaceholder('convert')
 				.setValue(this.plugin.settings.executablePaths.imagemagickPath)
 				.onChange(async (value) => {
+					if (!SecurityUtils.validateExecutablePath(value)) {
+						new Notice(`Invalid ImageMagick path: ${SecurityUtils.getExecutablePathValidationError(value)}`);
+						return;
+					}
 					this.plugin.settings.executablePaths.imagemagickPath = value;
 					await this.plugin.saveSettings();
 				}));
@@ -1078,10 +1096,20 @@ class ObsidianTypstPDFExportSettingTab extends PluginSettingTab {
 				.setPlaceholder('/opt/homebrew/bin, /usr/local/bin')
 				.setValue(this.plugin.settings.executablePaths.additionalPaths.join(', '))
 				.onChange(async (value) => {
-					this.plugin.settings.executablePaths.additionalPaths = value
+					const paths = value
 						.split(',')
 						.map(p => p.trim())
 						.filter(p => p.length > 0);
+					
+					// Validate each path
+					for (const pathItem of paths) {
+						if (!SecurityUtils.validateExecutablePath(pathItem)) {
+							new Notice(`Invalid system path: ${SecurityUtils.getExecutablePathValidationError(pathItem)}`);
+							return;
+						}
+					}
+					
+					this.plugin.settings.executablePaths.additionalPaths = paths;
 					await this.plugin.saveSettings();
 				}));
 	}
@@ -1138,6 +1166,10 @@ class ObsidianTypstPDFExportSettingTab extends PluginSettingTab {
 					.setPlaceholder('exports')
 					.setValue(this.plugin.settings.outputFolder)
 					.onChange(async (value) => {
+						if (!SecurityUtils.validateOutputPath(value)) {
+							new Notice(`Invalid output folder: ${SecurityUtils.getPathValidationError(value)}`);
+							return;
+						}
 						this.plugin.settings.outputFolder = value;
 						await this.plugin.saveSettings();
 					});
