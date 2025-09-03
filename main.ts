@@ -68,6 +68,9 @@ export class obsidianTypstPDFExport extends Plugin {
 		// Add settings tab
 		this.addSettingTab(new ObsidianTypstPDFExportSettingTab(this.app, this));
 		
+		// Clean up any leftover temp directories from previous sessions
+		this.cleanupStartupTempDirectories();
+		
 		// Check dependencies on startup (async, don't await)
 		this.checkDependenciesAsync();
 		
@@ -987,10 +990,37 @@ ${dependencyResult.allAvailable
 		await this.saveData(this.settings);
 	}
 	
+	/**
+	 * Clean up leftover temp directories from previous sessions
+	 */
+	private cleanupStartupTempDirectories(): void {
+		try {
+			const vaultPath = (this.app.vault.adapter as any).basePath;
+			const cleanupManager = TempDirectoryManager.create(vaultPath);
+			const result = cleanupManager.cleanupAllTempDirs();
+			
+			if (this.settings.behavior.debugMode) {
+				console.log('Export: Startup cleanup completed', result);
+			}
+		} catch (error) {
+			console.warn('Export: Startup temp directory cleanup failed (non-critical):', error);
+			// Don't throw - this shouldn't prevent plugin from loading
+		}
+	}
+	
 	onunload() {
 		// Cancel any ongoing exports
 		if (this.currentExportController) {
 			this.currentExportController.abort();
+		}
+		
+		// Clean up temp directories on plugin unload
+		try {
+			const vaultPath = (this.app.vault.adapter as any).basePath;
+			const cleanupManager = TempDirectoryManager.create(vaultPath);
+			cleanupManager.cleanupAllTempDirs();
+		} catch (error) {
+			console.warn('Export: Failed to clean up temp directories during unload:', error);
 		}
 		
 		console.log('Obsidian Typst PDF Export plugin unloaded');
