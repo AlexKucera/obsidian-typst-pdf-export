@@ -105,9 +105,15 @@
   // Set page layout with conditional height based on export format
   set page(
     paper: paper,
-    orientation: orientation,
+    flipped: orientation == "landscape",
     margin: page-margin,
-    ..if export_format == "single-page" { (height: auto,) } else { (:) },
+    ..if export_format == "single-page" and orientation == "landscape" { 
+      (width: auto,) 
+    } else if export_format == "single-page" { 
+      (height: auto,) 
+    } else { 
+      (:) 
+    },
     numbering: pagenumbering,
     header: context {
       let page-num = counter(page).get().first()

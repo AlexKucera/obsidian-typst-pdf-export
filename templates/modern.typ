@@ -94,9 +94,15 @@
   // Set page layout with conditional height based on export format
   set page(
     paper: paper,
-    orientation: orientation,
+    flipped: orientation == "landscape",
     margin: (top: 2.5cm, right: 1.5cm, bottom: 2cm, left: 2.5cm),
-    ..if export_format == "single-page" { (height: auto,) } else { (:) },
+    ..if export_format == "single-page" and orientation == "landscape" { 
+      (width: auto,) 
+    } else if export_format == "single-page" { 
+      (height: auto,) 
+    } else { 
+      (:) 
+    },
     numbering: pagenumbering,
     fill: rgb("#fafafa")
   )
