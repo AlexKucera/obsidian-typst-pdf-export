@@ -1146,12 +1146,19 @@ class ObsidianTypstPDFExportSettingTab extends PluginSettingTab {
 			});
 	}
 	
-	private createTypographyDefaultsSection(containerEl: HTMLElement): void {
-		containerEl.createEl('h3', { text: 'Typography Defaults' });
-		
+	/**
+	 * Helper method to create a font dropdown setting
+	 */
+	private createFontDropdown(
+		containerEl: HTMLElement,
+		name: string,
+		desc: string,
+		getCurrentValue: () => string,
+		setNewValue: (value: string) => void
+	): void {
 		new Setting(containerEl)
-			.setName('Body font')
-			.setDesc('Default font for body text')
+			.setName(name)
+			.setDesc(desc)
 			.addDropdown(async (dropdown) => {
 				try {
 					const fonts = await this.getAvailableFonts();
@@ -1160,73 +1167,58 @@ class ObsidianTypstPDFExportSettingTab extends PluginSettingTab {
 					});
 					
 					dropdown
-						.setValue(this.plugin.settings.typography.fonts.body)
+						.setValue(getCurrentValue())
 						.onChange(async (value) => {
-							this.plugin.settings.typography.fonts.body = value;
+							setNewValue(value);
 							await this.plugin.saveSettings();
 						});
 				} catch (error) {
 					console.error('Failed to load fonts:', error);
-					dropdown.addOption(this.plugin.settings.typography.fonts.body, this.plugin.settings.typography.fonts.body);
+					dropdown.addOption(getCurrentValue(), getCurrentValue());
 				}
 			});
-		
-		new Setting(containerEl)
-			.setName('Heading font')
-			.setDesc('Default font for headings')
-			.addDropdown(async (dropdown) => {
-				try {
-					const fonts = await this.getAvailableFonts();
-					fonts.forEach(font => {
-						dropdown.addOption(font, font);
-					});
-					
-					dropdown
-						.setValue(this.plugin.settings.typography.fonts.heading)
-						.onChange(async (value) => {
-							this.plugin.settings.typography.fonts.heading = value;
-							await this.plugin.saveSettings();
-						});
-				} catch (error) {
-					console.error('Failed to load fonts:', error);
-					dropdown.addOption(this.plugin.settings.typography.fonts.heading, this.plugin.settings.typography.fonts.heading);
-				}
-			});
-		
-		new Setting(containerEl)
-			.setName('Monospace font')
-			.setDesc('Default font for code and monospace text')
-			.addDropdown(async (dropdown) => {
-				try {
-					const fonts = await this.getAvailableFonts();
-					fonts.forEach(font => {
-						dropdown.addOption(font, font);
-					});
-					
-					dropdown
-						.setValue(this.plugin.settings.typography.fonts.monospace)
-						.onChange(async (value) => {
-							this.plugin.settings.typography.fonts.monospace = value;
-							await this.plugin.saveSettings();
-						});
-				} catch (error) {
-					console.error('Failed to load fonts:', error);
-					dropdown.addOption(this.plugin.settings.typography.fonts.monospace, this.plugin.settings.typography.fonts.monospace);
-				}
-			});
-		
-		new Setting(containerEl)
-			.setName('Body font size')
-			.setDesc('Default font size for body text (in points)')
-			.addSlider(slider => slider
-				.setLimits(8, 16, 0.5)
-				.setValue(this.plugin.settings.typography.fontSizes.body)
-				.setDynamicTooltip()
-				.onChange(async (value) => {
-					this.plugin.settings.typography.fontSizes.body = value;
-					await this.plugin.saveSettings();
-				}));
 	}
+
+	private createTypographyDefaultsSection(containerEl: HTMLElement): void {
+	containerEl.createEl('h3', { text: 'Typography Defaults' });
+	
+	// Use helper method for all three font dropdowns
+	this.createFontDropdown(
+		containerEl,
+		'Body font',
+		'Default font for body text',
+		() => this.plugin.settings.typography.fonts.body,
+		(value) => { this.plugin.settings.typography.fonts.body = value; }
+	);
+	
+	this.createFontDropdown(
+		containerEl,
+		'Heading font',
+		'Default font for headings',
+		() => this.plugin.settings.typography.fonts.heading,
+		(value) => { this.plugin.settings.typography.fonts.heading = value; }
+	);
+	
+	this.createFontDropdown(
+		containerEl,
+		'Monospace font',
+		'Default font for code and monospace text',
+		() => this.plugin.settings.typography.fonts.monospace,
+		(value) => { this.plugin.settings.typography.fonts.monospace = value; }
+	);
+	
+	new Setting(containerEl)
+		.setName('Body font size')
+		.setDesc('Default font size for body text (in points)')
+		.addSlider(slider => slider
+			.setLimits(8, 16, 0.5)
+			.setValue(this.plugin.settings.typography.fontSizes.body)
+			.setDynamicTooltip()
+			.onChange(async (value) => {
+				this.plugin.settings.typography.fontSizes.body = value;
+				await this.plugin.saveSettings();
+			}));
+}
 	
 	private createPageSetupSection(containerEl: HTMLElement): void {
 		containerEl.createEl('h3', { text: 'Page Setup' });
