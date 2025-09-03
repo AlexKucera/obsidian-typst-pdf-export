@@ -95,7 +95,7 @@
   set page(
     paper: paper,
     flipped: orientation == "landscape",
-    margin: (top: 2.5cm, right: 1.5cm, bottom: 2cm, left: 2.5cm),
+    margin: page-margin,
     ..if export_format == "single-page" and orientation == "landscape" { 
       (width: auto,) 
     } else if export_format == "single-page" { 
