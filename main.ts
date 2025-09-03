@@ -171,7 +171,7 @@ export class obsidianTypstPDFExport extends Plugin {
 		// Export current note command
 		this.addCommand({
 			id: 'export-current-note',
-			name: 'Export current note to PDF',
+			name: 'Export current note(s)',
 			hotkeys: [{ modifiers: ['Mod', 'Shift'], key: 'e' }],
 			editorCallback: (editor: Editor, view: MarkdownView) => {
 				this.exportCurrentNote(view);
@@ -181,35 +181,10 @@ export class obsidianTypstPDFExport extends Plugin {
 		// Export with configuration command
 		this.addCommand({
 			id: 'export-with-config',
-			name: 'Export to PDF with configuration',
+			name: 'Export with configuration…',
 			hotkeys: [{ modifiers: ['Mod', 'Shift', 'Alt'], key: 'e' }],
 			editorCallback: (editor: Editor, view: MarkdownView) => {
 				this.showExportModal(view);
-			}
-		});
-		
-		// Export folder to PDF command
-		this.addCommand({
-			id: 'export-folder-to-pdf',
-			name: 'Export folder to PDF',
-			checkCallback: (checking: boolean) => {
-				const activeFile = this.app.workspace.getActiveFile();
-				const canRun = activeFile && activeFile.parent;
-				
-				if (canRun && !checking && activeFile.parent) {
-					this.handleFolderExport(activeFile.parent);
-				}
-				
-				return !!canRun;
-			}
-		});
-		
-		// Batch export command
-		this.addCommand({
-			id: 'batch-export',
-			name: 'Batch export notes to PDF',
-			callback: () => {
-				this.batchExportNotes();
 			}
 		});
 		
@@ -272,7 +247,7 @@ export class obsidianTypstPDFExport extends Plugin {
 		
 		menu.addItem((item) =>
 			item
-				.setTitle('Export current note')
+				.setTitle('Export current note(s)')
 				.setIcon('file-output')
 				.onClick(() => {
 					this.exportFile(activeView.file!);
@@ -281,7 +256,7 @@ export class obsidianTypstPDFExport extends Plugin {
 		
 		menu.addItem((item) =>
 			item
-				.setTitle('Export with configuration...')
+				.setTitle('Export with configuration…')
 				.setIcon('settings')
 				.onClick(() => {
 					this.showExportModal(activeView);
