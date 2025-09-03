@@ -24,6 +24,7 @@ import { FALLBACK_FONTS, PLUGIN_DIRS } from './src/core/constants';
 import { DependencyChecker } from './src/core/DependencyChecker';
 import { ModalSettingsHelper } from './src/core/ModalSettingsHelper';
 import { ExportErrorHandler } from './src/core/ExportErrorHandler';
+import { TempDirectoryManager } from './src/core/TempDirectoryManager';
 import { PandocTypstConverter } from './src/converters/PandocTypstConverter';
 import { ExportConfigModal } from './src/modal/ExportConfigModal';
 import { ExportConfig, ExportConfigModalSettings } from './src/modal/types';
@@ -435,14 +436,9 @@ export class obsidianTypstPDFExport extends Plugin {
 			const content = await this.app.vault.read(file);
 			const pluginDir = path.join(vaultPath, '.obsidian', 'plugins', 'obsidian-typst-pdf-export');
 			
-			// Create temp directory for processing - use plugin's temp directory
-			const tempDir = path.join(pluginDir, 'temp-images');
-			
-			// Ensure temp directory exists
-			const fs = require('fs');
-			if (!fs.existsSync(tempDir)) {
-				fs.mkdirSync(tempDir, { recursive: true });
-			}
+			// Create temp directory manager and ensure temp directory exists
+			const tempManager = TempDirectoryManager.create(vaultPath);
+			const tempDir = tempManager.ensureTempDir('images');
 			
 			// Preprocess the markdown content using MarkdownPreprocessor
 			const { MarkdownPreprocessor } = await import('./src/MarkdownPreprocessor');
@@ -530,28 +526,8 @@ export class obsidianTypstPDFExport extends Plugin {
 			
 			// Clean up temporary directories
 			try {
-				const pathModule = require('path');
-				const fs = require('fs');
-				
-				// Clean up temp-images directory
-				const vaultTempImagesDir = pathModule.join(vaultPath, '.obsidian', 'plugins', 'obsidian-typst-pdf-export', 'temp-images');
-				if (fs.existsSync(vaultTempImagesDir)) {
-					const files = fs.readdirSync(vaultTempImagesDir);
-					for (const file of files) {
-						fs.unlinkSync(pathModule.join(vaultTempImagesDir, file));
-					}
-					console.log('Export: Cleaned up temp-images directory');
-				}
-				
-				// Clean up temp-pandoc directory
-				const vaultTempPandocDir = pathModule.join(vaultPath, '.obsidian', 'plugins', 'obsidian-typst-pdf-export', 'temp-pandoc');
-				if (fs.existsSync(vaultTempPandocDir)) {
-					const files = fs.readdirSync(vaultTempPandocDir);
-					for (const file of files) {
-						fs.unlinkSync(pathModule.join(vaultTempPandocDir, file));
-					}
-					console.log('Export: Cleaned up temp-pandoc directory');
-				}
+				const cleanupManager = TempDirectoryManager.create(vaultPath);
+				cleanupManager.cleanupAllTempDirs();
 			} catch (cleanupError) {
 				console.warn('Export: Failed to clean up temporary directories:', cleanupError);
 			}

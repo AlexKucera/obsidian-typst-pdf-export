@@ -11,6 +11,7 @@ import * as os from 'os';
 import { mapToTypstPaperSize } from '../utils/paperSizeMapper';
 import { PandocOptions, TypstSettings, ConversionResult, ProgressCallback } from './types';
 import type { obsidianTypstPDFExportSettings } from '../core/settings';
+import { TempDirectoryManager } from '../core/TempDirectoryManager';
 
 export class PandocTypstConverter {
 	private tempDir: string | null = null;
@@ -235,18 +236,13 @@ export class PandocTypstConverter {
 	 */
 	private async ensureTempDirectory(): Promise<string> {
 		if (!this.tempDir) {
-			// Create temp directory in plugin folder instead of system temp
-			const pluginTempDir = this.pandocOptions.vaultBasePath 
-				? path.join(this.pandocOptions.vaultBasePath, '.obsidian', 'plugins', 'obsidian-typst-pdf-export', 'temp-pandoc')
-				: path.join(os.tmpdir(), 'obsidian-typst-');
-				
-			// Ensure the temp directory exists
-			if (pluginTempDir.includes('temp-pandoc')) {
-				await fsPromises.mkdir(pluginTempDir, { recursive: true });
-				this.tempDir = pluginTempDir;
+			if (this.pandocOptions.vaultBasePath) {
+				// Use TempDirectoryManager for plugin temp directories
+				const tempManager = TempDirectoryManager.create(this.pandocOptions.vaultBasePath);
+				this.tempDir = tempManager.ensureTempDir('pandoc');
 			} else {
 				// Fallback to system temp if plugin folder not available
-				this.tempDir = await fsPromises.mkdtemp(pluginTempDir);
+				this.tempDir = await fsPromises.mkdtemp(path.join(os.tmpdir(), 'obsidian-typst-'));
 			}
 		}
 		return this.tempDir;
