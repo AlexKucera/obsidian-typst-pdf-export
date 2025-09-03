@@ -24,6 +24,7 @@ import { ExportConfigModal } from './src/modal/ExportConfigModal';
 import { ExportConfig, ExportConfigModalSettings } from './src/modal/types';
 import { TemplateManager } from './src/templates/TemplateManager';
 import { FolderSuggest } from './src/components/FolderSuggest';
+import { SUPPORTED_PAPER_SIZES } from './src/utils/paperSizeMapper';
 import * as path from 'path';
 import * as fs from 'fs';
 
@@ -1205,17 +1206,19 @@ class ObsidianTypstPDFExportSettingTab extends PluginSettingTab {
 		new Setting(containerEl)
 			.setName('Page size')
 			.setDesc('Paper size for PDF output')
-			.addDropdown(dropdown => dropdown
-				.addOption('a4', 'A4')
-				.addOption('a5', 'A5')
-				.addOption('letter', 'US Letter')
-				.addOption('legal', 'US Legal')
-				.addOption('a3', 'A3')
-				.setValue(this.plugin.settings.pageSetup.size)
-				.onChange(async (value) => {
-					this.plugin.settings.pageSetup.size = value;
-					await this.plugin.saveSettings();
-				}));
+			.addDropdown(dropdown => {
+				// Add all supported paper sizes
+				SUPPORTED_PAPER_SIZES.forEach(paperSize => {
+					dropdown.addOption(paperSize.key, paperSize.displayName);
+				});
+				
+				return dropdown
+					.setValue(this.plugin.settings.pageSetup.size)
+					.onChange(async (value) => {
+						this.plugin.settings.pageSetup.size = value;
+						await this.plugin.saveSettings();
+					});
+			});
 		
 		new Setting(containerEl)
 			.setName('Page orientation')

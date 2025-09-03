@@ -5,6 +5,7 @@
 
 import { Setting } from 'obsidian';
 import { ModalSection, ModalState, ValidationResult } from '../types';
+import { SUPPORTED_PAPER_SIZES } from '../../utils/paperSizeMapper';
 
 export class PageSetupSection implements ModalSection {
 	private container: HTMLElement | null = null;
@@ -26,12 +27,12 @@ export class PageSetupSection implements ModalSection {
 			.setName('Page size')
 			.setDesc('Standard page sizes for the PDF document')
 			.addDropdown(dropdown => {
+				// Add all supported paper sizes
+				SUPPORTED_PAPER_SIZES.forEach(paperSize => {
+					dropdown.addOption(paperSize.key, paperSize.displayName);
+				});
+				
 				dropdown
-					.addOption('a4', 'A4 (210 × 297 mm)')
-					.addOption('letter', 'Letter (8.5 × 11 in)')
-					.addOption('legal', 'Legal (8.5 × 14 in)')
-					.addOption('a3', 'A3 (297 × 420 mm)')
-					.addOption('a5', 'A5 (148 × 210 mm)')
 					.setValue(state.templateVariables.pageSize || 'a4')
 					.onChange(value => {
 						state.updateTemplateVariables({ pageSize: value });

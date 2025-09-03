@@ -8,6 +8,7 @@ import * as fs from 'fs';
 import { promises as fsPromises } from 'fs';
 import * as path from 'path';
 import * as os from 'os';
+import { mapToTypstPaperSize } from '../utils/paperSizeMapper';
 import { PandocOptions, TypstSettings, ConversionResult, ProgressCallback } from './types';
 import type { obsidianTypstPDFExportSettings } from '../core/settings';
 
@@ -364,6 +365,8 @@ export class PandocTypstConverter {
 			if (value !== null && value !== undefined && value.toString().trim() !== '') {
 				// Handle special variable name mappings for Typst compatibility
 				let variableName = key;
+				let processedValue = value;
+				
 				switch (key) {
 					case 'bodyFont':
 						variableName = 'font';
@@ -379,6 +382,8 @@ export class PandocTypstConverter {
 						break;
 					case 'pageSize':
 						variableName = 'paper';
+						// Convert to Typst-compatible paper size
+						processedValue = mapToTypstPaperSize(value.toString());
 						break;
 					case 'marginTop':
 						variableName = 'margin_top';
@@ -395,7 +400,7 @@ export class PandocTypstConverter {
 					// Keep other variables as-is (orientation, flipped, width, etc.)
 				}
 				
-				args.push('-V', `${variableName}=${value}`);
+				args.push('-V', `${variableName}=${processedValue}`);
 			}
 		}
 	}
@@ -437,7 +442,8 @@ export class PandocTypstConverter {
 		// Add page setup variables only if not already present
 		if (settings.pageSetup) {
 			if (!existingVars.pageSize && !existingVars.paper && settings.pageSetup.size) {
-				args.push('-V', `paper=${settings.pageSetup.size}`);
+				const typstPaperSize = mapToTypstPaperSize(settings.pageSetup.size);
+				args.push('-V', `paper=${typstPaperSize}`);
 			}
 			if (!existingVars.orientation && settings.pageSetup.orientation) {
 				args.push('-V', `orientation=${settings.pageSetup.orientation}`);

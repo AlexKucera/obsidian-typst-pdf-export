@@ -1,5 +1,6 @@
 import { TemplateValidationResult, SubstitutionContext } from './types';
 import { TemplateSubstitution } from './template-substitution';
+import { getValidTypstPaperSizes } from './utils/paperSizeMapper';
 
 /**
  * Comprehensive template validation system
@@ -378,7 +379,7 @@ export class TemplateValidator {
 
         // Check for invalid paper sizes
         const paperSizePattern = /paper:\s*"([^"]+)"/g;
-        const validPaperSizes = ['a4', 'a3', 'a5', 'us-letter', 'us-legal', 'iso-b4', 'iso-b5'];
+        const validPaperSizes = getValidTypstPaperSizes();
         let match;
 
         while ((match = paperSizePattern.exec(templateContent)) !== null) {
