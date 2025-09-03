@@ -23,6 +23,7 @@ import { obsidianTypstPDFExportSettings, DEFAULT_SETTINGS, ExportFormat } from '
 import { FALLBACK_FONTS, PLUGIN_DIRS } from './src/core/constants';
 import { DependencyChecker } from './src/core/DependencyChecker';
 import { ModalSettingsHelper } from './src/core/ModalSettingsHelper';
+import { ExportErrorHandler } from './src/core/ExportErrorHandler';
 import { PandocTypstConverter } from './src/converters/PandocTypstConverter';
 import { ExportConfigModal } from './src/modal/ExportConfigModal';
 import { ExportConfig, ExportConfigModalSettings } from './src/modal/types';
@@ -399,32 +400,21 @@ export class obsidianTypstPDFExport extends Plugin {
 			return;
 		}
 
-		new Notice(`Exporting ${files.length} files to PDF...`);
+		ExportErrorHandler.showProgressNotice(`Exporting ${files.length} files to PDF...`);
 
-		let successful = 0;
-		let failed = 0;
-		const errors: string[] = [];
+		const { recordSuccess, recordError, getResult } = ExportErrorHandler.createBatchTracker();
 
 		for (const file of files) {
 			try {
 				await this.exportFile(file);
-				successful++;
+				recordSuccess();
 			} catch (error) {
-				console.error(`Failed to export ${file.name}:`, error);
-				failed++;
-				errors.push(`${file.name}: ${error.message || error}`);
+				recordError(file.name, error);
 			}
 		}
 
-		// Show completion notice
-		if (failed === 0) {
-			new Notice(`✓ Successfully exported ${successful} files`);
-		} else {
-			new Notice(`Export complete: ${successful} successful, ${failed} failed`, 5000);
-			if (errors.length > 0) {
-				console.error('Export errors:', errors);
-			}
-		}
+		// Show final result
+		ExportErrorHandler.handleBatchResult(getResult());
 	}
 	
 	/**
@@ -439,7 +429,7 @@ export class obsidianTypstPDFExport extends Plugin {
 			this.currentExportController = new AbortController();
 			
 			// Show progress notice
-			const progressNotice = new Notice('Exporting to PDF...', 0);
+			const progressNotice = ExportErrorHandler.showProgressNotice('Exporting to PDF...');
 			
 			// Read file content
 			const content = await this.app.vault.read(file);
@@ -534,8 +524,7 @@ export class obsidianTypstPDFExport extends Plugin {
 				new Notice(`Export failed: ${result.error}`);
 			}
 		} catch (error) {
-			console.error('Export error:', error);
-			new Notice(`Export failed: ${error.message}`);
+			ExportErrorHandler.handleSingleExportError(error);
 		} finally {
 			this.currentExportController = null;
 			
@@ -578,32 +567,21 @@ export class obsidianTypstPDFExport extends Plugin {
 			return;
 		}
 
-		new Notice(`Exporting ${files.length} files with custom configuration...`);
+		ExportErrorHandler.showProgressNotice(`Exporting ${files.length} files with custom configuration...`);
 
-		let successful = 0;
-		let failed = 0;
-		const errors: string[] = [];
+		const { recordSuccess, recordError, getResult } = ExportErrorHandler.createBatchTracker();
 
 		for (const file of files) {
 			try {
 				await this.exportFileWithConfig(file, config);
-				successful++;
+				recordSuccess();
 			} catch (error) {
-				console.error(`Failed to export ${file.name}:`, error);
-				failed++;
-				errors.push(`${file.name}: ${error.message || error}`);
+				recordError(file.name, error);
 			}
 		}
 
-		// Show completion notice
-		if (failed === 0) {
-			new Notice(`✓ Successfully exported ${successful} files`);
-		} else {
-			new Notice(`Export complete: ${successful} successful, ${failed} failed`, 5000);
-			if (errors.length > 0) {
-				console.error('Export errors:', errors);
-			}
-		}
+		// Show final result
+		ExportErrorHandler.handleBatchResult(getResult());
 	}
 	
 	/**
@@ -613,7 +591,7 @@ export class obsidianTypstPDFExport extends Plugin {
 		if (this.currentExportController) {
 			this.currentExportController.abort();
 			this.currentExportController = null;
-			new Notice('Export cancelled');
+			ExportErrorHandler.showCancellationNotice();
 		}
 	}
 
@@ -632,24 +610,20 @@ export class obsidianTypstPDFExport extends Plugin {
 			return;
 		}
 		
-		new Notice(`Exporting ${markdownFiles.length} files from ${folder.name}...`);
+		ExportErrorHandler.showProgressNotice(`Exporting ${markdownFiles.length} files from ${folder.name}...`);
 		
-		let successful = 0;
-		let failed = 0;
+		const { recordSuccess, recordError, getResult } = ExportErrorHandler.createBatchTracker();
 		
 		for (const file of markdownFiles) {
 			try {
 				await this.exportFile(file);
-				successful++;
+				recordSuccess();
 			} catch (error) {
-				console.error(`Failed to export ${file.name}:`, error);
-				failed++;
+				recordError(file.name, error);
 			}
 		}
 		
-		new Notice(
-			`Export complete: ${successful} successful, ${failed} failed`
-		);
+		ExportErrorHandler.handleBatchResult(getResult());
 	}
 	
 	/**
@@ -694,7 +668,7 @@ ${dependencyResult.allAvailable
 				);
 			}
 		} catch (error) {
-			console.error('Error checking dependencies:', error);
+			ExportErrorHandler.handleDependencyError('Dependencies', error, false);
 		}
 	}
 
@@ -803,7 +777,7 @@ ${dependencyResult.allAvailable
 					updatedContent = updatedContent.replace(pdfEmbed.marker, fallbackOutput);
 				}
 			} catch (error) {
-				console.error(`Export: Error processing PDF embed ${pdfEmbed.originalPath}:`, error);
+				ExportErrorHandler.handleProcessingError('PDF embed', pdfEmbed.originalPath, error);
 				// Still try to embed the PDF even if there's a processing error
 				const relativePdfPath = pathModule.relative(vaultBasePath, pdfEmbed.originalPath);
 				const fallbackOutput = [
@@ -880,9 +854,13 @@ ${dependencyResult.allAvailable
 				
 				console.log(`Export: Successfully processed image embed: ${imageEmbed.originalPath}`);
 			} catch (error) {
-				console.error(`Export: Error processing image embed ${imageEmbed.originalPath}:`, error);
-				const fallbackOutput = `[⚠️ **Image processing error:** ${imageEmbed.alt || imageEmbed.originalPath}]`;
-				updatedContent = updatedContent.replace(imageEmbed.marker, fallbackOutput);
+				const { fallback } = ExportErrorHandler.handleProcessingError(
+					'image embed',
+					imageEmbed.originalPath,
+					error,
+					`[⚠️ **Image processing error:** ${imageEmbed.alt || imageEmbed.originalPath}]`
+				);
+				updatedContent = updatedContent.replace(imageEmbed.marker, fallback);
 			}
 		}
 		
