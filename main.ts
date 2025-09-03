@@ -651,6 +651,40 @@ ${dependencyResult.allAvailable
 	/**
 	 * Process PDF embeds - convert PDF pages to images for inclusion
 	 */
+	/**
+	 * Resolve PDF path using multiple strategies
+	 * @param sanitizedPath The sanitized path from the embed
+	 * @param vaultBasePath Base path of the vault
+	 * @param currentFile Current file being processed (optional)
+	 * @returns Full path to PDF file if found, null otherwise
+	 */
+	private resolvePdfPath(sanitizedPath: string, vaultBasePath: string, currentFile?: TFile): string | null {
+		const pathModule = require('path');
+		const fs = require('fs');
+		
+		// Decode the URL-encoded sanitized path back to normal characters
+		const decodedPath = decodeURIComponent(sanitizedPath);
+		
+		// Try multiple path resolution strategies
+		const possiblePaths = [
+			// Strategy 1: Relative to vault root (standard Obsidian behavior)
+			pathModule.resolve(vaultBasePath, decodedPath),
+			// Strategy 2: Relative to current file's directory (for local attachments)
+			currentFile ? pathModule.resolve(vaultBasePath, pathModule.dirname(currentFile.path), decodedPath) : null
+		].filter(p => p !== null);
+		
+		// Try each possible path until we find one that exists
+		for (const possiblePath of possiblePaths) {
+			console.log(`Export: Checking path: ${possiblePath}`);
+			if (fs.existsSync(possiblePath)) {
+				console.log(`Export: Found PDF at: ${possiblePath}`);
+				return possiblePath;
+			}
+		}
+		
+		return null;
+	}
+
 	private async processPdfEmbeds(processedResult: any, vaultBasePath: string, tempDir: string, currentFile?: TFile): Promise<void> {
 		const { PdfToImageConverter } = await import('./src/PdfToImageConverter');
 		const converter = PdfToImageConverter.getInstance(this);
@@ -665,31 +699,11 @@ ${dependencyResult.allAvailable
 			try {
 				console.log(`Export: Processing PDF embed: ${pdfEmbed.originalPath}`);
 				
-				// Decode the URL-encoded sanitized path back to normal characters
-				const decodedPath = decodeURIComponent(pdfEmbed.sanitizedPath);
-				
-				// Try multiple path resolution strategies
-				const possiblePaths = [
-					// Strategy 1: Relative to vault root (standard Obsidian behavior)
-					pathModule.resolve(vaultBasePath, decodedPath),
-					// Strategy 2: Relative to current file's directory (for local attachments)
-					currentFile ? pathModule.resolve(vaultBasePath, pathModule.dirname(currentFile.path), decodedPath) : null
-				].filter(p => p !== null);
-				
-				let fullPdfPath = null;
-				
-				// Try each possible path until we find one that exists
-				for (const possiblePath of possiblePaths) {
-					console.log(`Export: Checking path: ${possiblePath}`);
-					if (fs.existsSync(possiblePath)) {
-						fullPdfPath = possiblePath;
-						console.log(`Export: Found PDF at: ${fullPdfPath}`);
-						break;
-					}
-				}
+				// Resolve PDF path using helper method
+				const fullPdfPath = this.resolvePdfPath(pdfEmbed.sanitizedPath, vaultBasePath, currentFile);
 				
 				if (!fullPdfPath) {
-					console.warn(`Export: PDF file not found: ${decodedPath}`);
+					console.warn(`Export: PDF file not found: ${decodeURIComponent(pdfEmbed.sanitizedPath)}`);
 					// Replace marker with fallback message
 					const fallbackOutput = `*⚠️ PDF not found: ${pdfEmbed.baseName}*`;
 					updatedContent = updatedContent.replace(pdfEmbed.marker, fallbackOutput);
