@@ -3,15 +3,15 @@
  * Handles font selection and size configuration
  */
 
-import { Setting } from 'obsidian';
+import { Setting, App } from 'obsidian';
 import { ModalSection, ModalState, ValidationResult } from '../types';
 
 export class TypographySection implements ModalSection {
 	private container: HTMLElement | null = null;
-	private fontInputs: Map<string, HTMLInputElement> = new Map();
-	private sizeSliders: Map<string, any> = new Map();
+	private app: App | null = null;
 	
-	render(containerEl: HTMLElement, state: ModalState): void {
+	render(containerEl: HTMLElement, state: ModalState, app?: App): void {
+		if (app) this.app = app;
 		this.container = containerEl.createDiv('export-section');
 		this.container.createEl('h3', { text: 'Typography' });
 		
@@ -22,71 +22,175 @@ export class TypographySection implements ModalSection {
 	private createFontSettings(state: ModalState): void {
 		if (!this.container) return;
 		
-		// Body font
-		const bodyFontSetting = new Setting(this.container)
+		// Body font dropdown
+		new Setting(this.container)
 			.setName('Body font')
 			.setDesc('Primary font for document text')
-			.addText(text => {
-				const input = text
-					.setPlaceholder('Concourse OT')
-					.setValue(state.typography.fontFamily)
-					.onChange(value => {
-						state.updateTypography({ fontFamily: value });
+			.addDropdown(async (dropdown) => {
+				try {
+					const fonts = await this.getAvailableFonts(state);
+					fonts.forEach(font => {
+						dropdown.addOption(font, font);
 					});
-				this.fontInputs.set('body', input.inputEl);
-				return text;
+					
+					dropdown
+						.setValue(state.templateVariables.bodyFont || 'Concourse OT')
+						.onChange(value => {
+							state.updateTemplateVariables({ bodyFont: value });
+						});
+				} catch (error) {
+					console.error('Failed to load fonts:', error);
+					// Fallback to hardcoded fonts
+					this.addFallbackBodyFonts(dropdown, state);
+				}
 			});
 		
-		// Heading font (future enhancement)
-		// For now, we'll use the same font for all text types
-		// but this can be expanded later
+		// Heading font dropdown
+		new Setting(this.container)
+			.setName('Heading font')
+			.setDesc('Font for headings and titles')
+			.addDropdown(async (dropdown) => {
+				try {
+					const fonts = await this.getAvailableFonts(state);
+					fonts.forEach(font => {
+						dropdown.addOption(font, font);
+					});
+					
+					dropdown
+						.setValue(state.templateVariables.headingFont || 'Concourse OT')
+						.onChange(value => {
+							state.updateTemplateVariables({ headingFont: value });
+						});
+				} catch (error) {
+					console.error('Failed to load fonts:', error);
+					// Fallback to hardcoded fonts
+					this.addFallbackBodyFonts(dropdown, state);
+				}
+			});
 		
-		// Monospace font (future enhancement)
-		// Similar to heading font, can be expanded later
+		// Monospace font dropdown
+		new Setting(this.container)
+			.setName('Monospace font')
+			.setDesc('Font for code blocks and inline code')
+			.addDropdown(async (dropdown) => {
+				try {
+					const fonts = await this.getAvailableFonts(state);
+					// Filter for common monospace fonts or show all
+					fonts.forEach(font => {
+						dropdown.addOption(font, font);
+					});
+					
+					dropdown
+						.setValue(state.templateVariables.monospaceFont || 'Source Code Pro')
+						.onChange(value => {
+							state.updateTemplateVariables({ monospaceFont: value });
+						});
+				} catch (error) {
+					console.error('Failed to load fonts:', error);
+					// Fallback to hardcoded monospace fonts
+					this.addFallbackMonospaceFonts(dropdown, state);
+				}
+			});
 	}
 	
 	private createFontSizeSettings(state: ModalState): void {
 		if (!this.container) return;
 		
-		const sizesContainer = this.container.createDiv('font-sizes');
-		sizesContainer.createEl('h4', { text: 'Text Formatting' });
-		
-		// Font size
-		new Setting(sizesContainer)
-			.setName('Font size')
+		// Body font size
+		new Setting(this.container)
+			.setName('Body font size')
 			.setDesc('Base font size for document text')
 			.addDropdown(dropdown => {
 				dropdown
-					.addOptions({
-						'9pt': '9pt - Small',
-						'10pt': '10pt - Compact',
-						'11pt': '11pt - Standard',
-						'12pt': '12pt - Large',
-						'14pt': '14pt - Extra Large'
-					})
-					.setValue(state.typography.fontSize)
+					.addOption('9pt', '9pt - Small')
+					.addOption('10pt', '10pt - Compact')
+					.addOption('11pt', '11pt - Standard')
+					.addOption('12pt', '12pt - Large')
+					.addOption('14pt', '14pt - Extra Large')
+					.setValue(state.templateVariables.bodyFontSize || '11pt')
 					.onChange(value => {
-						state.updateTypography({ fontSize: value });
+						state.updateTemplateVariables({ bodyFontSize: value });
 					});
 			});
-		
-		// Line height
-		new Setting(sizesContainer)
-			.setName('Line height')
-			.setDesc('Spacing between lines of text')
-			.addDropdown(dropdown => {
-				dropdown
-					.addOptions({
-						'1.0': 'Single',
-						'1.15': 'Slightly Loose',
-						'1.5': 'One and a Half',
-						'1.8': 'Relaxed',
-						'2.0': 'Double'
-					})
-					.setValue(state.typography.lineHeight)
-					.onChange(value => {
-						state.updateTypography({ lineHeight: value });
-					});
+	}
+	
+	// Helper methods for fonts - similar to settings tab
+	private async getAvailableFonts(state: ModalState): Promise<string[]> {
+		try {
+			// Access the plugin instance through the app
+			// @ts-ignore - accessing private plugin manager
+			const plugin = this.app?.plugins?.plugins?.['obsidian-typst-pdf-export'];
+			if (plugin && plugin.getCachedFonts) {
+				return await plugin.getCachedFonts();
+			}
+			
+			// Fallback to hardcoded fonts if plugin not accessible
+			return [
+				'Times New Roman',
+				'Arial', 
+				'Helvetica',
+				'Georgia',
+				'Courier New',
+				'Monaco',
+				'SF Pro Text',
+				'SF Mono',
+				'Concourse OT',
+				'UbuntuMono Nerd Font Mono',
+				'Source Code Pro'
+			];
+		} catch (error) {
+			console.error('Failed to get cached fonts:', error);
+			// Return common fallback fonts
+			return [
+				'Times New Roman',
+				'Arial', 
+				'Helvetica',
+				'Georgia',
+				'Courier New',
+				'Monaco',
+				'SF Pro Text',
+				'SF Mono',
+				'Concourse OT',
+				'UbuntuMono Nerd Font Mono',
+				'Source Code Pro'
+			];
+		}
+	}
+	
+	private addFallbackBodyFonts(dropdown: any, state: ModalState): void {
+		dropdown
+			.addOption('Concourse OT', 'Concourse OT')
+			.addOption('Times New Roman', 'Times New Roman')
+			.addOption('Georgia', 'Georgia')
+			.addOption('Arial', 'Arial')
+			.addOption('Helvetica', 'Helvetica')
+			.addOption('Calibri', 'Calibri')
+			.addOption('Cambria', 'Cambria')
+			.addOption('Palatino', 'Palatino')
+			.addOption('Book Antiqua', 'Book Antiqua')
+			.setValue(state.templateVariables.bodyFont || state.templateVariables.headingFont || 'Concourse OT')
+			.onChange((value: string) => {
+				if (dropdown.containerEl.closest('.setting-item')?.querySelector('.setting-item-name')?.textContent?.includes('Body')) {
+					state.updateTemplateVariables({ bodyFont: value });
+				} else {
+					state.updateTemplateVariables({ headingFont: value });
+				}
+			});
+	}
+	
+	private addFallbackMonospaceFonts(dropdown: any, state: ModalState): void {
+		dropdown
+			.addOption('Source Code Pro', 'Source Code Pro')
+			.addOption('Courier New', 'Courier New')
+			.addOption('Monaco', 'Monaco')
+			.addOption('Consolas', 'Consolas')
+			.addOption('Menlo', 'Menlo')
+			.addOption('DejaVu Sans Mono', 'DejaVu Sans Mono')
+			.addOption('Liberation Mono', 'Liberation Mono')
+			.addOption('Ubuntu Mono', 'Ubuntu Mono')
+			.setValue(state.templateVariables.monospaceFont || 'Source Code Pro')
+			.onChange((value: string) => {
+				state.updateTemplateVariables({ monospaceFont: value });
 			});
 	}
 	
@@ -94,33 +198,13 @@ export class TypographySection implements ModalSection {
 		const errors: string[] = [];
 		const warnings: string[] = [];
 		
-		// Check if fonts are likely available
-		this.fontInputs.forEach((input, type) => {
-			const value = input.value.trim();
-			if (value && this.isUncommonFont(value)) {
-				warnings.push(`Font "${value}" may not be available on the system. The template will use fallback fonts if needed.`);
-			}
-		});
+		// No validation needed for dropdowns with predefined options
 		
 		return {
 			isValid: errors.length === 0,
 			errors,
 			warnings
 		};
-	}
-	
-	private isUncommonFont(fontName: string): boolean {
-		// List of commonly available fonts
-		const commonFonts = [
-			'arial', 'helvetica', 'times new roman', 'georgia', 
-			'verdana', 'tahoma', 'trebuchet ms', 'palatino',
-			'courier', 'courier new', 'monaco', 'consolas',
-			'sf pro', 'roboto', 'open sans', 'lato',
-			'concourse ot', 'ubuntu', 'source code pro'
-		];
-		
-		const normalized = fontName.toLowerCase().trim();
-		return !commonFonts.some(font => normalized.includes(font));
 	}
 	
 	getId(): string {

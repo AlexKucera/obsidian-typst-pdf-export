@@ -31,6 +31,21 @@ export interface obsidianTypstPDFExportSettings {
 		template: string;
 		/** Default export format */
 		format: ExportFormat;
+		/** Default page size */
+		pageSize: string;
+		/** Default page orientation */
+		orientation: 'portrait' | 'landscape';
+		/** Default margins */
+		marginTop: string;
+		marginBottom: string;
+		marginLeft: string;
+		marginRight: string;
+		/** Default fonts */
+		bodyFont: string;
+		headingFont: string;
+		monospaceFont: string;
+		/** Default body font size */
+		bodyFontSize: string;
 	};
 	
 	/** Typography settings */
@@ -89,7 +104,17 @@ export const DEFAULT_SETTINGS: obsidianTypstPDFExportSettings = {
 	
 	exportDefaults: {
 		template: 'default',
-		format: ExportFormat.Standard
+		format: ExportFormat.Standard,
+		pageSize: 'a4',
+		orientation: 'portrait',
+		marginTop: '1in',
+		marginBottom: '0.8in',
+		marginLeft: '1in',
+		marginRight: '0.6in',
+		bodyFont: 'Concourse OT',
+		headingFont: 'Concourse OT',
+		monospaceFont: 'Source Code Pro',
+		bodyFontSize: '11pt'
 	},
 	
 	typography: {

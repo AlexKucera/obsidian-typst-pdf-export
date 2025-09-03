@@ -13,12 +13,10 @@ export interface ExportConfig {
 	outputFolder?: string;
 	/** Template variables for this export */
 	templateVariables?: Record<string, any>;
-	/** Typography settings for this export */
-	typography?: {
-		fontFamily?: string;
-		fontSize?: string;
-		lineHeight?: string;
-	};
+	/** Open PDF after export */
+	openAfterExport?: boolean;
+	/** Preserve folder structure when exporting */
+	preserveFolderStructure?: boolean;
 }
 
 export interface ExportConfigModalSettings extends ExportConfig {
@@ -39,7 +37,7 @@ export interface ExportConfigModalSettings extends ExportConfig {
 }
 
 export interface ModalSection {
-	render(containerEl: HTMLElement, state: ModalState): void;
+	render(containerEl: HTMLElement, state: ModalState, app?: any): void;
 	validate?(): ValidationResult;
 	getId(): string;
 }
@@ -52,14 +50,12 @@ export interface ValidationResult {
 
 export interface ModalState {
 	settings: ExportConfigModalSettings;
-	typography: {
-		fontFamily: string;
-		fontSize: string;
-		lineHeight: string;
-	};
-	updateTypography(updates: Partial<ModalState['typography']>): void;
+	templateVariables: Record<string, any>;
 	updateSettings(updates: Partial<ExportConfigModalSettings>): void;
 	updateTemplateVariables(updates: Record<string, any>): void;
 	buildExportConfig(): ExportConfig;
 	notifyChange(): void;
+	setProgress(percent: number, operation: string): void;
+	reset(): void;
+	onChange(listener: () => void): void;
 }

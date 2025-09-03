@@ -3,16 +3,19 @@
  * Handles template selection, format options, and output settings
  */
 
-import { Setting } from 'obsidian';
+import { Setting, App } from 'obsidian';
 import { ModalSection, ModalState, ValidationResult } from '../types';
 import { ExportFormat } from '../../core/settings';
+import { FolderSuggest } from '../../components/FolderSuggest';
 
 export class GeneralSection implements ModalSection {
 	private container: HTMLElement | null = null;
 	private templateDropdown: any = null;
 	private outputFolderInput: HTMLInputElement | null = null;
+	private app: App;
 	
-	render(containerEl: HTMLElement, state: ModalState): void {
+	render(containerEl: HTMLElement, state: ModalState, app?: App): void {
+		if (app) this.app = app;
 		this.container = containerEl.createDiv('export-section');
 		this.container.createEl('h3', { text: 'General Settings' });
 		
@@ -28,8 +31,11 @@ export class GeneralSection implements ModalSection {
 			.setName('Typst template')
 			.setDesc('Select template for document styling')
 			.addDropdown(dropdown => {
-				// Populate with available templates
-				state.settings.availableTemplates.forEach(template => {
+				// Filter out universal-wrapper.pandoc.typ and populate with available templates
+				const filteredTemplates = state.settings.availableTemplates
+					.filter(template => template !== 'universal-wrapper.pandoc.typ');
+				
+				filteredTemplates.forEach(template => {
 					dropdown.addOption(template, this.getTemplateDisplayName(template));
 				});
 				
@@ -74,6 +80,11 @@ export class GeneralSection implements ModalSection {
 						state.updateSettings({ outputFolder: value });
 					});
 				this.outputFolderInput = input.inputEl;
+				
+				// Add folder autosuggest
+				if (this.app) {
+					new FolderSuggest(this.app, input.inputEl);
+				}
 			});
 	}
 	
@@ -110,23 +121,25 @@ export class GeneralSection implements ModalSection {
 	}
 	
 	updateAvailableTemplates(templates: string[]): void {
-		if (!this.templateDropdown) return;
-		
-		const currentValue = this.templateDropdown.getValue();
-		
-		// Clear and repopulate dropdown
-		this.templateDropdown.selectEl.empty();
-		templates.forEach(template => {
-			this.templateDropdown.addOption(template, this.getTemplateDisplayName(template));
-		});
-		
-		// Restore selection if still available
-		if (templates.includes(currentValue)) {
-			this.templateDropdown.setValue(currentValue);
-		} else if (templates.length > 0) {
-			this.templateDropdown.setValue(templates[0]);
-		}
+	if (!this.templateDropdown) return;
+	
+	const currentValue = this.templateDropdown.getValue();
+	
+	// Filter out universal-wrapper.pandoc.typ and clear/repopulate dropdown
+	const filteredTemplates = templates.filter(template => template !== 'universal-wrapper.pandoc.typ');
+	
+	this.templateDropdown.selectEl.empty();
+	filteredTemplates.forEach(template => {
+		this.templateDropdown.addOption(template, this.getTemplateDisplayName(template));
+	});
+	
+	// Restore selection if still available
+	if (filteredTemplates.includes(currentValue)) {
+		this.templateDropdown.setValue(currentValue);
+	} else if (filteredTemplates.length > 0) {
+		this.templateDropdown.setValue(filteredTemplates[0]);
 	}
+}
 	
 	getId(): string {
 		return 'general';
