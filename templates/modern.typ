@@ -56,7 +56,7 @@
   paper: "a4",
   margin: (x: 1.8cm, y: 1.5cm),
   cols: 1,
-  font: ("Concourse OT", "Helvetica Neue", "Arial", "sans-serif"),
+  font: ("Concourse OT", "Helvetica Neue", "Arial"),
   fontsize: 10pt,
   sectionnumbering: none,
   pagenumbering: none, // Single page doesn't need page numbers
@@ -110,7 +110,7 @@
   // Modern sans-serif fonts
   // Use UI-configured font if available, otherwise use template default
   let body-font = if font != none and type(font) == str { 
-    (font, "Concourse OT", "Helvetica Neue", "Arial", "sans-serif") 
+    (font, "Concourse OT", "Helvetica Neue", "Arial") 
   } else { 
     font 
   }
@@ -135,11 +135,11 @@
   // Modern heading styles with color accents
   // Use UI-configured heading font and size if available
   let heading-font = if heading_font != none and type(heading_font) == str { 
-    (heading_font, "SF Pro Text", "Helvetica Neue", "Arial", "sans-serif") 
+    (heading_font, "SF Pro Text", "Helvetica Neue", "Arial") 
   } else if heading_font != none { 
     heading_font 
   } else { 
-    ("SF Pro Text", "Helvetica Neue", "Arial", "sans-serif") 
+    ("SF Pro Text", "Helvetica Neue", "Arial") 
   }
   
   let heading-fontsize = if heading_fontsize != none { heading_fontsize } else { 13pt }

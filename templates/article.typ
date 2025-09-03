@@ -61,7 +61,7 @@
   paper: "a4",
   margin: (x: 2cm, y: 2.5cm),
   cols: 2,
-  font: ("Concourse OT", "Georgia", "Times New Roman", "serif"),
+  font: ("Concourse OT", "Georgia", "Times New Roman"),
   fontsize: 11pt,
   sectionnumbering: none,
   pagenumbering: "1",
@@ -128,7 +128,7 @@
   // Mixed fonts - serif body, sans-serif headings
   // Use UI-configured font if available, otherwise use template default
   let body-font = if font != none and type(font) == str { 
-    (font, "Concourse OT", "Georgia", "Times New Roman", "serif") 
+    (font, "Concourse OT", "Georgia", "Times New Roman") 
   } else { 
     font 
   }
@@ -153,11 +153,11 @@
   // Magazine-style heading styles
   // Use UI-configured heading font and size if available
   let heading-font = if heading_font != none and type(heading_font) == str { 
-    (heading_font, "SF Pro Text", "Helvetica Neue", "Arial", "sans-serif") 
+    (heading_font, "SF Pro Text", "Helvetica Neue", "Arial") 
   } else if heading_font != none { 
     heading_font 
   } else { 
-    ("SF Pro Text", "Helvetica Neue", "Arial", "sans-serif") 
+    ("SF Pro Text", "Helvetica Neue", "Arial") 
   }
   
   let heading-fontsize = if heading_fontsize != none { heading_fontsize } else { 15pt }
@@ -214,7 +214,7 @@
   // Authors in magazine style
   if authors != () and authors != none [
     #align(center, text(
-      font: ("SF Pro Text", "Helvetica Neue", "Arial", "sans-serif"), 
+      font: ("SF Pro Text", "Helvetica Neue", "Arial"), 
       13pt, 
       style: "italic",
       fill: rgb("#64748b")
