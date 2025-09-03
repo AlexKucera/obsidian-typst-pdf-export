@@ -40,7 +40,7 @@ export class obsidianTypstPDFExport extends Plugin {
 		this.templateManager = new TemplateManager(this);
 		
 		// Add ribbon icon
-		this.addRibbonIcon('download', 'Export to PDF with Typst', (event: MouseEvent) => {
+		this.addRibbonIcon('type', 'Export to PDF with Typst', (event: MouseEvent) => {
 			this.handleRibbonClick(event);
 		});
 		
