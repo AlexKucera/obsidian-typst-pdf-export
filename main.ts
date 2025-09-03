@@ -685,6 +685,36 @@ ${dependencyResult.allAvailable
 		return null;
 	}
 
+	/**
+	 * Generate Typst PDF embed syntax with optional preview image
+	 * @param relativePdfPath Relative path to PDF from vault base
+	 * @param baseName Base name of the PDF file
+	 * @param relativeImagePath Optional relative path to preview image
+	 * @param errorSuffix Optional error suffix for description
+	 * @returns Formatted content for PDF embed
+	 */
+	private generatePdfEmbedContent(
+		relativePdfPath: string,
+		baseName: string,
+		relativeImagePath?: string,
+		errorSuffix?: string
+	): string {
+		const description = `${baseName}${errorSuffix ? ` ${errorSuffix}` : ''}`;
+		const attachmentNote = `*PDF attached: ${description} - check your PDF reader's attachment panel*`;
+		
+		const content = [
+			relativeImagePath ? `![${baseName} - Page 1](${relativeImagePath})` : null,
+			relativeImagePath ? '' : null,
+			'```{=typst}',
+			`#pdf.embed("${relativePdfPath}", description: "${description}", mime-type: "application/pdf")`,
+			'```',
+			'',
+			attachmentNote
+		].filter(line => line !== null).join('\n');
+		
+		return content;
+	}
+
 	private async processPdfEmbeds(processedResult: any, vaultBasePath: string, tempDir: string, currentFile?: TFile): Promise<void> {
 		const { PdfToImageConverter } = await import('./src/PdfToImageConverter');
 		const converter = PdfToImageConverter.getInstance(this);
@@ -737,17 +767,12 @@ ${dependencyResult.allAvailable
 					// Use relative path to the original PDF from vault base for pdf.embed
 					const relativePdfPath = pathModule.relative(vaultBasePath, fullPdfPath);
 					
-					// Create combined output with image and Typst pdf.embed
-					// Use raw Typst blocks for the pdf.embed call
-					const combinedOutput = [
-						`![${pdfEmbed.baseName} - Page 1](${relativeImagePath})`,
-						'',
-						'```{=typst}',
-						`#pdf.embed("${relativePdfPath}", description: "${pdfEmbed.baseName}", mime-type: "application/pdf")`,
-						'```',
-						'',
-						`*PDF attached: ${pdfEmbed.baseName} - check your PDF reader's attachment panel*`
-					].join('\n');
+					// Create combined output with image and Typst pdf.embed using helper
+					const combinedOutput = this.generatePdfEmbedContent(
+						relativePdfPath,
+						pdfEmbed.baseName,
+						relativeImagePath
+					);
 					
 					// Replace the placeholder with the combined output
 					updatedContent = updatedContent.replace(pdfEmbed.marker, combinedOutput);
@@ -757,26 +782,19 @@ ${dependencyResult.allAvailable
 					console.warn(`Export: Failed to convert PDF to image: ${result.error}`);
 					const relativePdfPath = pathModule.relative(vaultBasePath, fullPdfPath);
 					// Even without preview image, still embed the PDF
-					const fallbackOutput = [
-						'```{=typst}',
-						`#pdf.embed("${relativePdfPath}", description: "${pdfEmbed.baseName}", mime-type: "application/pdf")`,
-						'```',
-						'',
-						`*PDF attached: ${pdfEmbed.baseName} - check your PDF reader's attachment panel*`
-					].join('\n');
+					const fallbackOutput = this.generatePdfEmbedContent(relativePdfPath, pdfEmbed.baseName);
 					updatedContent = updatedContent.replace(pdfEmbed.marker, fallbackOutput);
 				}
 			} catch (error) {
 				ExportErrorHandler.handleProcessingError('PDF embed', pdfEmbed.originalPath, error);
 				// Still try to embed the PDF even if there's a processing error
 				const relativePdfPath = pathModule.relative(vaultBasePath, pdfEmbed.originalPath);
-				const fallbackOutput = [
-					'```{=typst}',
-					`#pdf.embed("${relativePdfPath}", description: "${pdfEmbed.baseName} (error occurred)", mime-type: "application/pdf")`,
-					'```',
-					'',
-					`*PDF attached: ${pdfEmbed.baseName} (processing error) - check your PDF reader's attachment panel*`
-				].join('\n');
+				const fallbackOutput = this.generatePdfEmbedContent(
+					relativePdfPath, 
+					pdfEmbed.baseName, 
+					undefined, 
+					'(error occurred)'
+				);
 				updatedContent = updatedContent.replace(pdfEmbed.marker, fallbackOutput);
 			}
 		}
