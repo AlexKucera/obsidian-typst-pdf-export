@@ -74,8 +74,6 @@
   // Support for UI-configurable options
   heading_font: none,
   monospace_font: none,
-  heading_fontsize: none,
-  small_fontsize: none,
   margin_top: none,
   margin_right: none,
   margin_bottom: none,
@@ -180,7 +178,7 @@
       inset: 12pt,
       stroke: (left: 4pt + rgb("#1f2937")),
     )[
-      #set text(font: ("SF Pro Text", "Helvetica Neue", "Arial"), size: 18pt, weight: "bold", fill: rgb("#1f2937"))
+      #set text(font: ("SF Pro Text", "Helvetica Neue", "Arial"), size: body-fontsize * 1.5, weight: "bold", fill: rgb("#1f2937"))
       #grid(
         columns: (auto, 1fr),
         column-gutter: 12pt,
@@ -196,7 +194,7 @@
     inset: (bottom: 6pt),
     stroke: (bottom: 1pt + rgb("#e5e7eb")),
   )[
-    #set text(font: ("SF Pro Text", "Helvetica Neue", "Arial"), size: 14pt, weight: "semibold", fill: rgb("#374151"))
+    #set text(font: ("SF Pro Text", "Helvetica Neue", "Arial"), size: body-fontsize * 1.3, weight: "semibold", fill: rgb("#374151"))
     #h(0.8em)
     #it.body
   ]
@@ -206,7 +204,7 @@
     below: 0.8em,
     above: 1.5em,
   )[
-    #set text(size: 12pt, weight: "medium", fill: rgb("#4b5563"))
+    #set text(size: body-fontsize * 1.1, weight: "medium", fill: rgb("#4b5563"))
     #h(0.5em)
     #it.body
   ]

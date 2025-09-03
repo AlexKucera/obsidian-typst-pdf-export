@@ -63,8 +63,6 @@
   // Support for UI-configurable options
   heading_font: none,
   monospace_font: none,
-  heading_fontsize: none,
-  small_fontsize: none,
   margin_top: none,
   margin_right: none,
   margin_bottom: none,
@@ -142,7 +140,7 @@
     ("SF Pro Text", "Helvetica Neue", "Arial") 
   }
   
-  let heading-fontsize = if heading_fontsize != none { heading_fontsize } else { 13pt }
+  let heading-fontsize = body-fontsize * 1.4
   
   show heading.where(level: 1): it => block(
     width: 100%,
