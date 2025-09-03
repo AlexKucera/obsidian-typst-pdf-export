@@ -693,6 +693,38 @@ ${dependencyResult.allAvailable
 	 * @param errorSuffix Optional error suffix for description
 	 * @returns Formatted content for PDF embed
 	 */
+	/**
+	 * Copy converted PDF image to vault temp directory and get relative paths
+	 * @param imagePath Path to the converted image
+	 * @param pdfPath Path to the original PDF
+	 * @param baseName Base name of the PDF
+	 * @param vaultBasePath Base path of the vault
+	 * @returns Object with relative paths for image and PDF
+	 */
+	private async copyImageToVaultTemp(
+		imagePath: string,
+		pdfPath: string,
+		baseName: string,
+		vaultBasePath: string
+	): Promise<{ relativeImagePath: string; relativePdfPath: string }> {
+		const pathModule = require('path');
+		const fs = require('fs');
+		
+		// Copy image to vault temp directory for access
+		const vaultTempImagesDir = pathModule.join(vaultBasePath, '.obsidian', 'plugins', 'obsidian-typst-pdf-export', 'temp-images');
+		await fs.promises.mkdir(vaultTempImagesDir, { recursive: true });
+		
+		const imageFileName = `${baseName}_preview.png`;
+		const vaultImagePath = pathModule.join(vaultTempImagesDir, imageFileName);
+		await fs.promises.copyFile(imagePath, vaultImagePath);
+		
+		// Get relative paths from vault base
+		const relativeImagePath = pathModule.relative(vaultBasePath, vaultImagePath);
+		const relativePdfPath = pathModule.relative(vaultBasePath, pdfPath);
+		
+		return { relativeImagePath, relativePdfPath };
+	}
+
 	private generatePdfEmbedContent(
 		relativePdfPath: string,
 		baseName: string,
@@ -716,7 +748,7 @@ ${dependencyResult.allAvailable
 	}
 
 	private async processPdfEmbeds(processedResult: any, vaultBasePath: string, tempDir: string, currentFile?: TFile): Promise<void> {
-		const { PdfToImageConverter } = await import('./src/PdfToImageConverter');
+		const { PdfToImageConverter } = await import('./src/converters/PdfToImageConverter');
 		const converter = PdfToImageConverter.getInstance(this);
 		const pathModule = require('path');
 		const fs = require('fs');
@@ -753,19 +785,13 @@ ${dependencyResult.allAvailable
 				);
 				
 				if (result.success && result.imagePath) {
-					// Copy image to vault temp directory for access
-					const vaultTempImagesDir = pathModule.join(vaultBasePath, '.obsidian', 'plugins', 'obsidian-typst-pdf-export', 'temp-images');
-					await fs.promises.mkdir(vaultTempImagesDir, { recursive: true });
-					
-					const imageFileName = `${pdfEmbed.baseName}_preview.png`;
-					const vaultImagePath = pathModule.join(vaultTempImagesDir, imageFileName);
-					await fs.promises.copyFile(result.imagePath, vaultImagePath);
-					
-					// Get relative path for the generated image from vault base
-					const relativeImagePath = pathModule.relative(vaultBasePath, vaultImagePath);
-					
-					// Use relative path to the original PDF from vault base for pdf.embed
-					const relativePdfPath = pathModule.relative(vaultBasePath, fullPdfPath);
+					// Copy image to vault temp directory and get relative paths
+					const { relativeImagePath, relativePdfPath } = await this.copyImageToVaultTemp(
+						result.imagePath,
+						fullPdfPath,
+						pdfEmbed.baseName,
+						vaultBasePath
+					);
 					
 					// Create combined output with image and Typst pdf.embed using helper
 					const combinedOutput = this.generatePdfEmbedContent(
