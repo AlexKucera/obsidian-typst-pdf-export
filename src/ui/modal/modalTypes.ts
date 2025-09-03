@@ -3,7 +3,7 @@
  */
 
 import { TFile } from 'obsidian';
-import { ExportFormat } from '../core/settings';
+import { ExportFormat } from '../../core/settings';
 
 export interface ExportConfig {
 	/** Override default template */

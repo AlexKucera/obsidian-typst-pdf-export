@@ -4,7 +4,7 @@
 
 import { TFile } from 'obsidian';
 import { obsidianTypstPDFExportSettings } from './settings';
-import { ExportConfigModalSettings } from '../modal/types';
+import { ExportConfigModalSettings } from '../ui/modal/modalTypes';
 
 export interface ModalSettingsInput {
 	/** Primary file for the export */

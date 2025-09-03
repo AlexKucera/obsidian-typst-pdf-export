@@ -4,8 +4,8 @@
  */
 
 import { Setting, App } from 'obsidian';
-import { ModalSection, ModalState, ValidationResult } from '../types';
-import { ExportFormat } from '../../core/settings';
+import { ModalSection, ModalState, ValidationResult } from '../modalTypes';
+import { ExportFormat } from '../../../core/settings';
 import { FolderSuggest } from '../../components/FolderSuggest';
 
 export class GeneralSection implements ModalSection {

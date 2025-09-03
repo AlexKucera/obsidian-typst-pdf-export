@@ -4,7 +4,7 @@
  */
 
 import { Setting } from 'obsidian';
-import { ModalSection, ModalState, ValidationResult } from '../types';
+import { ModalSection, ModalState, ValidationResult } from '../modalTypes';
 
 export class BehaviorSection implements ModalSection {
 	private container: HTMLElement | null = null;

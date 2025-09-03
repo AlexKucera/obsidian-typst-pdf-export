@@ -4,7 +4,7 @@
  */
 
 import { Setting, App } from 'obsidian';
-import { ModalSection, ModalState, ValidationResult } from '../types';
+import { ModalSection, ModalState, ValidationResult } from '../modalTypes';
 
 export class TypographySection implements ModalSection {
 	private container: HTMLElement | null = null;

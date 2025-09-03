@@ -4,8 +4,8 @@
  */
 
 import { Setting } from 'obsidian';
-import { ModalSection, ModalState, ValidationResult } from '../types';
-import { SUPPORTED_PAPER_SIZES } from '../../utils/paperSizeMapper';
+import { ModalSection, ModalState, ValidationResult } from '../modalTypes';
+import { SUPPORTED_PAPER_SIZES } from '../../../utils/paperSizeMapper';
 
 export class PageSetupSection implements ModalSection {
 	private container: HTMLElement | null = null;

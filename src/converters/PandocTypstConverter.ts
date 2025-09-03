@@ -9,7 +9,7 @@ import { promises as fsPromises } from 'fs';
 import * as path from 'path';
 import * as os from 'os';
 import { mapToTypstPaperSize } from '../utils/paperSizeMapper';
-import { PandocOptions, TypstSettings, ConversionResult, ProgressCallback } from './types';
+import { PandocOptions, TypstSettings, ConversionResult, ProgressCallback } from './converterTypes';
 import type { obsidianTypstPDFExportSettings } from '../core/settings';
 import { TempDirectoryManager } from '../core/TempDirectoryManager';
 
@@ -136,7 +136,7 @@ export class PandocTypstConverter {
 	 * Process PDF embeds by converting them to images and creating combined output
 	 */
 	async processPdfEmbeds(processedResult: any, vaultBasePath: string, tempDir: string): Promise<void> {
-		const { PdfToImageConverter } = require('../PdfToImageConverter');
+		const { PdfToImageConverter } = require('./PdfToImageConverter');
 		const converter = PdfToImageConverter.getInstance(this.plugin);
 		
 		for (const pdfEmbed of processedResult.metadata.pdfEmbeds) {

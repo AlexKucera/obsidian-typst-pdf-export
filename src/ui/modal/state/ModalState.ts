@@ -3,8 +3,8 @@
  * Centralized state management for the Export Configuration Modal
  */
 
-import { ExportConfigModalSettings, ExportConfig, ModalState as IModalState } from '../types';
-import { ExportFormat } from '../../core/settings';
+import { ExportConfigModalSettings, ExportConfig, ModalState as IModalState } from '../modalTypes';
+import { ExportFormat } from '../../../core/settings';
 
 export class ModalState implements IModalState {
 	settings: ExportConfigModalSettings;

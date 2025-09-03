@@ -4,14 +4,14 @@
  */
 
 import { Modal, App, Notice } from 'obsidian';
-import { obsidianTypstPDFExport } from '../../main';
-import { ExportConfig, ExportConfigModalSettings, ModalSection } from './types';
+import { obsidianTypstPDFExport } from '../../../main';
+import { ExportConfig, ExportConfigModalSettings, ModalSection } from './modalTypes';
 import { ModalState } from './state/ModalState';
 import { GeneralSection } from './sections/GeneralSection';
 import { TypographySection } from './sections/TypographySection';
 import { PageSetupSection } from './sections/PageSetupSection';
 import { BehaviorSection } from './sections/BehaviorSection';
-import { TemplateManager } from '../templates/TemplateManager';
+import { TemplateManager } from '../../templates/TemplateManager';
 
 export class ExportConfigModal extends Modal {
 	plugin: obsidianTypstPDFExport;

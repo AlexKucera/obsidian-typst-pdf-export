@@ -26,10 +26,10 @@ import { ModalSettingsHelper } from './src/core/ModalSettingsHelper';
 import { ExportErrorHandler } from './src/core/ExportErrorHandler';
 import { TempDirectoryManager } from './src/core/TempDirectoryManager';
 import { PandocTypstConverter } from './src/converters/PandocTypstConverter';
-import { ExportConfigModal } from './src/modal/ExportConfigModal';
-import { ExportConfig, ExportConfigModalSettings } from './src/modal/types';
+import { ExportConfigModal } from './src/ui/modal/ExportConfigModal';
+import { ExportConfig, ExportConfigModalSettings } from './src/ui/modal/modalTypes';
 import { TemplateManager } from './src/templates/TemplateManager';
-import { FolderSuggest } from './src/components/FolderSuggest';
+import { FolderSuggest } from './src/ui/components/FolderSuggest';
 import { SUPPORTED_PAPER_SIZES } from './src/utils/paperSizeMapper';
 import * as path from 'path';
 import * as fs from 'fs';
@@ -441,7 +441,7 @@ export class obsidianTypstPDFExport extends Plugin {
 			const tempDir = tempManager.ensureTempDir('images');
 			
 			// Preprocess the markdown content using MarkdownPreprocessor
-			const { MarkdownPreprocessor } = await import('./src/MarkdownPreprocessor');
+			const { MarkdownPreprocessor } = await import('./src/converters/MarkdownPreprocessor');
 			const preprocessor = new MarkdownPreprocessor({
 				vaultPath: vaultPath,
 				options: {
