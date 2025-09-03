@@ -49,5 +49,20 @@ node_modules/
 reference/*
 
 .serena/cache/*
-
+.serena/*
 fonts-cache.json
+
+.taskmaster/*
+.claude/*
+.mcp.json
+obsidian-typst-pdf-export.sublime-project
+obsidian-typst-pdf-export.sublime-workspace
+PRD.md
+
+temp-images
+temp-images/*
+
+temp-pandoc
+temp-pandoc/*
+
+typst2pdf-icon.afdesign
