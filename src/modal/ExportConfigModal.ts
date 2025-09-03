@@ -192,8 +192,27 @@ export class ExportConfigModal extends Modal {
 	}
 	
 	private handleReset(): void {
-		// Reset state to defaults
-		this.state.reset();
+		// Create plugin defaults object from settings tab values
+		const pluginDefaults = {
+			template: this.plugin.settings.exportDefaults.template,
+			format: this.plugin.settings.exportDefaults.format,
+			outputFolder: this.plugin.settings.outputFolder,
+			openAfterExport: this.plugin.settings.behavior.openAfterExport,
+			preserveFolderStructure: this.plugin.settings.behavior.preserveFolderStructure,
+			pageSize: this.plugin.settings.pageSetup.size,
+			orientation: this.plugin.settings.pageSetup.orientation,
+			marginTop: this.plugin.settings.pageSetup.margins.top.toString(),
+			marginBottom: this.plugin.settings.pageSetup.margins.bottom.toString(),
+			marginLeft: this.plugin.settings.pageSetup.margins.left.toString(),
+			marginRight: this.plugin.settings.pageSetup.margins.right.toString(),
+			bodyFont: this.plugin.settings.typography.fonts.body,
+			headingFont: this.plugin.settings.typography.fonts.heading,
+			monospaceFont: this.plugin.settings.typography.fonts.monospace,
+			bodyFontSize: this.plugin.settings.typography.fontSizes.body
+		};
+		
+		// Reset state to plugin defaults
+		this.state.reset(pluginDefaults);
 		
 		// Re-render sections to update UI
 		this.renderSections();

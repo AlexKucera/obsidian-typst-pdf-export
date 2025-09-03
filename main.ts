@@ -288,17 +288,6 @@ export class obsidianTypstPDFExport extends Plugin {
 				})
 		);
 		
-		menu.addSeparator();
-		
-		menu.addItem((item) =>
-			item
-				.setTitle('Batch export...')
-				.setIcon('folder-output')
-				.onClick(() => {
-					this.batchExportNotes();
-				})
-		);
-		
 		menu.showAtMouseEvent(event);
 	}
 	
@@ -339,21 +328,21 @@ export class obsidianTypstPDFExport extends Plugin {
 		openAfterExport: this.settings.behavior.openAfterExport,
 		preserveFolderStructure: this.settings.behavior.preserveFolderStructure,
 		availableTemplates: availableTemplates,
-		// Template variables from plugin defaults
+		// Template variables from settings tab values
 		templateVariables: {
-			pageSize: this.settings.exportDefaults.pageSize,
-			orientation: this.settings.exportDefaults.orientation,
-			flipped: this.settings.exportDefaults.orientation === 'landscape',
-			marginTop: this.settings.exportDefaults.marginTop,
-			marginBottom: this.settings.exportDefaults.marginBottom,
-			marginLeft: this.settings.exportDefaults.marginLeft,
-			marginRight: this.settings.exportDefaults.marginRight,
-			bodyFont: this.settings.exportDefaults.bodyFont,
-			headingFont: this.settings.exportDefaults.headingFont,
-			monospaceFont: this.settings.exportDefaults.monospaceFont,
-			bodyFontSize: this.settings.exportDefaults.bodyFontSize,
+			pageSize: this.settings.pageSetup.size,
+			orientation: this.settings.pageSetup.orientation,
+			flipped: this.settings.pageSetup.orientation === 'landscape',
+			marginTop: this.settings.pageSetup.margins.top.toString(),
+			marginBottom: this.settings.pageSetup.margins.bottom.toString(),
+			marginLeft: this.settings.pageSetup.margins.left.toString(),
+			marginRight: this.settings.pageSetup.margins.right.toString(),
+			bodyFont: this.settings.typography.fonts.body,
+			headingFont: this.settings.typography.fonts.heading,
+			monospaceFont: this.settings.typography.fonts.monospace,
+			bodyFontSize: this.settings.typography.fontSizes.body,
 			// Auto-adjust width for single-page landscape mode
-			...(this.settings.exportDefaults.orientation === 'landscape' && this.settings.exportDefaults.format === 'single-page' 
+			...(this.settings.pageSetup.orientation === 'landscape' && this.settings.exportDefaults.format === 'single-page' 
 				? { width: 'auto' } 
 				: {})
 		}
@@ -550,15 +539,6 @@ export class obsidianTypstPDFExport extends Plugin {
 			this.currentExportController = null;
 			new Notice('Export cancelled');
 		}
-	}
-	
-	/**
-	 * Batch export multiple notes
-	 */
-	private async batchExportNotes(): Promise<void> {
-		// This would show a modal to select multiple files
-		// Implementation deferred for now
-		new Notice('Batch export feature coming soon');
 	}
 
 	

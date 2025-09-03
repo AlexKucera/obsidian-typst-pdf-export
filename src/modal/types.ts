@@ -56,6 +56,6 @@ export interface ModalState {
 	buildExportConfig(): ExportConfig;
 	notifyChange(): void;
 	setProgress(percent: number, operation: string): void;
-	reset(): void;
+	reset(pluginDefaults: any): void;
 	onChange(listener: () => void): void;
 }

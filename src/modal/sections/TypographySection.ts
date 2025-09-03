@@ -15,81 +15,90 @@ export class TypographySection implements ModalSection {
 		this.container = containerEl.createDiv('export-section');
 		this.container.createEl('h3', { text: 'Typography' });
 		
+		// Create font settings asynchronously
 		this.createFontSettings(state);
 		this.createFontSizeSettings(state);
 	}
 	
-	private createFontSettings(state: ModalState): void {
+	private async createFontSettings(state: ModalState): Promise<void> {
 		if (!this.container) return;
+		
+		// Get available fonts from cache
+		const availableFonts = await this.getAvailableFonts(state);
 		
 		// Body font dropdown
 		new Setting(this.container)
 			.setName('Body font')
 			.setDesc('Primary font for document text')
-			.addDropdown(async (dropdown) => {
-				try {
-					const fonts = await this.getAvailableFonts(state);
-					fonts.forEach(font => {
-						dropdown.addOption(font, font);
-					});
-					
-					dropdown
-						.setValue(state.templateVariables.bodyFont || 'Concourse OT')
-						.onChange(value => {
-							state.updateTemplateVariables({ bodyFont: value });
-						});
-				} catch (error) {
-					console.error('Failed to load fonts:', error);
-					// Fallback to hardcoded fonts
-					this.addFallbackBodyFonts(dropdown, state);
+			.addDropdown(dropdown => {
+				const currentFont = state.templateVariables.bodyFont || 'Times New Roman';
+				
+				// Add all available fonts
+				availableFonts.forEach(font => {
+					dropdown.addOption(font, font);
+				});
+				
+				// Add current font if it's not in the list
+				if (!availableFonts.includes(currentFont)) {
+					dropdown.addOption(currentFont, currentFont);
 				}
+				
+				// Set current value and change handler
+				dropdown
+					.setValue(currentFont)
+					.onChange(value => {
+						state.updateTemplateVariables({ bodyFont: value });
+					});
 			});
 		
-		// Heading font dropdown
+		// Heading font dropdown  
 		new Setting(this.container)
 			.setName('Heading font')
 			.setDesc('Font for headings and titles')
-			.addDropdown(async (dropdown) => {
-				try {
-					const fonts = await this.getAvailableFonts(state);
-					fonts.forEach(font => {
-						dropdown.addOption(font, font);
-					});
-					
-					dropdown
-						.setValue(state.templateVariables.headingFont || 'Concourse OT')
-						.onChange(value => {
-							state.updateTemplateVariables({ headingFont: value });
-						});
-				} catch (error) {
-					console.error('Failed to load fonts:', error);
-					// Fallback to hardcoded fonts
-					this.addFallbackBodyFonts(dropdown, state);
+			.addDropdown(dropdown => {
+				const currentFont = state.templateVariables.headingFont || 'Times New Roman';
+				
+				// Add all available fonts
+				availableFonts.forEach(font => {
+					dropdown.addOption(font, font);
+				});
+				
+				// Add current font if it's not in the list
+				if (!availableFonts.includes(currentFont)) {
+					dropdown.addOption(currentFont, currentFont);
 				}
+				
+				// Set current value and change handler
+				dropdown
+					.setValue(currentFont)
+					.onChange(value => {
+						state.updateTemplateVariables({ headingFont: value });
+					});
 			});
 		
 		// Monospace font dropdown
 		new Setting(this.container)
 			.setName('Monospace font')
 			.setDesc('Font for code blocks and inline code')
-			.addDropdown(async (dropdown) => {
-				try {
-					const fonts = await this.getAvailableFonts(state);
-					// Filter for common monospace fonts or show all
-					fonts.forEach(font => {
-						dropdown.addOption(font, font);
-					});
-					
-					dropdown
-						.setValue(state.templateVariables.monospaceFont || 'Source Code Pro')
-						.onChange(value => {
-							state.updateTemplateVariables({ monospaceFont: value });
-						});
-				} catch (error) {
-					console.error('Failed to load fonts:', error);
-					// Fallback to hardcoded monospace fonts
-					this.addFallbackMonospaceFonts(dropdown, state);
+			.addDropdown(dropdown => {
+				const currentFont = state.templateVariables.monospaceFont || 'Courier New';
+				
+				// Add all available fonts
+				availableFonts.forEach(font => {
+					dropdown.addOption(font, font);
+				});
+				
+				// Add current font if it's not in the list
+				if (!availableFonts.includes(currentFont)) {
+					dropdown.addOption(currentFont, currentFont);
 				}
+				
+				// Set current value and change handler
+				dropdown
+					.setValue(currentFont)
+					.onChange(value => {
+						state.updateTemplateVariables({ monospaceFont: value });
+					});
 			});
 	}
 	
@@ -99,19 +108,14 @@ export class TypographySection implements ModalSection {
 		// Body font size
 		new Setting(this.container)
 			.setName('Body font size')
-			.setDesc('Base font size for document text')
-			.addDropdown(dropdown => {
-				dropdown
-					.addOption('9pt', '9pt - Small')
-					.addOption('10pt', '10pt - Compact')
-					.addOption('11pt', '11pt - Standard')
-					.addOption('12pt', '12pt - Large')
-					.addOption('14pt', '14pt - Extra Large')
-					.setValue(state.templateVariables.bodyFontSize || '11pt')
-					.onChange(value => {
-						state.updateTemplateVariables({ bodyFontSize: value });
-					});
-			});
+			.setDesc('Base font size for document text (in points)')
+			.addSlider(slider => slider
+				.setLimits(8, 16, 0.5)
+				.setValue(state.templateVariables.bodyFontSize || 11)
+				.setDynamicTooltip()
+				.onChange(value => {
+					state.updateTemplateVariables({ bodyFontSize: value });
+				}));
 	}
 	
 	// Helper methods for fonts - similar to settings tab
@@ -157,7 +161,7 @@ export class TypographySection implements ModalSection {
 		}
 	}
 	
-	private addFallbackBodyFonts(dropdown: any, state: ModalState): void {
+	private addFallbackBodyFonts(dropdown: any, state: ModalState, fontType: 'body' | 'heading'): void {
 		dropdown
 			.addOption('Concourse OT', 'Concourse OT')
 			.addOption('Times New Roman', 'Times New Roman')
@@ -167,10 +171,17 @@ export class TypographySection implements ModalSection {
 			.addOption('Calibri', 'Calibri')
 			.addOption('Cambria', 'Cambria')
 			.addOption('Palatino', 'Palatino')
-			.addOption('Book Antiqua', 'Book Antiqua')
-			.setValue(state.templateVariables.bodyFont || state.templateVariables.headingFont || 'Concourse OT')
+			.addOption('Book Antiqua', 'Book Antiqua');
+		
+		// Set the appropriate value based on font type
+		const currentValue = fontType === 'body' 
+			? state.templateVariables.bodyFont 
+			: state.templateVariables.headingFont;
+		
+		dropdown
+			.setValue(currentValue || 'Concourse OT')
 			.onChange((value: string) => {
-				if (dropdown.containerEl.closest('.setting-item')?.querySelector('.setting-item-name')?.textContent?.includes('Body')) {
+				if (fontType === 'body') {
 					state.updateTemplateVariables({ bodyFont: value });
 				} else {
 					state.updateTemplateVariables({ headingFont: value });

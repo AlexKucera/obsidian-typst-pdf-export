@@ -36,8 +36,10 @@ export class ModalState implements IModalState {
 			...initialSettings
 		};
 		
-		// Initialize template variables with defaults, then saved state
+		// Use ONLY the passed templateVariables, with minimal fallbacks
+		// Priority: initialSettings > savedState > absolute minimal fallbacks
 		this.templateVariables = {
+			// Only provide absolute minimal fallbacks for required fields
 			pageSize: 'a4',
 			orientation: 'portrait',
 			flipped: false,
@@ -45,12 +47,14 @@ export class ModalState implements IModalState {
 			marginBottom: '0.8in',
 			marginLeft: '1in',
 			marginRight: '0.6in',
-			bodyFont: 'Concourse OT',
-			headingFont: 'Concourse OT',
-			monospaceFont: 'Source Code Pro',
+			bodyFont: 'Times New Roman', // Generic fallback
+			headingFont: 'Times New Roman', // Generic fallback
+			monospaceFont: 'Courier New', // Generic fallback
 			bodyFontSize: '11pt',
+			// Apply saved state if any
 			...savedState?.templateVariables,
-			...this.settings.templateVariables
+			// Apply passed settings (this should be the plugin defaults)
+			...initialSettings.templateVariables
 		};
 		
 		// Update settings to include merged template variables
@@ -131,34 +135,34 @@ export class ModalState implements IModalState {
 	/**
 	 * Reset state to defaults
 	 */
-	reset(): void {
-		// Reset to plugin defaults, not localStorage defaults
+	reset(pluginDefaults: any): void {
+		// Reset to plugin defaults, not hardcoded defaults
 		this.settings = {
 			...this.settings,
-			template: 'default.typ',
-			format: ExportFormat.Standard,
-			outputFolder: 'exports',
+			template: pluginDefaults.template,
+			format: pluginDefaults.format,
+			outputFolder: pluginDefaults.outputFolder || 'exports',
 			templateVariables: {},
 			progressPercent: 0,
 			currentOperation: '',
 			isExporting: false,
 			canCancel: false,
-			openAfterExport: false,
-			preserveFolderStructure: false
+			openAfterExport: pluginDefaults.openAfterExport || false,
+			preserveFolderStructure: pluginDefaults.preserveFolderStructure || false
 		};
 		
 		this.templateVariables = {
-			pageSize: 'a4',
-			orientation: 'portrait',
-			flipped: false,
-			marginTop: '1in',
-			marginBottom: '0.8in',
-			marginLeft: '1in',
-			marginRight: '0.6in',
-			bodyFont: 'Concourse OT',
-			headingFont: 'Concourse OT',
-			monospaceFont: 'Source Code Pro',
-			bodyFontSize: '11pt'
+			pageSize: pluginDefaults.pageSize,
+			orientation: pluginDefaults.orientation,
+			flipped: pluginDefaults.orientation === 'landscape',
+			marginTop: pluginDefaults.marginTop,
+			marginBottom: pluginDefaults.marginBottom,
+			marginLeft: pluginDefaults.marginLeft,
+			marginRight: pluginDefaults.marginRight,
+			bodyFont: pluginDefaults.bodyFont,
+			headingFont: pluginDefaults.headingFont,
+			monospaceFont: pluginDefaults.monospaceFont,
+			bodyFontSize: pluginDefaults.bodyFontSize
 		};
 		
 		this.settings.templateVariables = this.templateVariables;
