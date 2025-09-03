@@ -141,6 +141,15 @@ export class obsidianTypstPDFExport extends Plugin {
 		console.log('Cached', fonts.length, 'fonts from typst');
 	} catch (error) {
 		console.error('Failed to cache fonts from typst:', error);
+		
+		// Notify user of font caching failure (only if debug mode is enabled or if it's a critical error)
+		if (this.settings.behavior.debugMode) {
+			new Notice(`Font caching failed: ${error.message}. Using fallback fonts.`, 5000);
+		} else {
+			// For non-debug mode, show a more gentle notice
+			new Notice('Font list may be incomplete. Check debug mode for details.', 3000);
+		}
+		
 		// Create fallback cache file
 		const fallbackFonts = FALLBACK_FONTS;
 		
