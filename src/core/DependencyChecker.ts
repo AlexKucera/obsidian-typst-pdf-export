@@ -43,55 +43,80 @@ export class DependencyChecker {
 	 * Check if a dependency is available and get its version
 	 */
 	private static async checkDependency(
-		name: string,
-		executablePath: string,
-		versionCommand: string,
-		versionRegex: RegExp
-	): Promise<DependencyInfo> {
-		const { exec } = require('child_process');
-		const { promisify } = require('util');
-		const execAsync = promisify(exec);
+	name: string,
+	executablePath: string,
+	versionCommand: string,
+	versionRegex: RegExp
+): Promise<DependencyInfo> {
+	const { spawn } = require('child_process');
 
-		try {
-			const { stdout } = await execAsync(`${executablePath} ${versionCommand}`, {
+	try {
+		// Use spawn instead of exec for security - arguments passed separately
+		const stdout = await new Promise<string>((resolve, reject) => {
+			const checkProcess = spawn(executablePath, versionCommand.split(' '), {
+				stdio: ['pipe', 'pipe', 'pipe'],
 				env: this.getAugmentedEnv()
 			});
 			
-			const match = stdout.match(versionRegex);
-			const version = match ? match[1] : null;
+			let output = '';
+			let error = '';
 			
-			return {
-				name,
-				version,
-				isAvailable: true,
-				executablePath
-			};
-		} catch (error) {
-			return {
-				name,
-				version: null,
-				isAvailable: false,
-				executablePath
-			};
-		}
+			checkProcess.stdout?.on('data', (data) => {
+				output += data.toString();
+			});
+			
+			checkProcess.stderr?.on('data', (data) => {
+				error += data.toString();
+			});
+			
+			checkProcess.on('close', (code) => {
+				if (code === 0) {
+					resolve(output);
+				} else {
+					reject(new Error(`Command failed with code ${code}: ${error}`));
+				}
+			});
+			
+			checkProcess.on('error', (err) => {
+				reject(new Error(`Failed to spawn process: ${err.message}`));
+			});
+		});
+		
+		const match = stdout.match(versionRegex);
+		const version = match ? match[1] : null;
+		
+		return {
+			name,
+			version,
+			isAvailable: true,
+			executablePath
+		};
+	} catch (error) {
+		return {
+			name,
+			version: null,
+			isAvailable: false,
+			executablePath
+		};
 	}
+}
 
 	/**
 	 * Check if a dependency is available (synchronous version for startup)
 	 */
 	private static checkDependencySync(executablePath: string, versionCommand: string): boolean {
-		const { execSync } = require('child_process');
-		
-		try {
-			execSync(`${executablePath} ${versionCommand}`, {
-				encoding: 'utf8',
-				env: this.getAugmentedEnv()
-			});
-			return true;
-		} catch {
-			return false;
-		}
+	const { spawnSync } = require('child_process');
+	
+	try {
+		const result = spawnSync(executablePath, versionCommand.split(' '), {
+			encoding: 'utf8',
+			env: this.getAugmentedEnv()
+		});
+		return result.status === 0;
+	} catch {
+		return false;
 	}
+}
 
 	/**
 	 * Comprehensive dependency check (async) - returns detailed information
