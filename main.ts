@@ -22,6 +22,7 @@ import {
 import { obsidianTypstPDFExportSettings, DEFAULT_SETTINGS, ExportFormat } from './src/core/settings';
 import { FALLBACK_FONTS, PLUGIN_DIRS } from './src/core/constants';
 import { DependencyChecker } from './src/core/DependencyChecker';
+import { ModalSettingsHelper } from './src/core/ModalSettingsHelper';
 import { PandocTypstConverter } from './src/converters/PandocTypstConverter';
 import { ExportConfigModal } from './src/modal/ExportConfigModal';
 import { ExportConfig, ExportConfigModalSettings } from './src/modal/types';
@@ -301,36 +302,12 @@ export class obsidianTypstPDFExport extends Plugin {
 	// Get available templates first
 	const availableTemplates = await this.templateManager.getAvailableTemplates();
 	
-	// Prepare modal settings with hierarchy: plugin defaults as base
-	const modalSettings: Partial<ExportConfigModalSettings> = {
-		notePath: file.path,
-		noteTitle: file.basename,
-		// Plugin defaults from settings tab
-		template: this.settings.exportDefaults.template,
-		format: this.settings.exportDefaults.format,
-		outputFolder: this.settings.outputFolder,
-		openAfterExport: this.settings.behavior.openAfterExport,
-		preserveFolderStructure: this.settings.behavior.preserveFolderStructure,
-		availableTemplates: availableTemplates,
-		// Template variables from settings tab values
-		templateVariables: {
-			pageSize: this.settings.pageSetup.size,
-			orientation: this.settings.pageSetup.orientation,
-			flipped: this.settings.pageSetup.orientation === 'landscape',
-			marginTop: this.settings.pageSetup.margins.top.toString(),
-			marginBottom: this.settings.pageSetup.margins.bottom.toString(),
-			marginLeft: this.settings.pageSetup.margins.left.toString(),
-			marginRight: this.settings.pageSetup.margins.right.toString(),
-			bodyFont: this.settings.typography.fonts.body,
-			headingFont: this.settings.typography.fonts.heading,
-			monospaceFont: this.settings.typography.fonts.monospace,
-			bodyFontSize: this.settings.typography.fontSizes.body,
-			// Auto-adjust width for single-page landscape mode
-			...(this.settings.pageSetup.orientation === 'landscape' && this.settings.exportDefaults.format === 'single-page' 
-				? { width: 'auto' } 
-				: {})
-		}
-	};
+	// Prepare modal settings using helper
+	const modalSettings = ModalSettingsHelper.prepareForSingleFile(
+		file, 
+		availableTemplates, 
+		this.settings
+	);
 	
 	// Show modal - ModalState will handle localStorage hierarchy automatically
 	const modal = new ExportConfigModal(
@@ -360,40 +337,12 @@ export class obsidianTypstPDFExport extends Plugin {
 		// Get available templates first
 		const availableTemplates = await this.templateManager.getAvailableTemplates();
 		
-		// Use the first file for modal settings but will export all files
-		const firstFile = files[0];
-		
-		// Prepare modal settings with hierarchy: plugin defaults as base
-		const modalSettings: Partial<ExportConfigModalSettings> = {
-			notePath: firstFile.path,
-			noteTitle: files.length === 1 ? firstFile.basename : `${files.length} files`,
-			files: files,
-			// Plugin defaults from settings tab
-			template: this.settings.exportDefaults.template,
-			format: this.settings.exportDefaults.format,
-			outputFolder: this.settings.outputFolder,
-			openAfterExport: this.settings.behavior.openAfterExport,
-			preserveFolderStructure: this.settings.behavior.preserveFolderStructure,
-			availableTemplates: availableTemplates,
-			// Template variables from settings tab values
-			templateVariables: {
-				pageSize: this.settings.pageSetup.size,
-				orientation: this.settings.pageSetup.orientation,
-				flipped: this.settings.pageSetup.orientation === 'landscape',
-				marginTop: this.settings.pageSetup.margins.top.toString(),
-				marginBottom: this.settings.pageSetup.margins.bottom.toString(),
-				marginLeft: this.settings.pageSetup.margins.left.toString(),
-				marginRight: this.settings.pageSetup.margins.right.toString(),
-				bodyFont: this.settings.typography.fonts.body,
-				headingFont: this.settings.typography.fonts.heading,
-				monospaceFont: this.settings.typography.fonts.monospace,
-				bodyFontSize: this.settings.typography.fontSizes.body,
-				// Auto-adjust width for single-page landscape mode
-				...(this.settings.pageSetup.orientation === 'landscape' && this.settings.exportDefaults.format === 'single-page' 
-					? { width: 'auto' } 
-					: {})
-			}
-		};
+		// Prepare modal settings using helper
+		const modalSettings = ModalSettingsHelper.prepareForMultiFile(
+			files, 
+			availableTemplates, 
+			this.settings
+		);
 		
 		// Show modal - ModalState will handle localStorage hierarchy automatically
 		const modal = new ExportConfigModal(
