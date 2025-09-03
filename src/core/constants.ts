@@ -38,3 +38,27 @@ export const EXPORT_CONSTANTS = {
 		LONG: 12000
 	}
 } as const;
+
+/**
+ * Dependency checking constants and utilities
+ */
+export const DEPENDENCY_CONSTANTS = {
+	/**
+	 * Default executable names for dependencies
+	 */
+	DEFAULT_EXECUTABLES: {
+		pandoc: 'pandoc',
+		typst: 'typst',
+		imagemagick: 'convert'
+	},
+	
+	/**
+	 * Common paths to augment PATH with
+	 */
+	COMMON_PATHS: [
+		'/.local/bin',
+		'/.cargo/bin',
+		'/usr/local/bin',
+		'/opt/homebrew/bin'
+	]
+} as const;

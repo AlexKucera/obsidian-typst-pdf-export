@@ -21,6 +21,7 @@ import {
 
 import { obsidianTypstPDFExportSettings, DEFAULT_SETTINGS, ExportFormat } from './src/core/settings';
 import { FALLBACK_FONTS, PLUGIN_DIRS } from './src/core/constants';
+import { DependencyChecker } from './src/core/DependencyChecker';
 import { PandocTypstConverter } from './src/converters/PandocTypstConverter';
 import { ExportConfigModal } from './src/modal/ExportConfigModal';
 import { ExportConfig, ExportConfigModalSettings } from './src/modal/types';
@@ -706,64 +707,22 @@ export class obsidianTypstPDFExport extends Plugin {
 	 * Show dependency status modal
 	 */
 	async showDependencyStatus(): Promise<void> {
-		const { exec } = require('child_process');
-		const { promisify } = require('util');
-		const execAsync = promisify(exec);
+		const dependencyResult = await DependencyChecker.checkAllDependencies(
+			this.settings.pandocPath,
+			this.settings.typstPath,
+			this.settings.executablePaths?.imagemagickPath
+		);
 		
-		let pandocVersion = 'Not found';
-		let typstVersion = 'Not found';
-		let imagemagickVersion = 'Not found';
-		
-		// Check Pandoc
-		try {
-			const pandocPath = this.settings.pandocPath || 'pandoc';
-			const { stdout } = await execAsync(`${pandocPath} --version`);
-			const match = stdout.match(/pandoc\s+([\d.]+)/);
-			if (match) {
-				pandocVersion = match[1];
-			}
-		} catch (error) {
-			console.error('Pandoc check failed:', error);
-		}
-		
-		// Check Typst
-		try {
-			const typstPath = this.settings.typstPath || 'typst';
-			const { stdout } = await execAsync(`${typstPath} --version`);
-			const match = stdout.match(/typst\s+([\d.]+)/);
-			if (match) {
-				typstVersion = match[1];
-			}
-		} catch (error) {
-			console.error('Typst check failed:', error);
-		}
-		
-		// Check ImageMagick/convert
-		try {
-			const convertPath = this.settings.executablePaths.imagemagickPath || 'convert';
-			const { stdout } = await execAsync(`${convertPath} --version`);
-			const match = stdout.match(/ImageMagick\s+([\d.-]+)/);
-			if (match) {
-				imagemagickVersion = match[1];
-			}
-		} catch (error) {
-			console.error('ImageMagick check failed:', error);
-		}
-		
-		// Show results in a notice
-		const missingDeps = [];
-		if (pandocVersion === 'Not found') missingDeps.push('Pandoc');
-		if (typstVersion === 'Not found') missingDeps.push('Typst');
-		if (imagemagickVersion === 'Not found') missingDeps.push('ImageMagick');
+		const formatVersion = (dep: any) => dep.isAvailable ? (dep.version || 'Available') : 'Not found';
 		
 		const message = `Dependency Status:
-Pandoc: ${pandocVersion}
-Typst: ${typstVersion}
-ImageMagick: ${imagemagickVersion}
+Pandoc: ${formatVersion(dependencyResult.pandoc)}
+Typst: ${formatVersion(dependencyResult.typst)}
+ImageMagick: ${formatVersion(dependencyResult.imagemagick)}
 
-${missingDeps.length > 0 ? 
-	`Missing dependencies: ${missingDeps.join(', ')}. Please install them and check the paths in settings.` : 
-	'All dependencies found!'}`;
+${dependencyResult.allAvailable 
+	? 'All dependencies found!' 
+	: `Missing dependencies: ${dependencyResult.missingDependencies.join(', ')}. Please install them and check the paths in settings.`}`;
 		
 		new Notice(message, 12000); // Show for 12 seconds (longer due to more content)
 	}
@@ -771,40 +730,11 @@ ${missingDeps.length > 0 ?
 	private async checkDependenciesAsync(): Promise<void> {
 		// Check dependencies silently on startup
 		try {
-			const { execSync } = require('child_process');
-			const path = require('path');
-			
-			// Augment PATH
-			const homeDir = process.env.HOME || process.env.USERPROFILE;
-			const localBin = path.join(homeDir, '.local', 'bin');
-			const cargoHome = process.env.CARGO_HOME || path.join(homeDir, '.cargo');
-			const cargoBin = path.join(cargoHome, 'bin');
-			
-			const augmentedPath = `${process.env.PATH}:${localBin}:${cargoBin}:/usr/local/bin:/opt/homebrew/bin`;
-			const env = { ...process.env, PATH: augmentedPath };
-			
-			let missingDeps = [];
-			
-			// Check Pandoc
-			try {
-				execSync('pandoc --version', { encoding: 'utf8', env });
-			} catch {
-				missingDeps.push('Pandoc');
-			}
-			
-			// Check Typst
-			try {
-				execSync('typst --version', { encoding: 'utf8', env });
-			} catch {
-				missingDeps.push('Typst');
-			}
-			
-			// Check ImageMagick
-			try {
-				execSync('convert --version', { encoding: 'utf8', env });
-			} catch {
-				missingDeps.push('ImageMagick');
-			}
+			const missingDeps = DependencyChecker.checkDependenciesSync(
+				this.settings.pandocPath,
+				this.settings.typstPath,
+				this.settings.executablePaths?.imagemagickPath
+			);
 			
 			// Only show notice if dependencies are missing
 			if (missingDeps.length > 0) {
