@@ -573,12 +573,18 @@ export class obsidianTypstPDFExport extends Plugin {
 				this.templateManager.getTemplatePath('default.typ');
 			
 			// Convert to PDF using the preprocessed content
+			const templateVariables = {
+				...(config.templateVariables || {}),
+				// Add format from config if specified (takes priority over settings default)
+				...(config.format && { export_format: config.format })
+			};
+			
 			const result = await this.converter.convertMarkdownToPDF(
 				processedResult.content,  // Use preprocessed content instead of raw content
 				outputPath,
 				{
 					template: templatePath,
-					variables: config.templateVariables || {},
+					variables: templateVariables,
 					pluginDir: pluginDir,
 					vaultBasePath: vaultPath
 				},

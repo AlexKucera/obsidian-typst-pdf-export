@@ -466,7 +466,7 @@ export class PandocTypstConverter {
 			}
 		}
 		
-		// Add export format variable  
+		// Add export format variable - only use settings default if not already provided
 		if (!existingVars.export_format && settings.exportDefaults && settings.exportDefaults.format) {
 			args.push('-V', `export_format=${settings.exportDefaults.format}`);
 		}
