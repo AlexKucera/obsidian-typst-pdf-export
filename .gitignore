@@ -49,3 +49,5 @@ node_modules/
 reference/*
 
 .serena/cache/*
+
+fonts-cache.json
