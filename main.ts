@@ -11,6 +11,7 @@ import {
 	Setting,
 	TFile,
 	TFolder,
+	TAbstractFile,
 	Notice,
 	Menu,
 	MarkdownView,
@@ -228,6 +229,36 @@ export class obsidianTypstPDFExport extends Plugin {
 				});
 			})
 		);
+		
+		// Add multi-file menu item (for multiple selected files in file explorer)
+		this.registerEvent(
+			this.app.workspace.on('files-menu', (menu: Menu, files: TAbstractFile[]) => {
+				// Filter for markdown files only
+				const markdownFiles = files.filter(file => 
+					file instanceof TFile && file.extension === 'md'
+				) as TFile[];
+				
+				if (markdownFiles.length > 0) {
+					menu.addItem((item) => {
+						item
+							.setTitle(`Export to PDF (Typst)`)
+							.setIcon('file-output')
+							.onClick(() => {
+								this.exportFiles(markdownFiles);
+							});
+					});
+					
+					menu.addItem((item) => {
+						item
+							.setTitle(`Export with configuration...`)
+							.setIcon('settings')
+							.onClick(() => {
+								this.showExportModalForFiles(markdownFiles);
+							});
+					});
+				}
+			})
+		);
 	}
 
 	
@@ -338,6 +369,69 @@ export class obsidianTypstPDFExport extends Plugin {
 	
 	modal.open();
 }
+
+	/**
+	 * Show the export configuration modal for multiple files
+	 */
+	private async showExportModalForFiles(files: TFile[]): Promise<void> {
+		if (files.length === 0) {
+			new Notice('No files to export');
+			return;
+		}
+
+		// Get available templates first
+		const availableTemplates = await this.templateManager.getAvailableTemplates();
+		
+		// Use the first file for modal settings but will export all files
+		const firstFile = files[0];
+		
+		// Prepare modal settings with hierarchy: plugin defaults as base
+		const modalSettings: Partial<ExportConfigModalSettings> = {
+			notePath: firstFile.path,
+			noteTitle: files.length === 1 ? firstFile.basename : `${files.length} files`,
+			files: files,
+			// Plugin defaults from settings tab
+			template: this.settings.exportDefaults.template,
+			format: this.settings.exportDefaults.format,
+			outputFolder: this.settings.outputFolder,
+			openAfterExport: this.settings.behavior.openAfterExport,
+			preserveFolderStructure: this.settings.behavior.preserveFolderStructure,
+			availableTemplates: availableTemplates,
+			// Template variables from settings tab values
+			templateVariables: {
+				pageSize: this.settings.pageSetup.size,
+				orientation: this.settings.pageSetup.orientation,
+				flipped: this.settings.pageSetup.orientation === 'landscape',
+				marginTop: this.settings.pageSetup.margins.top.toString(),
+				marginBottom: this.settings.pageSetup.margins.bottom.toString(),
+				marginLeft: this.settings.pageSetup.margins.left.toString(),
+				marginRight: this.settings.pageSetup.margins.right.toString(),
+				bodyFont: this.settings.typography.fonts.body,
+				headingFont: this.settings.typography.fonts.heading,
+				monospaceFont: this.settings.typography.fonts.monospace,
+				bodyFontSize: this.settings.typography.fontSizes.body,
+				// Auto-adjust width for single-page landscape mode
+				...(this.settings.pageSetup.orientation === 'landscape' && this.settings.exportDefaults.format === 'single-page' 
+					? { width: 'auto' } 
+					: {})
+			}
+		};
+		
+		// Show modal - ModalState will handle localStorage hierarchy automatically
+		const modal = new ExportConfigModal(
+			this.app,
+			this,
+			modalSettings,
+			async (config: ExportConfig) => {
+				await this.exportFilesWithConfig(files, config);
+			},
+			() => {
+				this.cancelExport();
+			}
+		);
+		
+		modal.open();
+	}
 	
 	/**
 	 * Export a file with default configuration
@@ -367,6 +461,43 @@ export class obsidianTypstPDFExport extends Plugin {
 		};
 		
 		await this.exportFileWithConfig(file, config);
+	}
+
+	/**
+	 * Export multiple files with default configuration
+	 */
+	private async exportFiles(files: TFile[]): Promise<void> {
+		if (files.length === 0) {
+			new Notice('No files to export');
+			return;
+		}
+
+		new Notice(`Exporting ${files.length} files to PDF...`);
+
+		let successful = 0;
+		let failed = 0;
+		const errors: string[] = [];
+
+		for (const file of files) {
+			try {
+				await this.exportFile(file);
+				successful++;
+			} catch (error) {
+				console.error(`Failed to export ${file.name}:`, error);
+				failed++;
+				errors.push(`${file.name}: ${error.message || error}`);
+			}
+		}
+
+		// Show completion notice
+		if (failed === 0) {
+			new Notice(`✓ Successfully exported ${successful} files`);
+		} else {
+			new Notice(`Export complete: ${successful} successful, ${failed} failed`, 5000);
+			if (errors.length > 0) {
+				console.error('Export errors:', errors);
+			}
+		}
 	}
 	
 	/**
@@ -501,6 +632,43 @@ export class obsidianTypstPDFExport extends Plugin {
 				}
 			} catch (cleanupError) {
 				console.warn('Export: Failed to clean up temporary directories:', cleanupError);
+			}
+		}
+	}
+
+	/**
+	 * Export multiple files with specific configuration
+	 */
+	private async exportFilesWithConfig(files: TFile[], config: ExportConfig): Promise<void> {
+		if (files.length === 0) {
+			new Notice('No files to export');
+			return;
+		}
+
+		new Notice(`Exporting ${files.length} files with custom configuration...`);
+
+		let successful = 0;
+		let failed = 0;
+		const errors: string[] = [];
+
+		for (const file of files) {
+			try {
+				await this.exportFileWithConfig(file, config);
+				successful++;
+			} catch (error) {
+				console.error(`Failed to export ${file.name}:`, error);
+				failed++;
+				errors.push(`${file.name}: ${error.message || error}`);
+			}
+		}
+
+		// Show completion notice
+		if (failed === 0) {
+			new Notice(`✓ Successfully exported ${successful} files`);
+		} else {
+			new Notice(`Export complete: ${successful} successful, ${failed} failed`, 5000);
+			if (errors.length > 0) {
+				console.error('Export errors:', errors);
 			}
 		}
 	}

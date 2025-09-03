@@ -100,8 +100,13 @@ export class ExportConfigModal extends Modal {
 		header.createEl('h2', { text: 'Export to PDF' });
 		
 		if (this.state.settings.noteTitle) {
+			const isMultiFile = this.state.settings.files && this.state.settings.files.length > 1;
+			const displayText = isMultiFile 
+				? `Exporting ${this.state.settings.files!.length} files`
+				: `Exporting: ${this.state.settings.noteTitle}`;
+				
 			header.createEl('p', { 
-				text: `Exporting: ${this.state.settings.noteTitle}`,
+				text: displayText,
 				cls: 'export-note-title'
 			});
 		}

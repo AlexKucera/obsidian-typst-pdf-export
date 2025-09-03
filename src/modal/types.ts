@@ -2,6 +2,7 @@
  * Type definitions for the Export Configuration Modal
  */
 
+import { TFile } from 'obsidian';
 import { ExportFormat } from '../core/settings';
 
 export interface ExportConfig {
@@ -24,6 +25,8 @@ export interface ExportConfigModalSettings extends ExportConfig {
 	notePath: string;
 	/** Note title for display */
 	noteTitle: string;
+	/** Files being exported (for multi-file export) */
+	files?: TFile[];
 	/** Available templates from TemplateManager */
 	availableTemplates: string[];
 	/** Current export in progress */
