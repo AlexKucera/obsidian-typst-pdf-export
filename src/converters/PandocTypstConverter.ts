@@ -305,7 +305,16 @@ export class PandocTypstConverter {
 			const vaultContents = fs.readdirSync(this.pandocOptions.vaultBasePath);
 			for (const item of vaultContents) {
 				const itemPath = path.join(this.pandocOptions.vaultBasePath, item);
-				const stat = fs.statSync(itemPath);
+				
+				let stat;
+				try {
+					stat = fs.statSync(itemPath);
+				} catch (error) {
+					// File might have been deleted between readdirSync and statSync
+					console.warn(`Export: Unable to stat ${itemPath}:`, error.message);
+					continue;
+				}
+				
 				if (stat.isDirectory() && !item.startsWith('.') && !item.startsWith('_')) {
 					// Check if this directory contains images
 					try {

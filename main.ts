@@ -960,7 +960,11 @@ ${dependencyResult.allAvailable
 		
 		// Create output directory if it doesn't exist
 		if (!fs.existsSync(outputDir)) {
-			fs.mkdirSync(outputDir, { recursive: true });
+			try {
+				fs.mkdirSync(outputDir, { recursive: true });
+			} catch (error) {
+				throw new Error(`Failed to create output directory ${outputDir}: ${error.message}`);
+			}
 		}
 		
 		// Preserve folder structure if configured
@@ -971,7 +975,11 @@ ${dependencyResult.allAvailable
 				relativePath = folderPath;
 				const fullOutputDir = path.join(outputDir, relativePath);
 				if (!fs.existsSync(fullOutputDir)) {
-					fs.mkdirSync(fullOutputDir, { recursive: true });
+					try {
+						fs.mkdirSync(fullOutputDir, { recursive: true });
+					} catch (error) {
+						throw new Error(`Failed to create nested output directory ${fullOutputDir}: ${error.message}`);
+					}
 				}
 			}
 		}
@@ -992,11 +1000,24 @@ ${dependencyResult.allAvailable
 	}
 	
 	async loadSettings() {
-		this.settings = Object.assign({}, DEFAULT_SETTINGS, await this.loadData());
+		try {
+			const data = await this.loadData();
+			this.settings = Object.assign({}, DEFAULT_SETTINGS, data);
+		} catch (error) {
+			console.warn('Failed to load plugin settings, using defaults:', error);
+			this.settings = Object.assign({}, DEFAULT_SETTINGS);
+			// Don't show notice for this - it's normal on first load
+		}
 	}
 	
 	async saveSettings() {
-		await this.saveData(this.settings);
+		try {
+			await this.saveData(this.settings);
+		} catch (error) {
+			console.error('Failed to save plugin settings:', error);
+			new Notice(`Failed to save settings: ${error.message}`, 4000);
+			throw error; // Re-throw to let callers handle appropriately
+		}
 	}
 	
 	/**
