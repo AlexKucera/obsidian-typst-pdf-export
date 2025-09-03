@@ -20,6 +20,7 @@ import {
 } from 'obsidian';
 
 import { obsidianTypstPDFExportSettings, DEFAULT_SETTINGS, ExportFormat } from './src/core/settings';
+import { FALLBACK_FONTS, PLUGIN_DIRS } from './src/core/constants';
 import { PandocTypstConverter } from './src/converters/PandocTypstConverter';
 import { ExportConfigModal } from './src/modal/ExportConfigModal';
 import { ExportConfig, ExportConfigModalSettings } from './src/modal/types';
@@ -102,19 +103,7 @@ export class obsidianTypstPDFExport extends Plugin {
 		} catch (error) {
 			console.error('Failed to cache fonts from typst:', error);
 			// Create fallback cache file
-			const fallbackFonts = [
-				'Times New Roman',
-				'Arial',
-				'Helvetica', 
-				'Georgia',
-				'Courier New',
-				'Monaco',
-				'SF Pro Text',
-				'SF Mono',
-				'Concourse OT',
-				'UbuntuMono Nerd Font Mono',
-				'Source Code Pro'
-			];
+			const fallbackFonts = FALLBACK_FONTS;
 			
 			const cacheData = {
 				fonts: fallbackFonts,
@@ -152,19 +141,7 @@ export class obsidianTypstPDFExport extends Plugin {
 			await this.cacheAvailableFonts();
 			
 			// Return fallback fonts
-			return [
-				'Times New Roman',
-				'Arial', 
-				'Helvetica',
-				'Georgia',
-				'Courier New',
-				'Monaco',
-				'SF Pro Text',
-				'SF Mono',
-				'Concourse OT',
-				'UbuntuMono Nerd Font Mono',
-				'Source Code Pro'
-			];
+			return [...FALLBACK_FONTS];
 		}
 	}
 	
