@@ -5,6 +5,7 @@
 
 import {
 	App,
+	addIcon,
 	Plugin,
 	PluginSettingTab,
 	Setting,
@@ -39,8 +40,14 @@ export class obsidianTypstPDFExport extends Plugin {
 		this.converter = new PandocTypstConverter(this);
 		this.templateManager = new TemplateManager(this);
 		
-		// Add ribbon icon
-		this.addRibbonIcon('type', 'Export to PDF with Typst', (event: MouseEvent) => {
+		// Register custom icon
+		addIcon('typst-pdf-export', `<svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" xml:space="preserve" style="fill-rule:evenodd;clip-rule:evenodd;stroke-linejoin:round;stroke-miterlimit:2">
+  <path d="m9.002 4.175 4.343-2.13V6l4.033-.304V8.13h-4.033c-.017.223-.001 8.368 0 9.432.001.65.889 1.217 1.551 1.217.775 0 3.102-1.217 3.102-1.217l.931 1.522s-2.741 1.774-4.033 2.129c-1.195.329-2.017.761-3.723 0-1.073-.478-2.144-1.582-2.171-2.738-.052-2.231 0-10.649 0-10.649L7.14 8.13l-.31-1.825L9.002 6z" style="fill:#828282"/>
+</svg>
+`);
+		
+		// Add ribbon icon using custom icon
+		this.addRibbonIcon('typst-pdf-export', 'Export to PDF with Typst', (event: MouseEvent) => {
 			this.handleRibbonClick(event);
 		});
 		
