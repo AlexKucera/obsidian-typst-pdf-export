@@ -379,6 +379,7 @@ export class PandocTypstConverter {
 						break;
 					case 'bodyFontSize':
 						variableName = 'fontsize';
+						processedValue = value + 'pt';
 						break;
 					case 'pageSize':
 						variableName = 'paper';
@@ -387,15 +388,19 @@ export class PandocTypstConverter {
 						break;
 					case 'marginTop':
 						variableName = 'margin_top';
+						processedValue = value + 'cm';
 						break;
 					case 'marginBottom':
 						variableName = 'margin_bottom';
+						processedValue = value + 'cm';
 						break;
 					case 'marginLeft':
 						variableName = 'margin_left';
+						processedValue = value + 'cm';
 						break;
 					case 'marginRight':
 						variableName = 'margin_right';
+						processedValue = value + 'cm';
 						break;
 					// Keep other variables as-is (orientation, flipped, width, etc.)
 				}
@@ -429,12 +434,6 @@ export class PandocTypstConverter {
 			if (settings.typography.fontSizes) {
 				if (!existingVars.bodyFontSize && !existingVars.fontsize && settings.typography.fontSizes.body) {
 					args.push('-V', `fontsize=${settings.typography.fontSizes.body}pt`);
-				}
-				if (!existingVars.heading_fontsize && settings.typography.fontSizes.heading) {
-					args.push('-V', `heading_fontsize=${settings.typography.fontSizes.heading}pt`);
-				}
-				if (!existingVars.small_fontsize && settings.typography.fontSizes.small) {
-					args.push('-V', `small_fontsize=${settings.typography.fontSizes.small}pt`);
 				}
 			}
 		}

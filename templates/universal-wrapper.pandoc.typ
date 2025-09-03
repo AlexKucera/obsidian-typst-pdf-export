@@ -19,8 +19,6 @@
   // Support for UI-configurable options
   $if(heading_font)$heading_font: "$heading_font$",$else$heading_font: none,$endif$
   $if(monospace_font)$monospace_font: "$monospace_font$",$else$monospace_font: none,$endif$
-  $if(heading_fontsize)$heading_fontsize: $heading_fontsize$,$else$heading_fontsize: none,$endif$
-  $if(small_fontsize)$small_fontsize: $small_fontsize$,$else$small_fontsize: none,$endif$
   $if(margin_top)$margin_top: $margin_top$,$else$margin_top: none,$endif$
   $if(margin_right)$margin_right: $margin_right$,$else$margin_right: none,$endif$
   $if(margin_bottom)$margin_bottom: $margin_bottom$,$else$margin_bottom: none,$endif$
