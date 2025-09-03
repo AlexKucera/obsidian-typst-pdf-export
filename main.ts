@@ -1233,10 +1233,10 @@ class ObsidianTypstPDFExportSettingTab extends PluginSettingTab {
 			.setName('Top margin')
 			.setDesc('Top page margin in centimeters')
 			.addText(text => text
-				.setPlaceholder('2.54')
+				.setPlaceholder('2.5')
 				.setValue(this.formatSingleMarginForDisplay(this.plugin.settings.pageSetup.margins.top))
 				.onChange(async (value) => {
-					this.plugin.settings.pageSetup.margins.top = this.parseMarginValue(value, 72);
+					this.plugin.settings.pageSetup.margins.top = this.parseMarginValue(value, 2.5);
 					await this.plugin.saveSettings();
 				}));
 
@@ -1244,10 +1244,10 @@ class ObsidianTypstPDFExportSettingTab extends PluginSettingTab {
 			.setName('Bottom margin')
 			.setDesc('Bottom page margin in centimeters')
 			.addText(text => text
-				.setPlaceholder('2.54')
+				.setPlaceholder('2.0')
 				.setValue(this.formatSingleMarginForDisplay(this.plugin.settings.pageSetup.margins.bottom))
 				.onChange(async (value) => {
-					this.plugin.settings.pageSetup.margins.bottom = this.parseMarginValue(value, 72);
+					this.plugin.settings.pageSetup.margins.bottom = this.parseMarginValue(value, 2.0);
 					await this.plugin.saveSettings();
 				}));
 
@@ -1255,10 +1255,10 @@ class ObsidianTypstPDFExportSettingTab extends PluginSettingTab {
 			.setName('Left margin')
 			.setDesc('Left page margin in centimeters')
 			.addText(text => text
-				.setPlaceholder('2.54')
+				.setPlaceholder('2.5')
 				.setValue(this.formatSingleMarginForDisplay(this.plugin.settings.pageSetup.margins.left))
 				.onChange(async (value) => {
-					this.plugin.settings.pageSetup.margins.left = this.parseMarginValue(value, 72);
+					this.plugin.settings.pageSetup.margins.left = this.parseMarginValue(value, 2.5);
 					await this.plugin.saveSettings();
 				}));
 
@@ -1266,10 +1266,10 @@ class ObsidianTypstPDFExportSettingTab extends PluginSettingTab {
 			.setName('Right margin')
 			.setDesc('Right page margin in centimeters')
 			.addText(text => text
-				.setPlaceholder('2.54')
+				.setPlaceholder('1.5')
 				.setValue(this.formatSingleMarginForDisplay(this.plugin.settings.pageSetup.margins.right))
 				.onChange(async (value) => {
-					this.plugin.settings.pageSetup.margins.right = this.parseMarginValue(value, 72);
+					this.plugin.settings.pageSetup.margins.right = this.parseMarginValue(value, 1.5);
 					await this.plugin.saveSettings();
 				}));
 	}
@@ -1314,15 +1314,14 @@ class ObsidianTypstPDFExportSettingTab extends PluginSettingTab {
 	}
 	
 	// Helper methods for margin conversion
-	private formatSingleMarginForDisplay(marginPoints: number): string {
-		// Convert from points to CM (1 point = 0.035278 cm)
-		const marginCm = (marginPoints * 0.035278).toFixed(2);
-		return marginCm;
+	private formatSingleMarginForDisplay(marginCm: number): string {
+		// No conversion needed - directly return centimeters
+		return marginCm.toFixed(2);
 	}
 	
-	private parseMarginValue(value: string, defaultPoints: number): number {
+	private parseMarginValue(value: string, defaultCm: number): number {
 		const cm = parseFloat(value.trim());
-		return isNaN(cm) ? defaultPoints : cm / 0.035278; // Convert CM to points
+		return isNaN(cm) ? defaultCm : cm; // No conversion needed - directly use centimeters
 	}
 }
 

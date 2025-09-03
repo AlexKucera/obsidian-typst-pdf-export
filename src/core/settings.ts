@@ -107,10 +107,10 @@ export const DEFAULT_SETTINGS: obsidianTypstPDFExportSettings = {
 		format: ExportFormat.Standard,
 		pageSize: 'a4',
 		orientation: 'portrait',
-		marginTop: '1in',
-		marginBottom: '0.8in',
-		marginLeft: '1in',
-		marginRight: '0.6in',
+		marginTop: '2.5',
+		marginBottom: '2.0',
+		marginLeft: '2.5',
+		marginRight: '1.5',
 		bodyFont: 'Concourse OT',
 		headingFont: 'Concourse OT',
 		monospaceFont: 'Source Code Pro',
@@ -134,10 +134,10 @@ export const DEFAULT_SETTINGS: obsidianTypstPDFExportSettings = {
 		size: 'a4',
 		orientation: 'portrait',
 		margins: {
-			top: 72,
-			right: 72,
-			bottom: 72,
-			left: 72
+			top: 2.54,
+			right: 1.52,
+			bottom: 2.03,
+			left: 2.54
 		}
 	},
 	
@@ -147,4 +147,4 @@ export const DEFAULT_SETTINGS: obsidianTypstPDFExportSettings = {
 		exportConcurrency: 3,
 		debugMode: false
 	}
-};
+};;

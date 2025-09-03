@@ -447,20 +447,16 @@ export class PandocTypstConverter {
 			if (settings.pageSetup.margins) {
 				const margins = settings.pageSetup.margins;
 				if (!existingVars.marginTop && !existingVars.margin_top && margins.top !== undefined) {
-					const topCm = (margins.top * 0.0352778).toFixed(2);
-					args.push('-V', `margin_top=${topCm}cm`);
+					args.push('-V', `margin_top=${margins.top}cm`);
 				}
 				if (!existingVars.marginRight && !existingVars.margin_right && margins.right !== undefined) {
-					const rightCm = (margins.right * 0.0352778).toFixed(2);
-					args.push('-V', `margin_right=${rightCm}cm`);
+					args.push('-V', `margin_right=${margins.right}cm`);
 				}
 				if (!existingVars.marginBottom && !existingVars.margin_bottom && margins.bottom !== undefined) {
-					const bottomCm = (margins.bottom * 0.0352778).toFixed(2);
-					args.push('-V', `margin_bottom=${bottomCm}cm`);
+					args.push('-V', `margin_bottom=${margins.bottom}cm`);
 				}
 				if (!existingVars.marginLeft && !existingVars.margin_left && margins.left !== undefined) {
-					const leftCm = (margins.left * 0.0352778).toFixed(2);
-					args.push('-V', `margin_left=${leftCm}cm`);
+					args.push('-V', `margin_left=${margins.left}cm`);
 				}
 			}
 		}

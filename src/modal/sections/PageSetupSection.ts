@@ -70,22 +70,22 @@ export class PageSetupSection implements ModalSection {
 		const marginsContainer = this.container.createDiv('margins-container');
 		marginsContainer.createEl('h4', { text: 'Text Margins' });
 		marginsContainer.createEl('p', { 
-			text: 'Enter margins with units (e.g., "1in", "2.5cm", "72pt")',
+			text: 'Enter margins in centimeters (e.g., "2.5", "1.8", "3.0")',
 			cls: 'setting-item-description'
 		});
 		
 		const marginDefaults = {
-			top: '1in',
-			bottom: '0.8in', 
-			left: '1in',
-			right: '0.6in'
+			top: '2.5',
+			bottom: '2.0', 
+			left: '2.5',
+			right: '1.5'
 		};
 		
 		// Create margin text inputs
 		['top', 'bottom', 'left', 'right'].forEach(side => {
 			new Setting(marginsContainer)
 				.setName(`${side.charAt(0).toUpperCase() + side.slice(1)} margin`)
-				.setDesc(`${side} text margin (e.g., "1in", "2cm", "72pt")`)
+				.setDesc(`${side} text margin in centimeters`)
 				.addText(text => {
 					const input = text
 						.setPlaceholder(marginDefaults[side as keyof typeof marginDefaults])
@@ -108,10 +108,15 @@ export class PageSetupSection implements ModalSection {
 		this.marginInputs.forEach((input, side) => {
 			const value = input.value.trim();
 			if (value) {
-				// Check for valid margin format (number + unit)
-				const marginRegex = /^[\d.]+\s*(in|cm|mm|pt)$/;
+				// Check for valid margin format (number only, centimeters assumed)
+				const marginRegex = /^\d*\.?\d+$/;
 				if (!marginRegex.test(value)) {
-					errors.push(`${side.charAt(0).toUpperCase() + side.slice(1)} margin must include a unit (e.g., "1in", "2cm", "72pt")`);
+					errors.push(`${side.charAt(0).toUpperCase() + side.slice(1)} margin must be a number in centimeters (e.g., "2.5")`);
+				} else {
+					const num = parseFloat(value);
+					if (num <= 0) {
+						errors.push(`${side.charAt(0).toUpperCase() + side.slice(1)} margin must be greater than 0`);
+					}
 				}
 			}
 		});
