@@ -80,46 +80,77 @@ export class obsidianTypstPDFExport extends Plugin {
 	 * Cache available fonts from typst to a file for quick access
 	 */
 	private async cacheAvailableFonts(): Promise<void> {
-		try {
-			const { exec } = require('child_process');
-			const { promisify } = require('util');
-			const execAsync = promisify(exec);
+	try {
+		const { spawn } = require('child_process');
+		
+		const typstPath = this.settings.typstPath || 'typst';
+		
+		// Use spawn instead of exec for security - arguments passed separately
+		const stdout = await new Promise<string>((resolve, reject) => {
+			const typstProcess = spawn(typstPath, ['fonts'], { 
+				stdio: ['pipe', 'pipe', 'pipe'],
+				env: { 
+					...process.env,
+					PATH: `/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:${process.env.PATH || ''}`
+				}
+			});
 			
-			const typstPath = this.settings.typstPath || 'typst';
-			const { stdout } = await execAsync(`${typstPath} fonts`);
+			let output = '';
+			let error = '';
 			
-			const fonts = stdout
-				.split('\n')
-				.map((line: string) => line.trim())
-				.filter((line: string) => line.length > 0)
-				.sort();
+			typstProcess.stdout?.on('data', (data) => {
+				output += data.toString();
+			});
 			
-			// Write fonts to cache file in plugin data directory
-			const cacheData = {
-				fonts: fonts,
-				timestamp: Date.now(),
-				typstPath: typstPath
-			};
+			typstProcess.stderr?.on('data', (data) => {
+				error += data.toString();
+			});
 			
-			await this.app.vault.adapter.write('.obsidian/plugins/obsidian-typst-pdf-export/fonts-cache.json', 
-				JSON.stringify(cacheData, null, 2));
-			console.log('Cached', fonts.length, 'fonts from typst');
-		} catch (error) {
-			console.error('Failed to cache fonts from typst:', error);
-			// Create fallback cache file
-			const fallbackFonts = FALLBACK_FONTS;
+			typstProcess.on('close', (code) => {
+				if (code === 0) {
+					resolve(output);
+				} else {
+					reject(new Error(`typst fonts command failed with code ${code}: ${error}`));
+				}
+			});
 			
-			const cacheData = {
-				fonts: fallbackFonts,
-				timestamp: Date.now(),
-				typstPath: 'fallback',
-				error: error.message
-			};
-			
-			await this.app.vault.adapter.write('.obsidian/plugins/obsidian-typst-pdf-export/fonts-cache.json',
-				JSON.stringify(cacheData, null, 2));
-		}
+			typstProcess.on('error', (err) => {
+				reject(new Error(`Failed to spawn typst process: ${err.message}`));
+			});
+		});
+		
+		const fonts = stdout
+			.split('\n')
+			.map((line: string) => line.trim())
+			.filter((line: string) => line.length > 0)
+			.sort();
+		
+		// Write fonts to cache file in plugin data directory
+		const cacheData = {
+			fonts: fonts,
+			timestamp: Date.now(),
+			typstPath: typstPath
+		};
+		
+		await this.app.vault.adapter.write('.obsidian/plugins/obsidian-typst-pdf-export/fonts-cache.json', 
+			JSON.stringify(cacheData, null, 2));
+		console.log('Cached', fonts.length, 'fonts from typst');
+	} catch (error) {
+		console.error('Failed to cache fonts from typst:', error);
+		// Create fallback cache file
+		const fallbackFonts = FALLBACK_FONTS;
+		
+		const cacheData = {
+			fonts: fallbackFonts,
+			timestamp: Date.now(),
+			typstPath: 'fallback',
+			error: error.message
+		};
+		
+		await this.app.vault.adapter.write('.obsidian/plugins/obsidian-typst-pdf-export/fonts-cache.json',
+			JSON.stringify(cacheData, null, 2));
 	}
+}
 
 	/**
 	 * Get cached fonts list
