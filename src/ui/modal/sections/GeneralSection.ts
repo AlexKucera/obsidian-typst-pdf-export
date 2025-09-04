@@ -3,7 +3,7 @@
  * Handles template selection, format options, and output settings
  */
 
-import { Setting, App } from 'obsidian';
+import { Setting, App, normalizePath } from 'obsidian';
 import { ModalSection, ModalState, ValidationResult } from '../modalTypes';
 import { ExportFormat } from '../../../core/settings';
 import { FolderSuggest } from '../../components/FolderSuggest';
@@ -78,7 +78,8 @@ export class GeneralSection implements ModalSection {
 					.setPlaceholder('exports')
 					.setValue(state.settings.outputFolder || 'exports')
 					.onChange(value => {
-						state.updateSettings({ outputFolder: value });
+						const normalizedValue = normalizePath(value);
+						state.updateSettings({ outputFolder: normalizedValue });
 					});
 				this.outputFolderInput = input.inputEl;
 				
@@ -101,7 +102,7 @@ export class GeneralSection implements ModalSection {
 		
 		// Validate output folder
 		if (this.outputFolderInput) {
-			const value = this.outputFolderInput.value.trim();
+			const value = normalizePath(this.outputFolderInput.value.trim());
 			if (!SecurityUtils.validateOutputPath(value)) {
 				errors.push(SecurityUtils.getPathValidationError(value));
 			}

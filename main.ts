@@ -16,7 +16,8 @@ import {
 	Menu,
 	MarkdownView,
 	Editor,
-	AbstractInputSuggest
+	AbstractInputSuggest,
+	normalizePath
 } from 'obsidian';
 
 import { obsidianTypstPDFExportSettings, DEFAULT_SETTINGS, ExportFormat } from './src/core/settings';
@@ -1265,11 +1266,12 @@ class ObsidianTypstPDFExportSettingTab extends PluginSettingTab {
 					.setPlaceholder('exports')
 					.setValue(this.plugin.settings.outputFolder)
 					.onChange(async (value) => {
-						if (!SecurityUtils.validateOutputPath(value)) {
-							new Notice(`Invalid output folder: ${SecurityUtils.getPathValidationError(value)}`);
+						const normalizedValue = normalizePath(value);
+						if (!SecurityUtils.validateOutputPath(normalizedValue)) {
+							new Notice(`Invalid output folder: ${SecurityUtils.getPathValidationError(normalizedValue)}`);
 							return;
 						}
-						this.plugin.settings.outputFolder = value;
+						this.plugin.settings.outputFolder = normalizedValue;
 						await this.plugin.saveSettings();
 					});
 
