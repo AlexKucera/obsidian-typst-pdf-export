@@ -17,6 +17,12 @@ export class PandocTypstConverter {
 	private tempDir: string | null = null;
 	private cleanupHandlers: (() => void)[] = [];
 	private plugin: any; // Will be properly typed when we refactor the main plugin class
+	
+	// Cache for directory scanning optimization
+	private resourcePathCache: string[] = [];
+	private resourcePathCacheTimestamp: number = 0;
+	private resourcePathCacheVaultPath: string = '';
+	private readonly CACHE_EXPIRY_MS = 5 * 60 * 1000; // 5 minutes
 
 	/**
 	 * Create a new PandocTypstConverter instance
@@ -301,35 +307,59 @@ export class PandocTypstConverter {
 		}
 		
 		// Also scan for note-specific attachment folders (Obsidian often creates these)
-		try {
-			const vaultContents = fs.readdirSync(this.pandocOptions.vaultBasePath);
-			for (const item of vaultContents) {
-				const itemPath = path.join(this.pandocOptions.vaultBasePath, item);
-				
-				let stat;
-				try {
-					stat = await fsPromises.stat(itemPath);
-				} catch (error) {
-					// File might have been deleted between readdirSync and statSync
-					console.warn(`Export: Unable to stat ${itemPath}:`, error.message);
-					continue;
-				}
-				
-				if (stat.isDirectory() && !item.startsWith('.') && !item.startsWith('_')) {
-					// Check if this directory contains images
+		// Use cache to avoid scanning entire vault on every export
+		const now = Date.now();
+		const cacheIsValid = this.resourcePathCacheVaultPath === this.pandocOptions.vaultBasePath &&
+			(now - this.resourcePathCacheTimestamp) < this.CACHE_EXPIRY_MS &&
+			this.resourcePathCache.length > 0;
+			
+		if (cacheIsValid) {
+			// Use cached resource paths
+			for (const cachedPath of this.resourcePathCache) {
+				args.push('--resource-path', cachedPath);
+				console.log('Added cached resource path:', cachedPath);
+			}
+		} else {
+			// Cache is invalid or expired, perform fresh scan
+			const foundResourcePaths: string[] = [];
+			
+			try {
+				const vaultContents = fs.readdirSync(this.pandocOptions.vaultBasePath);
+				for (const item of vaultContents) {
+					const itemPath = path.join(this.pandocOptions.vaultBasePath, item);
+					
+					let stat;
 					try {
-						const dirContents = fs.readdirSync(itemPath);
-						const hasImages = dirContents.some((file: string) => 
-							/\.(png|jpg|jpeg|gif|svg|webp|bmp|ico|tiff)$/i.test(file)
-						);
-						if (hasImages) {
-							args.push('--resource-path', itemPath);
-							console.log('Added note-specific resource path:', itemPath);
+						stat = await fsPromises.stat(itemPath);
+					} catch (error) {
+						// File might have been deleted between readdirSync and statSync
+						console.warn(`Export: Unable to stat ${itemPath}:`, error.message);
+						continue;
+					}
+					
+					if (stat.isDirectory() && !item.startsWith('.') && !item.startsWith('_')) {
+						// Check if this directory contains images
+						try {
+							const dirContents = fs.readdirSync(itemPath);
+							const hasImages = dirContents.some((file: string) => 
+								/\.(png|jpg|jpeg|gif|svg|webp|bmp|ico|tiff)$/i.test(file)
+							);
+							if (hasImages) {
+								foundResourcePaths.push(itemPath);
+								args.push('--resource-path', itemPath);
+								console.log('Added note-specific resource path:', itemPath);
+							}
+						} catch (e) {
+							// Ignore directories we can't read
 						}
-					} catch (e) {
-						// Ignore directories we can't read
 					}
 				}
+				
+				// Update cache with fresh results
+				this.resourcePathCache = foundResourcePaths;
+				this.resourcePathCacheTimestamp = now;
+				this.resourcePathCacheVaultPath = this.pandocOptions.vaultBasePath;
+				console.log(`Export: Cached ${foundResourcePaths.length} resource paths for future use`);
 			}
 		} catch (e) {
 			console.warn('Could not scan vault for attachment directories:', e);
