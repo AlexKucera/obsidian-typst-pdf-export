@@ -46,6 +46,23 @@ export class PdfToImageConverter {
 		this.plugin = plugin;
 	}
 
+	/**
+	 * Get augmented environment with extended PATH for ImageMagick
+	 */
+	private getAugmentedEnv(): NodeJS.ProcessEnv {
+		const homeDir = process.env.HOME || process.env.USERPROFILE || '';
+		const commonPaths = [
+			'/opt/homebrew/bin',
+			'/usr/local/bin',
+			'/usr/bin'
+		].map(p => homeDir.includes('Users') ? p : homeDir + p);
+		
+		return {
+			...process.env,
+			PATH: `${process.env.PATH}:${commonPaths.join(':')}`
+		};
+	}
+
 	public static getInstance(plugin?: any): PdfToImageConverter {
 		if (!PdfToImageConverter.instance) {
 			PdfToImageConverter.instance = new PdfToImageConverter(plugin);
@@ -244,40 +261,110 @@ export class PdfToImageConverter {
 
 			let buffer: Buffer;
 			if (opts.format === 'jpeg') {
-				// Convert PNG to JPEG if needed
+				// Convert PNG to JPEG using ImageMagick
 				try {
-					const sharp = require('sharp');
-					const inputBuffer = await fs.readFile(actualOutputPath);
-					buffer = await sharp(inputBuffer)
-						.jpeg({ quality: opts.quality })
-						.toBuffer();
-					await fs.writeFile(finalOutputPath, buffer);
+					const { spawn } = require('child_process');
+					const { promisify } = require('util');
+					
+					// Use ImageMagick to convert PNG to JPEG
+					const convertProcess = spawn('magick', [
+						'convert',
+						actualOutputPath,
+						'-quality', opts.quality.toString(),
+						finalOutputPath
+					], {
+						stdio: ['pipe', 'pipe', 'pipe'],
+						env: this.getAugmentedEnv()
+					});
+					
+					await new Promise<void>((resolve, reject) => {
+						let error = '';
+						convertProcess.stderr?.on('data', (data) => {
+							error += data.toString();
+						});
+						
+						convertProcess.on('close', (code) => {
+							if (code === 0) {
+								resolve();
+							} else {
+								reject(new Error(`ImageMagick conversion failed with code ${code}: ${error}`));
+							}
+						});
+						
+						convertProcess.on('error', (err) => {
+							reject(new Error(`Failed to spawn ImageMagick: ${err.message}`));
+						});
+					});
+					
 					// Clean up the original PNG
 					await fs.unlink(actualOutputPath);
-				} catch (sharpError) {
-					console.warn('Sharp not available for JPEG conversion, keeping PNG format');
-					// Just rename the file
-					await fs.rename(actualOutputPath, finalOutputPath);
 					buffer = await fs.readFile(finalOutputPath);
+				} catch (imagemagickError) {
+					console.warn('ImageMagick not available for JPEG conversion, keeping PNG format');
+					// Just rename the file to PNG format
+					const pngFinalPath = finalOutputPath.replace(/\.jpeg?$/, '.png');
+					await fs.rename(actualOutputPath, pngFinalPath);
+					buffer = await fs.readFile(pngFinalPath);
 				}
 			} else {
 				// Keep as PNG, just rename
-				await fs.rename(expectedOutputPath, finalOutputPath);
+				await fs.rename(actualOutputPath, finalOutputPath);
 				buffer = await fs.readFile(finalOutputPath);
 			}
 
-			// Get image dimensions
+			// Get image dimensions using ImageMagick
 			let imageDimensions = { width: opts.maxWidth, height: opts.maxHeight };
 			try {
-				const sharp = require('sharp');
-				const metadata = await sharp(buffer).metadata();
-				imageDimensions = {
-					width: metadata.width || opts.maxWidth,
-					height: metadata.height || opts.maxHeight
-				};
-			} catch (sharpError) {
-				// Fallback to estimated dimensions if sharp is not available
-				console.warn('Sharp not available for image metadata, using estimated dimensions');
+				const { spawn } = require('child_process');
+				
+				// Use ImageMagick identify to get image dimensions
+				const identifyProcess = spawn('magick', [
+					'identify',
+					'-ping',
+					'-format',
+					'%wx%h',
+					finalOutputPath
+				], {
+					stdio: ['pipe', 'pipe', 'pipe'],
+					env: this.getAugmentedEnv()
+				});
+				
+				const dimensionsOutput = await new Promise<string>((resolve, reject) => {
+					let output = '';
+					let error = '';
+					
+					identifyProcess.stdout?.on('data', (data) => {
+						output += data.toString();
+					});
+					
+					identifyProcess.stderr?.on('data', (data) => {
+						error += data.toString();
+					});
+					
+					identifyProcess.on('close', (code) => {
+						if (code === 0) {
+							resolve(output.trim());
+						} else {
+							reject(new Error(`ImageMagick identify failed with code ${code}: ${error}`));
+						}
+					});
+					
+					identifyProcess.on('error', (err) => {
+						reject(new Error(`Failed to spawn ImageMagick identify: ${err.message}`));
+					});
+				});
+				
+				// Parse dimensions from "WIDTHxHEIGHT" format
+				const dimensionMatch = dimensionsOutput.match(/^(\d+)x(\d+)$/);
+				if (dimensionMatch) {
+					imageDimensions = {
+						width: parseInt(dimensionMatch[1], 10),
+						height: parseInt(dimensionMatch[2], 10)
+					};
+				}
+			} catch (imagemagickError) {
+				// Fallback to estimated dimensions if ImageMagick is not available
+				console.warn('ImageMagick not available for image metadata, using estimated dimensions');
 			}
 
 			return {

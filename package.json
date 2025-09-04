@@ -32,7 +32,6 @@
 	},
 	"dependencies": {
 		"gray-matter": "^4.0.3",
-		"pdf-to-img": "^4.5.0",
-		"sharp": "^0.34.3"
+		"pdf-to-img": "^4.5.0"
 	}
 }
