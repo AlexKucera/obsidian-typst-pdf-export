@@ -187,7 +187,7 @@ export class ExportConfigModal extends Modal {
 			}
 		} catch (error) {
 			console.error('Failed to load templates:', error);
-			new Notice('Failed to load available templates');
+			new Notice(`Failed to load available templates: ${error.message}`);
 		}
 	}
 	
