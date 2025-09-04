@@ -6,5 +6,10 @@
 	"description": "Exports a note or collection of notes to a pretty Typst PDF.",
 	"author": "Alexander Kucera",
 	"authorUrl": "https://alexanderkucera.com",
+	"fundingUrl": {
+		"Buy Me a Coffee": "https://buymeacoffee.com/babylondreams",
+		"Ko-fi": "https://ko-fi.com/babylondreams",
+		"Patreon": "https://patreon.com/babylondreams"
+	},
 	"isDesktopOnly": true
 }
