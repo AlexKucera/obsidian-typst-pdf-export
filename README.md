@@ -31,6 +31,7 @@ Export Obsidian notes to PDF using the Typst typesetting system. Supports custom
 - **🔍 Font Discovery**: Automatic system font detection and caching
 - **🛡️ Security First**: Path validation and sanitization for safe operations
 - **📐 Professional Layout**: Paper sizes, margins, typography controls, and more
+- **📧 Email Block SUpport**: Supports the YAML Email Block format introduced by the [Email Block plugin](https://github.com/joleaf/obsidian-email-block-plugin)
 
 ## Why Typst?
 
@@ -172,9 +173,19 @@ The plugin automatically processes:
 - **Links**: Properly formatted in the output PDF
 - **Math**: LaTeX math expressions rendered correctly
 
-### Export Configuration Persistence
+### Email Blocks
 
-Your export settings are automatically saved and restored for consistent output across sessions.
+Format them like this:
+
+```email
+to: info@randommail.com
+subject: Hello World
+---
+Hi there,
+this is my new body
+Best!
+JB
+```
 
 ## Troubleshooting
 
