@@ -61,15 +61,15 @@ export class DependencyChecker {
 			let output = '';
 			let error = '';
 			
-			checkProcess.stdout?.on('data', (data) => {
+			checkProcess.stdout?.on('data', (data: Buffer) => {
 				output += data.toString();
 			});
 			
-			checkProcess.stderr?.on('data', (data) => {
+			checkProcess.stderr?.on('data', (data: Buffer) => {
 				error += data.toString();
 			});
 			
-			checkProcess.on('close', (code) => {
+			checkProcess.on('close', (code: number | null) => {
 				if (code === 0) {
 					resolve(output);
 				} else {
@@ -77,7 +77,7 @@ export class DependencyChecker {
 				}
 			});
 			
-			checkProcess.on('error', (err) => {
+			checkProcess.on('error', (err: Error) => {
 				reject(new Error(`Failed to spawn process: ${err.message}`));
 			});
 		});

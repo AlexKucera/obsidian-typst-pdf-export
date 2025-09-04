@@ -279,11 +279,11 @@ export class PdfToImageConverter {
 					
 					await new Promise<void>((resolve, reject) => {
 						let error = '';
-						convertProcess.stderr?.on('data', (data) => {
+						convertProcess.stderr?.on('data', (data: Buffer) => {
 							error += data.toString();
 						});
 						
-						convertProcess.on('close', (code) => {
+						convertProcess.on('close', (code: number | null) => {
 							if (code === 0) {
 								resolve();
 							} else {
@@ -291,7 +291,7 @@ export class PdfToImageConverter {
 							}
 						});
 						
-						convertProcess.on('error', (err) => {
+						convertProcess.on('error', (err: Error) => {
 							reject(new Error(`Failed to spawn ImageMagick: ${err.message}`));
 						});
 					});
@@ -333,15 +333,15 @@ export class PdfToImageConverter {
 					let output = '';
 					let error = '';
 					
-					identifyProcess.stdout?.on('data', (data) => {
+					identifyProcess.stdout?.on('data', (data: Buffer) => {
 						output += data.toString();
 					});
 					
-					identifyProcess.stderr?.on('data', (data) => {
+					identifyProcess.stderr?.on('data', (data: Buffer) => {
 						error += data.toString();
 					});
 					
-					identifyProcess.on('close', (code) => {
+					identifyProcess.on('close', (code: number | null) => {
 						if (code === 0) {
 							resolve(output.trim());
 						} else {
@@ -349,7 +349,7 @@ export class PdfToImageConverter {
 						}
 					});
 					
-					identifyProcess.on('error', (err) => {
+					identifyProcess.on('error', (err: Error) => {
 						reject(new Error(`Failed to spawn ImageMagick identify: ${err.message}`));
 					});
 				});

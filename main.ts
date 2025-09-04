@@ -102,15 +102,15 @@ export class obsidianTypstPDFExport extends Plugin {
 			let output = '';
 			let error = '';
 			
-			typstProcess.stdout?.on('data', (data) => {
+			typstProcess.stdout?.on('data', (data: Buffer) => {
 				output += data.toString();
 			});
 			
-			typstProcess.stderr?.on('data', (data) => {
+			typstProcess.stderr?.on('data', (data: Buffer) => {
 				error += data.toString();
 			});
 			
-			typstProcess.on('close', (code) => {
+			typstProcess.on('close', (code: number | null) => {
 				if (code === 0) {
 					resolve(output);
 				} else {
@@ -118,7 +118,7 @@ export class obsidianTypstPDFExport extends Plugin {
 				}
 			});
 			
-			typstProcess.on('error', (err) => {
+			typstProcess.on('error', (err: Error) => {
 				reject(new Error(`Failed to spawn typst process: ${err.message}`));
 			});
 		});
