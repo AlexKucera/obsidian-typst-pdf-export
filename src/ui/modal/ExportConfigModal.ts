@@ -124,7 +124,7 @@ export class ExportConfigModal extends Modal {
 	
 	private createProgressContainer(): void {
 		this.progressContainer = this.contentContainer.createDiv('export-progress-container');
-		this.progressContainer.style.display = 'none';
+		this.progressContainer.addClass('export-hidden');
 		
 		// Progress text
 		this.progressText = this.progressContainer.createEl('div', {
@@ -325,7 +325,7 @@ export class ExportConfigModal extends Modal {
 	
 	private showProgress(message: string, percent: number): void {
 		this.progressContainer.style.display = 'block';
-		this.formContainer.removeClass('export-visible').addClass('export-hidden');
+		this.formContainer.style.display = 'none';
 		
 		this.progressText.textContent = message;
 		
