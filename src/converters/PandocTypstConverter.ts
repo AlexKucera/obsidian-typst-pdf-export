@@ -308,7 +308,7 @@ export class PandocTypstConverter {
 				
 				let stat;
 				try {
-					stat = fs.statSync(itemPath);
+					stat = await fsPromises.stat(itemPath);
 				} catch (error) {
 					// File might have been deleted between readdirSync and statSync
 					console.warn(`Export: Unable to stat ${itemPath}:`, error.message);
