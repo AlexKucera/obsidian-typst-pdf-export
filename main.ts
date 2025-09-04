@@ -199,7 +199,6 @@ export class obsidianTypstPDFExport extends Plugin {
 		this.addCommand({
 			id: 'export-current-note',
 			name: 'Export current note(s)',
-			hotkeys: [{ modifiers: ['Mod', 'Shift'], key: 'e' }],
 			editorCallback: (editor: Editor, view: MarkdownView) => {
 				this.exportCurrentNote(view);
 			}
@@ -209,7 +208,6 @@ export class obsidianTypstPDFExport extends Plugin {
 		this.addCommand({
 			id: 'export-with-config',
 			name: 'Export with configuration…',
-			hotkeys: [{ modifiers: ['Mod', 'Shift', 'Alt'], key: 'e' }],
 			editorCallback: (editor: Editor, view: MarkdownView) => {
 				this.showExportModal(view);
 			}
