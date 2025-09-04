@@ -440,26 +440,11 @@ export class obsidianTypstPDFExport extends Plugin {
 	 * Export multiple files with default configuration
 	 */
 	private async exportFiles(files: TFile[]): Promise<void> {
-		if (files.length === 0) {
-			new Notice('No files to export');
-			return;
-		}
-
-		ExportErrorHandler.showProgressNotice(`Exporting ${files.length} files to PDF...`);
-
-		const { recordSuccess, recordError, getResult } = ExportErrorHandler.createBatchTracker();
-
-		for (const file of files) {
-			try {
-				await this.exportFile(file);
-				recordSuccess();
-			} catch (error) {
-				recordError(file.name, error);
-			}
-		}
-
-		// Show final result
-		ExportErrorHandler.handleBatchResult(getResult());
+		await this.processBatchExport(
+			files,
+			`Exporting ${files.length} files to PDF...`,
+			(file: TFile) => this.exportFile(file)
+		);
 	}
 	
 	/**
@@ -582,18 +567,33 @@ export class obsidianTypstPDFExport extends Plugin {
 	 * Export multiple files with specific configuration
 	 */
 	private async exportFilesWithConfig(files: TFile[], config: ExportConfig): Promise<void> {
+		await this.processBatchExport(
+			files,
+			`Exporting ${files.length} files with custom configuration...`,
+			(file: TFile) => this.exportFileWithConfig(file, config)
+		);
+	}
+
+	/**
+	 * Common batch processing logic for exporting multiple files
+	 */
+	private async processBatchExport(
+		files: TFile[], 
+		progressMessage: string, 
+		exportFunction: (file: TFile) => Promise<void>
+	): Promise<void> {
 		if (files.length === 0) {
 			new Notice('No files to export');
 			return;
 		}
 
-		ExportErrorHandler.showProgressNotice(`Exporting ${files.length} files with custom configuration...`);
+		ExportErrorHandler.showProgressNotice(progressMessage);
 
 		const { recordSuccess, recordError, getResult } = ExportErrorHandler.createBatchTracker();
 
 		for (const file of files) {
 			try {
-				await this.exportFileWithConfig(file, config);
+				await exportFunction(file);
 				recordSuccess();
 			} catch (error) {
 				recordError(file.name, error);
