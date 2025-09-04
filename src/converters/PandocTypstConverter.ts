@@ -360,9 +360,9 @@ export class PandocTypstConverter {
 				this.resourcePathCacheTimestamp = now;
 				this.resourcePathCacheVaultPath = this.pandocOptions.vaultBasePath;
 				console.log(`Export: Cached ${foundResourcePaths.length} resource paths for future use`);
+			} catch (e) {
+				console.warn('Could not scan vault for attachment directories:', e);
 			}
-		} catch (e) {
-			console.warn('Could not scan vault for attachment directories:', e);
 		}
 	}
 
