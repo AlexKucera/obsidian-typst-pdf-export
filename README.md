@@ -177,6 +177,7 @@ The plugin automatically processes:
 
 Format them like this:
 
+````
 ```email
 to: info@randommail.com
 subject: Hello World
@@ -186,6 +187,7 @@ this is my new body
 Best!
 JB
 ```
+````
 
 ## Troubleshooting
 
