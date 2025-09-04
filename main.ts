@@ -507,7 +507,7 @@ export class obsidianTypstPDFExport extends Plugin {
 			}
 			
 			// Prepare output path
-			const outputPath = this.prepareOutputPath(file, config.outputFolder || this.settings.outputFolder);
+			const outputPath = await this.prepareOutputPath(file, config.outputFolder || this.settings.outputFolder);
 			
 			// Get full template path
 			const templatePath = config.template ? 
@@ -702,7 +702,7 @@ ${dependencyResult.allAvailable
 	 * @param currentFile Current file being processed (optional)
 	 * @returns Full path to PDF file if found, null otherwise
 	 */
-	private resolvePdfPath(sanitizedPath: string, vaultBasePath: string, currentFile?: TFile): string | null {
+	private async resolvePdfPath(sanitizedPath: string, vaultBasePath: string, currentFile?: TFile): Promise<string | null> {
 		const pathModule = require('path');
 		const fs = require('fs');
 		
@@ -720,9 +720,12 @@ ${dependencyResult.allAvailable
 		// Try each possible path until we find one that exists
 		for (const possiblePath of possiblePaths) {
 			console.log(`Export: Checking path: ${possiblePath}`);
-			if (fs.existsSync(possiblePath)) {
+			try {
+				await fs.promises.access(possiblePath);
 				console.log(`Export: Found PDF at: ${possiblePath}`);
 				return possiblePath;
+			} catch {
+				// File doesn't exist, continue to next path
 			}
 		}
 		
@@ -806,7 +809,7 @@ ${dependencyResult.allAvailable
 				console.log(`Export: Processing PDF embed: ${pdfEmbed.originalPath}`);
 				
 				// Resolve PDF path using helper method
-				const fullPdfPath = this.resolvePdfPath(pdfEmbed.sanitizedPath, vaultBasePath, currentFile);
+				const fullPdfPath = await this.resolvePdfPath(pdfEmbed.sanitizedPath, vaultBasePath, currentFile);
 				
 				if (!fullPdfPath) {
 					console.warn(`Export: PDF file not found: ${decodeURIComponent(pdfEmbed.sanitizedPath)}`);
@@ -905,10 +908,13 @@ ${dependencyResult.allAvailable
 				
 				// Try each possible path until we find one that exists
 				for (const possiblePath of possiblePaths) {
-					if (fs.existsSync(possiblePath)) {
+					try {
+						await fs.promises.access(possiblePath);
 						fullImagePath = possiblePath;
 						console.log(`Export: Found image at: ${fullImagePath}`);
 						break;
+					} catch {
+						// File doesn't exist, continue to next path
 					}
 				}
 				
@@ -949,7 +955,7 @@ ${dependencyResult.allAvailable
 	/**
 	 * Prepare the output path for a file
 	 */
-	private prepareOutputPath(file: TFile, outputFolder: string): string {
+	private async prepareOutputPath(file: TFile, outputFolder: string): Promise<string> {
 		// Validate output folder for security
 		if (!SecurityUtils.validateOutputPath(outputFolder)) {
 			throw new Error(`Invalid output folder path: ${outputFolder}. Path contains invalid characters or traversal attempts.`);
@@ -959,9 +965,12 @@ ${dependencyResult.allAvailable
 		const outputDir = path.join(vaultPath, outputFolder);
 		
 		// Create output directory if it doesn't exist
-		if (!fs.existsSync(outputDir)) {
+		try {
+			await fs.promises.access(outputDir);
+		} catch {
+			// Directory doesn't exist, create it
 			try {
-				fs.mkdirSync(outputDir, { recursive: true });
+				await fs.promises.mkdir(outputDir, { recursive: true });
 			} catch (error) {
 				throw new Error(`Failed to create output directory ${outputDir}: ${error.message}`);
 			}
@@ -974,9 +983,12 @@ ${dependencyResult.allAvailable
 			if (folderPath !== '.') {
 				relativePath = folderPath;
 				const fullOutputDir = path.join(outputDir, relativePath);
-				if (!fs.existsSync(fullOutputDir)) {
+				try {
+					await fs.promises.access(fullOutputDir);
+				} catch {
+					// Directory doesn't exist, create it
 					try {
-						fs.mkdirSync(fullOutputDir, { recursive: true });
+						await fs.promises.mkdir(fullOutputDir, { recursive: true });
 					} catch (error) {
 						throw new Error(`Failed to create nested output directory ${fullOutputDir}: ${error.message}`);
 					}
