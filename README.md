@@ -4,24 +4,24 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Obsidian Downloads](https://img.shields.io/badge/dynamic/json?logo=obsidian&color=%23483699&label=downloads&query=%24%5B%22obsidian-typst-pdf-export%22%5D.downloads&url=https%3A%2F%2Fraw.githubusercontent.com%2Fobsidianmd%2Fobsidian-releases%2Fmaster%2Fcommunity-plugin-stats.json)](https://obsidian.md/plugins?id=obsidian-typst-pdf-export)
 
-Transform your Obsidian notes into beautiful, professionally-typeset PDFs using the powerful Typst typesetting system. This plugin provides a complete PDF export solution with customizable templates, advanced formatting options, and batch processing capabilities.
+Export Obsidian notes to PDF using the Typst typesetting system. Supports customizable templates, batch processing, and advanced formatting options.
 
-## 📖 Table of Contents
+## Table of Contents
 
-- [✨ Key Features](#-key-features)
-- [🎯 Why Typst Over Standard PDF Export?](#-why-typst-over-standard-pdf-export)
-- [📥 Installation](#-installation)
-- [🚀 Quick Start](#-quick-start)
-- [⚙️ Configuration](#️-configuration)
-- [📋 Requirements](#-requirements)
-- [🎨 Available Templates](#-available-templates)
-- [🔧 Advanced Usage](#-advanced-usage)
-- [❗ Troubleshooting](#-troubleshooting)
-- [🛠️ Development](#️-development)
-- [🤝 Contributing](#-contributing)
-- [📄 License](#-license)
+- [Key Features](#key-features)
+- [Why Typst?](#why-typst)
+- [Installation](#installation)
+- [Quick Start](#quick-start)
+- [Configuration](#configuration)
+- [Requirements](#requirements)
+- [Templates](#templates)
+- [Advanced Usage](#advanced-usage)
+- [Troubleshooting](#troubleshooting)
+- [Development](#development)
+- [Contributing](#contributing)
+- [License](#license)
 
-## ✨ Key Features
+## Key Features
 
 - **🎨 Multiple Templates**: Choose from built-in templates (default, modern, article, report) or create custom ones
 - **📁 Batch Export**: Export entire folders of notes with a single click
@@ -32,17 +32,17 @@ Transform your Obsidian notes into beautiful, professionally-typeset PDFs using 
 - **🛡️ Security First**: Path validation and sanitization for safe operations
 - **📐 Professional Layout**: Paper sizes, margins, typography controls, and more
 
-## 🎯 Why Typst Over Standard PDF Export?
+## Why Typst?
 
-Typst is a modern typesetting system that produces publication-quality documents with:
+Typst offers several advantages over standard PDF export:
 
-- **Superior Typography**: Advanced font handling, ligatures, and mathematical typesetting
-- **Flexible Layouts**: Multi-column layouts, custom headers/footers, and precise spacing control
-- **Fast Compilation**: Near-instant PDF generation compared to LaTeX
-- **Modern Syntax**: Clean, readable markup that's easy to customize
-- **Professional Output**: Conference-paper and book-quality formatting out of the box
+- Superior typography with advanced font handling and mathematical typesetting
+- Flexible layouts with multi-column support and custom headers/footers
+- Fast compilation compared to LaTeX
+- Clean, readable markup syntax
+- Publication-quality output
 
-## 📥 Installation
+## Installation
 
 ### Method 1: Community Plugin Store (Recommended)
 
@@ -63,7 +63,7 @@ Typst is a modern typesetting system that produces publication-quality documents
 2. Add this repository: `akucera/obsidian-typst-pdf-export`
 3. Enable the plugin after installation
 
-## 🚀 Quick Start
+## Quick Start
 
 ### 1. Install Dependencies
 
@@ -83,7 +83,7 @@ Typst is a modern typesetting system that produces publication-quality documents
 
 Go to the plugin settings and click **Check Dependencies** to ensure all required tools are properly installed.
 
-## ⚙️ Configuration
+## Configuration
 
 ### Export Options
 
@@ -100,7 +100,7 @@ Go to the plugin settings and click **Check Dependencies** to ensure all require
 - **Article**: Academic paper format with proper spacing and citations
 - **Report**: Business/technical report format with structured sections
 
-## 📋 Requirements
+## Requirements
 
 ### System Requirements
 
@@ -112,9 +112,9 @@ Go to the plugin settings and click **Check Dependencies** to ensure all require
 
 | Tool | Purpose | Installation |
 |------|---------|-------------|
-| **Pandoc** | Markdown → Typst conversion | [Download here](https://pandoc.org/installing.html) |
-| **Typst** | PDF generation | [Download here](https://typst.app/docs/reference/foundations/) |
-| **ImageMagick** | Enhanced image processing (optional) | [Download here](https://imagemagick.org/script/download.php) |
+| **Pandoc** | Markdown → Typst conversion | [Download here](https://pandoc.org/installing.html) or `brew install pandoc` |
+| **Typst** | PDF generation | [Download here](https://typst.app/docs/reference/foundations/) or `brew install typst` |
+| **ImageMagick** | Enhanced image processing (optional) | [Download here](https://imagemagick.org/script/download.php) or `brew install imagemagick` |
 
 ### Dependency Verification
 
@@ -122,7 +122,7 @@ The plugin includes an automated dependency checker accessible through:
 - Plugin settings → **Check Dependencies**
 - Export modal → **Dependency Status** indicator
 
-## 🎨 Available Templates
+## Templates
 
 ### Built-in Templates
 
@@ -153,7 +153,7 @@ Create your own Typst templates by:
 2. Including template metadata at the top of your file
 3. Following the Typst template structure
 
-## 🔧 Advanced Usage
+## Advanced Usage
 
 ### Folder Export
 
@@ -176,7 +176,7 @@ The plugin automatically processes:
 
 Your export settings are automatically saved and restored for consistent output across sessions.
 
-## ❗ Troubleshooting
+## Troubleshooting
 
 ### Common Issues
 
@@ -202,7 +202,7 @@ Your export settings are automatically saved and restored for consistent output 
 - **Discussions**: Join conversations in [GitHub Discussions](https://github.com/akucera/obsidian-typst-pdf-export/discussions)
 - **Documentation**: Check the plugin's settings for inline help
 
-## 🛠️ Development
+## Development
 
 ### Setup
 
@@ -249,9 +249,9 @@ The plugin follows a modular architecture with:
 - **Security Layer**: Path validation and sanitization
 - **Progress Tracking**: Real-time feedback with cancellation support
 
-## 🤝 Contributing
+## Contributing
 
-We welcome contributions! Please read our [Contributing Guidelines](CONTRIBUTING.md) before submitting pull requests.
+Contributions are welcome. Please read our [Contributing Guidelines](CONTRIBUTING.md) before submitting pull requests.
 
 ### Development Guidelines
 
@@ -271,7 +271,7 @@ We welcome contributions! Please read our [Contributing Guidelines](CONTRIBUTING
 - Ensure proper error handling
 - Write modular, testable code
 
-## 📄 License
+## License
 
 This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
 
@@ -282,24 +282,18 @@ This plugin uses the following dependencies:
 - **pdf-to-img** (MIT License) - PDF to image conversion
 - **sharp** (Apache 2.0 License) - High-performance image processing
 
-## ☕ Support the Project
+## Support
 
 If you find this plugin helpful, consider supporting its development:
 
-[![Buy Me a Coffee](https://img.shields.io/badge/Buy%20Me%20a%20Coffee-ffdd00?style=for-the-badge&logo=buy-me-a-coffee&logoColor=black)](https://buymeacoffee.com/babylondreams)
-[![Ko-fi](https://img.shields.io/badge/Ko--fi-F16061?style=for-the-badge&logo=ko-fi&logoColor=white)](https://ko-fi.com/babylondreams)
-[![Patreon](https://img.shields.io/badge/Patreon-F96854?style=for-the-badge&logo=patreon&logoColor=white)](https://patreon.com/babylondreams)
+- [Buy Me a Coffee](https://buymeacoffee.com/babylondreams)
+- [Ko-fi](https://ko-fi.com/babylondreams)
+- [Patreon](https://patreon.com/babylondreams)
 
-## 📞 Contact & Support
+## Contact
 
 **Author**: Alexander Kucera  
 **Website**: [alexanderkucera.com](https://alexanderkucera.com)  
-**GitHub**: [@akucera](https://github.com/akucera)
+**GitHub**: [@akucera](https://github.com/AlexKucera)
 
----
-
-**⭐ If this plugin helped you, please consider giving it a star on GitHub!**
-
----
-
-*Last Updated: September 2025*
+If this plugin helped you, please consider giving it a star on GitHub.
