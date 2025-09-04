@@ -78,8 +78,6 @@ export class obsidianTypstPDFExport extends Plugin {
 		
 		// Cache available fonts (async, don't await)
 		this.cacheAvailableFonts();
-		
-		console.log('Obsidian Typst PDF Export plugin loaded');
 	}
 
 	/**
@@ -140,7 +138,6 @@ export class obsidianTypstPDFExport extends Plugin {
 		
 		await this.app.vault.adapter.write('.obsidian/plugins/obsidian-typst-pdf-export/fonts-cache.json', 
 			JSON.stringify(cacheData, null, 2));
-		console.log('Cached', fonts.length, 'fonts from typst');
 	} catch (error) {
 		console.error('Failed to cache fonts from typst:', error);
 		
@@ -501,14 +498,12 @@ export class obsidianTypstPDFExport extends Plugin {
 			
 			// Process PDF embeds if any were found
 			if (processedResult.metadata.pdfEmbeds && processedResult.metadata.pdfEmbeds.length > 0) {
-				console.log(`Export: Processing ${processedResult.metadata.pdfEmbeds.length} PDF embeds`);
 				const embedPdfFiles = config.embedPdfFiles ?? this.settings.behavior.embedPdfFiles;
 				await this.processPdfEmbeds(processedResult, vaultPath, tempDir, file, embedPdfFiles);
 			}
 			
 			// Process image embeds if any were found
 			if (processedResult.metadata.imageEmbeds && processedResult.metadata.imageEmbeds.length > 0) {
-				console.log(`Export: Processing ${processedResult.metadata.imageEmbeds.length} image embeds`);
 				await this.processImageEmbeds(processedResult, vaultPath, tempDir, file);
 			}
 			
@@ -725,10 +720,8 @@ ${dependencyResult.allAvailable
 		
 		// Try each possible path until we find one that exists
 		for (const possiblePath of possiblePaths) {
-			console.log(`Export: Checking path: ${possiblePath}`);
 			try {
 				await fs.promises.access(possiblePath);
-				console.log(`Export: Found PDF at: ${possiblePath}`);
 				return possiblePath;
 			} catch {
 				// File doesn't exist, continue to next path
@@ -819,13 +812,11 @@ ${dependencyResult.allAvailable
 		const pathModule = require('path');
 		const fs = require('fs');
 		
-		console.log(`Export: Processing ${processedResult.metadata.pdfEmbeds.length} PDF embeds`);
 		
 		let updatedContent = processedResult.content;
 		
 		for (const pdfEmbed of processedResult.metadata.pdfEmbeds) {
 			try {
-				console.log(`Export: Processing PDF embed: ${pdfEmbed.originalPath}`);
 				
 				// Resolve PDF path using helper method
 				const fullPdfPath = await this.resolvePdfPath(pdfEmbed.sanitizedPath, vaultBasePath, currentFile);
@@ -871,7 +862,6 @@ ${dependencyResult.allAvailable
 					// Replace the placeholder with the combined output
 					updatedContent = updatedContent.replace(pdfEmbed.marker, combinedOutput);
 					
-					console.log(`Export: Successfully processed PDF embed: ${pdfEmbed.baseName}`);
 				} else {
 					console.warn(`Export: Failed to convert PDF to image: ${result.error}`);
 					const relativePdfPath = pathModule.relative(vaultBasePath, fullPdfPath);
@@ -911,13 +901,11 @@ ${dependencyResult.allAvailable
 		const pathModule = require('path');
 		const fs = require('fs');
 		
-		console.log(`Export: Processing ${processedResult.metadata.imageEmbeds.length} image embeds`);
 		
 		let updatedContent = processedResult.content;
 		
 		for (const imageEmbed of processedResult.metadata.imageEmbeds) {
 			try {
-				console.log(`Export: Processing image embed: ${imageEmbed.originalPath}`);
 				
 				// Decode the URL-encoded sanitized path back to normal characters
 				const decodedPath = decodeURIComponent(imageEmbed.sanitizedPath);
@@ -939,7 +927,6 @@ ${dependencyResult.allAvailable
 					try {
 						await fs.promises.access(possiblePath);
 						fullImagePath = possiblePath;
-						console.log(`Export: Found image at: ${fullImagePath}`);
 						break;
 					} catch {
 						// File doesn't exist, continue to next path
@@ -964,7 +951,6 @@ ${dependencyResult.allAvailable
 				
 				updatedContent = updatedContent.replace(imageEmbed.marker, markdownImage);
 				
-				console.log(`Export: Successfully processed image embed: ${imageEmbed.originalPath}`);
 			} catch (error) {
 				const { fallback } = ExportErrorHandler.handleProcessingError(
 					'image embed',
@@ -1070,7 +1056,6 @@ ${dependencyResult.allAvailable
 			const result = cleanupManager.cleanupAllTempDirs();
 			
 			if (this.settings.behavior.debugMode) {
-				console.log('Export: Startup cleanup completed', result);
 			}
 		} catch (error) {
 			console.warn('Export: Startup temp directory cleanup failed (non-critical):', error);
@@ -1093,7 +1078,6 @@ ${dependencyResult.allAvailable
 			console.warn('Export: Failed to clean up temp directories during unload:', error);
 		}
 		
-		console.log('Obsidian Typst PDF Export plugin unloaded');
 	}
 }
 

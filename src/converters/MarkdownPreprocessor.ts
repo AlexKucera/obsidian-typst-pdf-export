@@ -225,7 +225,6 @@ export class MarkdownPreprocessor {
 					if (this.noteTitle) {
 						const yaml = require('js-yaml');
 						const titleFrontmatter = yaml.dump({ title: this.noteTitle });
-						console.log('Replacing frontmatter with title:', titleFrontmatter);
 						processedContent = `---\n${titleFrontmatter}---\n${parsed.content}`;
 					} else {
 						processedContent = parsed.content;
@@ -252,7 +251,6 @@ export class MarkdownPreprocessor {
 				if (this.noteTitle) {
 					const yaml = require('js-yaml');
 					const titleFrontmatter = yaml.dump({ title: this.noteTitle });
-					console.log('Adding title frontmatter:', titleFrontmatter);
 					return `---\n${titleFrontmatter}---\n${content}`;
 				} else {
 					return content;
@@ -345,8 +343,6 @@ export class MarkdownPreprocessor {
 		return '';
 	}
 	
-	console.log('MarkdownPreprocessor: Formatting frontmatter for display:', frontmatter);
-	
 	const lines: string[] = [];
 	lines.push('**Document Information**');
 	lines.push('');
@@ -415,13 +411,11 @@ export class MarkdownPreprocessor {
 				// Add a line break after the label for regular values
 				lines.push(`**${formattedKey}:**\n${formattedValue}`);
 			}
-			console.log(`MarkdownPreprocessor: Formatted ${key} ->`, JSON.stringify(formattedValue));
-		}
+			}
 	}
 	
 	// Join with double newlines to ensure proper spacing between fields
 	const result = lines.join('\n\n');
-	console.log('MarkdownPreprocessor: Final formatted frontmatter:', JSON.stringify(result));
 	return result;
 }
 	

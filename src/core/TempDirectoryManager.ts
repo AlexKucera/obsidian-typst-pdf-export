@@ -62,7 +62,6 @@ export class TempDirectoryManager {
 				for (const file of files) {
 					this.fs.unlinkSync(this.path.join(tempDir, file));
 				}
-				console.log(`Export: Cleaned up ${type === 'images' ? 'temp-images' : 'temp-pandoc'} directory`);
 				return true;
 			}
 		} catch (error) {

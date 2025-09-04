@@ -149,8 +149,6 @@ export class PdfToImageConverter {
 			
 			const pdf2imgPath = path.join(pluginDir, 'node_modules', '.bin', 'pdf2img');
 			
-			console.log(`Plugin directory: ${pluginDir}`);
-			console.log(`PDF2IMG path: ${pdf2imgPath}`);
 			
 			// Check if the binary exists
 			const fs2 = require('fs');
@@ -173,7 +171,6 @@ export class PdfToImageConverter {
 				'--pages', '1' // Only convert the first page
 			].join(' ');
 
-			console.log(`PDF conversion command: ${cliCommand}`);
 
 			try {
 				// Set environment variables to ensure node can be found
@@ -191,7 +188,6 @@ export class PdfToImageConverter {
 				const result = await execAsync(cliCommand, { 
 					env
 				});
-				console.log(`PDF conversion stdout: ${result.stdout}`);
 				if (result.stderr) {
 					console.warn(`PDF conversion stderr: ${result.stderr}`);
 				}
@@ -214,12 +210,10 @@ export class PdfToImageConverter {
 				// Debug: List what files are actually in the output directory
 				try {
 					const files = await fs.readdir(outputDir);
-					console.log(`Files in output directory (${outputDir}):`, files);
 					
 					// Look for any PNG files that might match
 					const pngFiles = files.filter(f => f.endsWith('.png'));
 					if (pngFiles.length > 0) {
-						console.log(`Found PNG files:`, pngFiles);
 						
 						// Try to find a file that matches the pattern (with or without exact name)
 						// pdf2img might sanitize filenames differently
@@ -234,7 +228,6 @@ export class PdfToImageConverter {
 						
 						if (matchingFile) {
 							actualOutputPath = path.join(outputDir, matchingFile);
-							console.log(`Using found PNG file: ${actualOutputPath}`);
 						}
 					}
 				} catch (listError) {

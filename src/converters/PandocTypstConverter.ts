@@ -100,7 +100,6 @@ export class PandocTypstConverter {
 			await this.ensureTempDirectory();
 			const tempInputPath = path.join(this.tempDir!, `temp-${Date.now()}.md`);
 			
-			console.log('PandocTypstConverter: Writing markdown content to temp file:', JSON.stringify(content.substring(0, 1000)));
 			await fsPromises.writeFile(tempInputPath, content, 'utf-8');
 			
 			// Merge options
@@ -149,7 +148,6 @@ export class PandocTypstConverter {
 		
 		for (const pdfEmbed of processedResult.metadata.pdfEmbeds) {
 			try {
-				console.log(`Export: Processing PDF embed: ${pdfEmbed.originalPath}`);
 				
 				// Resolve full path to the PDF
 				const fullPdfPath = path.resolve(vaultBasePath, pdfEmbed.sanitizedPath);
@@ -198,7 +196,6 @@ export class PandocTypstConverter {
 					// Replace marker with output
 					processedResult.content = processedResult.content.replace(pdfEmbed.marker, combinedOutput);
 					
-					console.log(`Export: Successfully converted PDF: ${pdfEmbed.fileName} -> ${path.basename(conversionResult.imagePath)}`);
 					
 				} else {
 					console.error(`Export: PDF conversion failed: ${conversionResult.error}`);
@@ -311,7 +308,6 @@ export class PandocTypstConverter {
 		for (const attachPath of commonAttachmentPaths) {
 			if (fs.existsSync(attachPath)) {
 				args.push('--resource-path', attachPath);
-				console.log('Added resource path:', attachPath);
 			}
 		}
 		
@@ -326,7 +322,6 @@ export class PandocTypstConverter {
 			// Use cached resource paths
 			for (const cachedPath of this.resourcePathCache) {
 				args.push('--resource-path', cachedPath);
-				console.log('Added cached resource path:', cachedPath);
 			}
 		} else {
 			// Cache is invalid or expired, perform fresh scan
@@ -356,7 +351,6 @@ export class PandocTypstConverter {
 							if (hasImages) {
 								foundResourcePaths.push(itemPath);
 								args.push('--resource-path', itemPath);
-								console.log('Added note-specific resource path:', itemPath);
 							}
 						} catch (e) {
 							// Ignore directories we can't read
@@ -368,7 +362,6 @@ export class PandocTypstConverter {
 				this.resourcePathCache = foundResourcePaths;
 				this.resourcePathCacheTimestamp = now;
 				this.resourcePathCacheVaultPath = this.pandocOptions.vaultBasePath;
-				console.log(`Export: Cached ${foundResourcePaths.length} resource paths for future use`);
 			} catch (e) {
 				console.warn('Could not scan vault for attachment directories:', e);
 			}
@@ -381,7 +374,6 @@ export class PandocTypstConverter {
 		const fs = require('fs');
 		const absolutePluginDir = this.pandocOptions.pluginDir || '';
 		const wrapperPath = path.resolve(absolutePluginDir, 'templates', 'universal-wrapper.pandoc.typ');
-		console.log('Universal wrapper path:', wrapperPath);
 		
 		// Verify wrapper exists
 		if (!fs.existsSync(wrapperPath)) {
@@ -560,7 +552,6 @@ export class PandocTypstConverter {
 			const timeout = this.pandocOptions.timeout || 60000;
 
 			// Log the exact command being executed for debugging
-			console.log('Executing Pandoc command:', pandocPath, args.join(' '));
 
 			progressCallback?.('Starting Pandoc process...', 40);
 
@@ -569,12 +560,10 @@ export class PandocTypstConverter {
 			
 			if (this.pandocOptions.vaultBasePath) {
 				workingDir = this.pandocOptions.vaultBasePath;
-				console.log('Pandoc working directory (vault):', workingDir);
 			} else {
 				// Fallback to plugin directory
 				const pluginDir = this.pandocOptions.pluginDir || process.cwd();
 				workingDir = pluginDir;
-				console.log('Pandoc working directory (plugin fallback):', workingDir);
 			}
 			
 			// Augment PATH to include common binary locations
@@ -615,7 +604,6 @@ export class PandocTypstConverter {
 			pandocProcess.stderr?.on('data', (data: Buffer) => {
 				const output = data.toString();
 				stderr += output;
-				console.log('Pandoc stderr:', output);
 				
 				// Parse progress information from stderr if available
 				this.parseProgressFromOutput(output, progressCallback);
@@ -649,7 +637,6 @@ export class PandocTypstConverter {
 			// Handle process errors
 			pandocProcess.on('error', (error: Error) => {
 				clearTimeout(timeoutHandle);
-				console.log('Pandoc process error:', error);
 				resolve({
 					success: false,
 					error: `Failed to start Pandoc process: ${error.message}`,
