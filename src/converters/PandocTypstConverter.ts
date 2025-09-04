@@ -99,6 +99,8 @@ export class PandocTypstConverter {
 			// Create temporary markdown file
 			await this.ensureTempDirectory();
 			const tempInputPath = path.join(this.tempDir!, `temp-${Date.now()}.md`);
+			
+			console.log('PandocTypstConverter: Writing markdown content to temp file:', JSON.stringify(content.substring(0, 1000)));
 			await fsPromises.writeFile(tempInputPath, content, 'utf-8');
 			
 			// Merge options
@@ -141,7 +143,7 @@ export class PandocTypstConverter {
 	/**
 	 * Process PDF embeds by converting them to images and creating combined output
 	 */
-	async processPdfEmbeds(processedResult: any, vaultBasePath: string, tempDir: string): Promise<void> {
+	async processPdfEmbeds(processedResult: any, vaultBasePath: string, tempDir: string, embedPdfFiles: boolean = true): Promise<void> {
 		const { PdfToImageConverter } = require('./PdfToImageConverter');
 		const converter = PdfToImageConverter.getInstance(this.plugin);
 		
@@ -164,7 +166,7 @@ export class PandocTypstConverter {
 					continue;
 				}
 				
-				// Convert PDF to image
+				// Convert PDF to image (always happens regardless of embedPdfFiles setting)
 				const conversionResult = await converter.convertFirstPageToImage(
 					fullPdfPath,
 					tempDir,
@@ -180,13 +182,20 @@ export class PandocTypstConverter {
 					// Get relative path for the generated image
 					const relativeImagePath = path.relative(vaultBasePath, conversionResult.imagePath);
 					
-					// Create combined output: image preview + PDF attachment link
-					const combinedOutput = [
-						`![${pdfEmbed.fileName} - Page 1](${relativeImagePath})`,
-						`[📎 **Download PDF:** ${pdfEmbed.fileName}](${pdfEmbed.sanitizedPath})`
-					].join('\n\n');
+					// Create output based on embedPdfFiles setting
+					let combinedOutput: string;
+					if (embedPdfFiles) {
+						// Include both image preview and PDF attachment note
+						combinedOutput = [
+							`![${pdfEmbed.fileName} - Page 1](${relativeImagePath})`,
+							`[📎 **Download PDF:** ${pdfEmbed.fileName}](${pdfEmbed.sanitizedPath})`
+						].join('\n\n');
+					} else {
+						// Only show image preview
+						combinedOutput = `![${pdfEmbed.fileName} - Page 1](${relativeImagePath})`;
+					}
 					
-					// Replace marker with combined output
+					// Replace marker with output
 					processedResult.content = processedResult.content.replace(pdfEmbed.marker, combinedOutput);
 					
 					console.log(`Export: Successfully converted PDF: ${pdfEmbed.fileName} -> ${path.basename(conversionResult.imagePath)}`);

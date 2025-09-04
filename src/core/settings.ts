@@ -89,6 +89,10 @@ export interface obsidianTypstPDFExportSettings {
 		exportConcurrency: number;
 		/** Enable debug mode for verbose logging */
 		debugMode: boolean;
+		/** Whether to embed PDF files as attachments in the output PDF */
+		embedPdfFiles: boolean;
+		/** Display frontmatter as formatted text at the beginning of the document */
+		printFrontmatter: boolean;
 	};
 }
 
@@ -145,6 +149,8 @@ export const DEFAULT_SETTINGS: obsidianTypstPDFExportSettings = {
 		openAfterExport: true,
 		preserveFolderStructure: true,
 		exportConcurrency: 3,
-		debugMode: false
+		debugMode: false,
+		embedPdfFiles: true,
+		printFrontmatter: false
 	}
-};;
+};;;;

@@ -84,7 +84,9 @@ export class ModalState implements IModalState {
 			outputFolder: this.settings.outputFolder,
 			templateVariables: this.templateVariables,
 			openAfterExport: this.settings.openAfterExport,
-			preserveFolderStructure: this.settings.preserveFolderStructure
+			preserveFolderStructure: this.settings.preserveFolderStructure,
+			embedPdfFiles: this.settings.embedPdfFiles,
+			printFrontmatter: this.settings.printFrontmatter
 		};
 		
 		return config;

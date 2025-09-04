@@ -42,6 +42,30 @@ export class BehaviorSection implements ModalSection {
 						state.updateSettings({ preserveFolderStructure: value });
 					});
 			});
+
+		// Embed PDF files toggle
+		new Setting(this.container)
+			.setName('Embed PDF files')
+			.setDesc('Include PDF files as attachments in the exported PDF (in addition to preview images)')
+			.addToggle(toggle => {
+				toggle
+					.setValue(state.settings.embedPdfFiles !== false)
+					.onChange(value => {
+						state.updateSettings({ embedPdfFiles: value });
+					});
+			});
+
+		// Print frontmatter toggle
+		new Setting(this.container)
+			.setName('Print frontmatter')
+			.setDesc('Display frontmatter as formatted text at the beginning of the document')
+			.addToggle(toggle => {
+				toggle
+					.setValue(state.settings.printFrontmatter || false)
+					.onChange(value => {
+						state.updateSettings({ printFrontmatter: value });
+					});
+			});
 	}
 	
 	validate(): ValidationResult {

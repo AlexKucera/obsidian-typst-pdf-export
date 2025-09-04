@@ -27,6 +27,7 @@ import { ModalSettingsHelper } from './src/core/ModalSettingsHelper';
 import { ExportErrorHandler } from './src/core/ExportErrorHandler';
 import { TempDirectoryManager } from './src/core/TempDirectoryManager';
 import { PandocTypstConverter } from './src/converters/PandocTypstConverter';
+import { MarkdownPreprocessor } from './src/converters/MarkdownPreprocessor';
 import { ExportConfigModal } from './src/ui/modal/ExportConfigModal';
 import { ExportConfig, ExportConfigModalSettings } from './src/ui/modal/modalTypes';
 import { TemplateManager } from './src/templates/TemplateManager';
@@ -451,32 +452,37 @@ export class obsidianTypstPDFExport extends Plugin {
 	 * Export a file with specific configuration
 	 */
 	private async exportFileWithConfig(file: TFile, config: ExportConfig): Promise<void> {
-		// Get plugin directory and vault base path
+		const pluginDir = this.manifest.dir!;
 		const vaultPath = (this.app.vault.adapter as any).basePath;
 		
+		// Create controller for this export (allows cancellation)
+		this.currentExportController = new AbortController();
+		
 		try {
-			// Create abort controller for cancellation
-			this.currentExportController = new AbortController();
+			// Create temp directory for conversion
+			const tempManager = new TempDirectoryManager({ vaultPath: vaultPath });
+			const tempDir = tempManager.ensureTempDir('pandoc');
 			
-			// Show progress notice
-			const progressNotice = ExportErrorHandler.showProgressNotice('Exporting to PDF...');
-			
-			// Read file content
+			// Load file content
 			const content = await this.app.vault.read(file);
-			const pluginDir = path.join(vaultPath, '.obsidian', 'plugins', 'obsidian-typst-pdf-export');
 			
-			// Create temp directory manager and ensure temp directory exists
-			const tempManager = TempDirectoryManager.create(vaultPath);
-			const tempDir = tempManager.ensureTempDir('images');
+			// Create progress notice with cancel button
+			const progressNotice = new Notice('', 0);
+			const cancelButton = progressNotice.noticeEl.createEl('button', {
+				text: 'Cancel',
+				cls: 'mod-warning'
+			});
+			cancelButton.addEventListener('click', () => this.cancelExport());
+			progressNotice.setMessage('Preprocessing markdown content...');
 			
-			// Preprocess the markdown content using MarkdownPreprocessor
-			const { MarkdownPreprocessor } = await import('./src/converters/MarkdownPreprocessor');
+			// Preprocess markdown
 			const preprocessor = new MarkdownPreprocessor({
 				vaultPath: vaultPath,
 				options: {
 					includeMetadata: true,
-					preserveFrontmatter: false,
-					baseUrl: undefined
+					preserveFrontmatter: config.printFrontmatter ?? this.settings.behavior.printFrontmatter,
+					baseUrl: undefined,
+					printFrontmatter: config.printFrontmatter ?? this.settings.behavior.printFrontmatter
 				},
 				wikilinkConfig: {
 					format: 'md',
@@ -497,7 +503,8 @@ export class obsidianTypstPDFExport extends Plugin {
 			// Process PDF embeds if any were found
 			if (processedResult.metadata.pdfEmbeds && processedResult.metadata.pdfEmbeds.length > 0) {
 				console.log(`Export: Processing ${processedResult.metadata.pdfEmbeds.length} PDF embeds`);
-				await this.processPdfEmbeds(processedResult, vaultPath, tempDir, file);
+				const embedPdfFiles = config.embedPdfFiles ?? this.settings.behavior.embedPdfFiles;
+				await this.processPdfEmbeds(processedResult, vaultPath, tempDir, file, embedPdfFiles);
 			}
 			
 			// Process image embeds if any were found
@@ -749,52 +756,65 @@ ${dependencyResult.allAvailable
 	 * @returns Object with relative paths for image and PDF
 	 */
 	private async copyImageToVaultTemp(
-		imagePath: string,
-		pdfPath: string,
-		baseName: string,
-		vaultBasePath: string
-	): Promise<{ relativeImagePath: string; relativePdfPath: string }> {
-		const pathModule = require('path');
-		const fs = require('fs');
-		
-		// Copy image to vault temp directory for access
-		const vaultTempImagesDir = pathModule.join(vaultBasePath, '.obsidian', 'plugins', 'obsidian-typst-pdf-export', 'temp-images');
-		await fs.promises.mkdir(vaultTempImagesDir, { recursive: true });
-		
-		const imageFileName = `${baseName}_preview.png`;
-		const vaultImagePath = pathModule.join(vaultTempImagesDir, imageFileName);
-		await fs.promises.copyFile(imagePath, vaultImagePath);
-		
-		// Get relative paths from vault base
-		const relativeImagePath = pathModule.relative(vaultBasePath, vaultImagePath);
-		const relativePdfPath = pathModule.relative(vaultBasePath, pdfPath);
-		
-		return { relativeImagePath, relativePdfPath };
-	}
+	imagePath: string,
+	pdfPath: string,
+	baseName: string,
+	vaultBasePath: string
+): Promise<{ relativeImagePath: string; relativePdfPath: string }> {
+	const pathModule = require('path');
+	const fs = require('fs');
+	
+	// Copy image to vault temp directory for access
+	const vaultTempImagesDir = pathModule.join(vaultBasePath, '.obsidian', 'plugins', 'obsidian-typst-pdf-export', 'temp-images');
+	await fs.promises.mkdir(vaultTempImagesDir, { recursive: true });
+	
+	// Sanitize the basename for use in filename - replace problematic characters
+	const sanitizedBaseName = baseName
+		.replace(/[^a-zA-Z0-9\-_]/g, '_')  // Replace non-alphanumeric chars with underscore
+		.replace(/_{2,}/g, '_')            // Collapse multiple underscores
+		.replace(/^_+|_+$/g, '');          // Remove leading/trailing underscores
+	
+	const imageFileName = `${sanitizedBaseName}_preview.png`;
+	const vaultImagePath = pathModule.join(vaultTempImagesDir, imageFileName);
+	await fs.promises.copyFile(imagePath, vaultImagePath);
+	
+	// Get relative paths from vault base
+	const relativeImagePath = pathModule.relative(vaultBasePath, vaultImagePath);
+	const relativePdfPath = pathModule.relative(vaultBasePath, pdfPath);
+	
+	return { relativeImagePath, relativePdfPath };
+}
 
 	private generatePdfEmbedContent(
 		relativePdfPath: string,
 		baseName: string,
 		relativeImagePath?: string,
-		errorSuffix?: string
+		errorSuffix?: string,
+		embedPdfFiles: boolean = true
 	): string {
 		const description = `${baseName}${errorSuffix ? ` ${errorSuffix}` : ''}`;
-		const attachmentNote = `*PDF attached: ${description} - check your PDF reader's attachment panel*`;
 		
-		const content = [
-			relativeImagePath ? `![${baseName} - Page 1](${relativeImagePath})` : null,
-			relativeImagePath ? '' : null,
-			'```{=typst}',
-			`#pdf.embed("${relativePdfPath}", description: "${description}", mime-type: "application/pdf")`,
-			'```',
-			'',
-			attachmentNote
-		].filter(line => line !== null).join('\n');
+		const content = [];
 		
-		return content;
+		// Always include image preview if available
+		if (relativeImagePath) {
+			content.push(`![${baseName} - Page 1](${relativeImagePath})`);
+			content.push('');
+		}
+		
+		// Only include PDF embedding and attachment note if embedPdfFiles is true
+		if (embedPdfFiles) {
+			content.push('```{=typst}');
+			content.push(`#pdf.embed("${relativePdfPath}", description: "${description}", mime-type: "application/pdf")`);
+			content.push('```');
+			content.push('');
+			content.push(`*PDF attached: ${description} - check your PDF reader's attachment panel*`);
+		}
+		
+		return content.filter(line => line !== null).join('\n');
 	}
 
-	private async processPdfEmbeds(processedResult: any, vaultBasePath: string, tempDir: string, currentFile?: TFile): Promise<void> {
+	private async processPdfEmbeds(processedResult: any, vaultBasePath: string, tempDir: string, currentFile?: TFile, embedPdfFiles: boolean = true): Promise<void> {
 		const { PdfToImageConverter } = await import('./src/converters/PdfToImageConverter');
 		const converter = PdfToImageConverter.getInstance(this);
 		const pathModule = require('path');
@@ -840,22 +860,30 @@ ${dependencyResult.allAvailable
 						vaultBasePath
 					);
 					
-					// Create combined output with image and Typst pdf.embed using helper
+					// Create combined output with image and optionally Typst pdf.embed using helper
 					const combinedOutput = this.generatePdfEmbedContent(
 						relativePdfPath,
 						pdfEmbed.baseName,
-						relativeImagePath
+						relativeImagePath,
+						undefined,
+						embedPdfFiles
 					);
 					
 					// Replace the placeholder with the combined output
 					updatedContent = updatedContent.replace(pdfEmbed.marker, combinedOutput);
 					
-					console.log(`Export: Successfully processed PDF embed with pdf.embed: ${pdfEmbed.baseName}`);
+					console.log(`Export: Successfully processed PDF embed: ${pdfEmbed.baseName}`);
 				} else {
 					console.warn(`Export: Failed to convert PDF to image: ${result.error}`);
 					const relativePdfPath = pathModule.relative(vaultBasePath, fullPdfPath);
-					// Even without preview image, still embed the PDF
-					const fallbackOutput = this.generatePdfEmbedContent(relativePdfPath, pdfEmbed.baseName);
+					// Even without preview image, still embed the PDF if requested
+					const fallbackOutput = this.generatePdfEmbedContent(
+						relativePdfPath, 
+						pdfEmbed.baseName, 
+						undefined, 
+						'(preview not available)',
+						embedPdfFiles
+					);
 					updatedContent = updatedContent.replace(pdfEmbed.marker, fallbackOutput);
 				}
 			} catch (error) {
@@ -866,7 +894,8 @@ ${dependencyResult.allAvailable
 					relativePdfPath, 
 					pdfEmbed.baseName, 
 					undefined, 
-					'(error occurred)'
+					'(error occurred)',
+					embedPdfFiles
 				);
 				updatedContent = updatedContent.replace(pdfEmbed.marker, fallbackOutput);
 			}
@@ -1418,38 +1447,58 @@ class ObsidianTypstPDFExportSettingTab extends PluginSettingTab {
 }
 	
 	private createBehaviorSection(containerEl: HTMLElement): void {
-		containerEl.createEl('h3', { text: 'Behavior' });
-		
-		new Setting(containerEl)
-			.setName('Open after export')
-			.setDesc('Automatically open PDF after successful export')
-			.addToggle(toggle => toggle
-				.setValue(this.plugin.settings.behavior.openAfterExport)
-				.onChange(async (value) => {
-					this.plugin.settings.behavior.openAfterExport = value;
-					await this.plugin.saveSettings();
-				}));
-		
-		new Setting(containerEl)
-			.setName('Preserve folder structure')
-			.setDesc('Maintain vault folder structure in output directory')
-			.addToggle(toggle => toggle
-				.setValue(this.plugin.settings.behavior.preserveFolderStructure)
-				.onChange(async (value) => {
-					this.plugin.settings.behavior.preserveFolderStructure = value;
-					await this.plugin.saveSettings();
-				}));
-		
-		new Setting(containerEl)
-			.setName('Debug mode')
-			.setDesc('Enable verbose logging for troubleshooting')
-			.addToggle(toggle => toggle
-				.setValue(this.plugin.settings.behavior.debugMode)
-				.onChange(async (value) => {
-					this.plugin.settings.behavior.debugMode = value;
-					await this.plugin.saveSettings();
-				}));
-	}
+	containerEl.createEl('h3', { text: 'Behavior' });
+	
+	new Setting(containerEl)
+		.setName('Open after export')
+		.setDesc('Automatically open PDF after successful export')
+		.addToggle(toggle => toggle
+			.setValue(this.plugin.settings.behavior.openAfterExport)
+			.onChange(async (value) => {
+				this.plugin.settings.behavior.openAfterExport = value;
+				await this.plugin.saveSettings();
+			}));
+	
+	new Setting(containerEl)
+		.setName('Preserve folder structure')
+		.setDesc('Maintain vault folder structure in output directory')
+		.addToggle(toggle => toggle
+			.setValue(this.plugin.settings.behavior.preserveFolderStructure)
+			.onChange(async (value) => {
+				this.plugin.settings.behavior.preserveFolderStructure = value;
+				await this.plugin.saveSettings();
+			}));
+	
+	new Setting(containerEl)
+		.setName('Embed PDF files')
+		.setDesc('Include PDF files as attachments in the exported PDF (in addition to preview images)')
+		.addToggle(toggle => toggle
+			.setValue(this.plugin.settings.behavior.embedPdfFiles)
+			.onChange(async (value) => {
+				this.plugin.settings.behavior.embedPdfFiles = value;
+				await this.plugin.saveSettings();
+			}));
+	
+	new Setting(containerEl)
+		.setName('Print frontmatter')
+		.setDesc('Display frontmatter as formatted text at the beginning of documents')
+		.addToggle(toggle => toggle
+			.setValue(this.plugin.settings.behavior.printFrontmatter)
+			.onChange(async (value) => {
+				this.plugin.settings.behavior.printFrontmatter = value;
+				await this.plugin.saveSettings();
+			}));
+	
+	new Setting(containerEl)
+		.setName('Debug mode')
+		.setDesc('Enable verbose logging for troubleshooting')
+		.addToggle(toggle => toggle
+			.setValue(this.plugin.settings.behavior.debugMode)
+			.onChange(async (value) => {
+				this.plugin.settings.behavior.debugMode = value;
+				await this.plugin.saveSettings();
+			}));
+}
 	
 	// Helper methods for fonts
 	private async getAvailableFonts(): Promise<string[]> {

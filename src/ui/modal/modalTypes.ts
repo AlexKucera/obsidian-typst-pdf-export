@@ -18,6 +18,10 @@ export interface ExportConfig {
 	openAfterExport?: boolean;
 	/** Preserve folder structure when exporting */
 	preserveFolderStructure?: boolean;
+	/** Whether to embed PDF files as attachments in the output PDF */
+	embedPdfFiles?: boolean;
+	/** Display frontmatter as formatted text at the beginning of the document */
+	printFrontmatter?: boolean;
 }
 
 export interface ExportConfigModalSettings extends ExportConfig {

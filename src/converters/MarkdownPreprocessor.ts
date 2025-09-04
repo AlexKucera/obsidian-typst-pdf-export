@@ -10,6 +10,8 @@ export interface PreprocessorOptions {
 	preserveFrontmatter: boolean;
 	/** Base URL for relative link resolution */
 	baseUrl?: string;
+	/** Display frontmatter as formatted text at the beginning of the document */
+	printFrontmatter?: boolean;
 }
 
 export interface WikilinkConfig {
@@ -199,27 +201,51 @@ export class MarkdownPreprocessor {
 					result.metadata.title = parsed.data.title.trim();
 				}
 				
+				// Handle frontmatter preservation and display options
+				const finalFrontmatter = this.noteTitle ? 
+					{ ...parsed.data, title: this.noteTitle } : 
+					parsed.data;
+				
 				if (this.options.preserveFrontmatter) {
 					// Keep the frontmatter in the content, but reconstruct it with the modified title
-					if (this.noteTitle) {
-						const yaml = require('js-yaml');
-						const frontmatterCopy = { ...parsed.data };
-						frontmatterCopy.title = this.noteTitle;
-						const newFrontmatter = yaml.dump(frontmatterCopy);
-						return `---\n${newFrontmatter}---\n${parsed.content}`;
-					} else {
-						return content;
+					const yaml = require('js-yaml');
+					const newFrontmatter = yaml.dump(finalFrontmatter);
+					let processedContent = `---\n${newFrontmatter}---\n${parsed.content}`;
+					
+					// Add printed frontmatter if requested
+					if (this.options.printFrontmatter) {
+						const frontmatterDisplay = this.formatFrontmatterForDisplay(finalFrontmatter);
+						processedContent = `---\n${newFrontmatter}---\n\n${frontmatterDisplay}\n\n${parsed.content}`;
 					}
+					
+					return processedContent;
 				} else {
 					// Return content without frontmatter, but add title as frontmatter for Pandoc
+					let processedContent: string;
 					if (this.noteTitle) {
 						const yaml = require('js-yaml');
 						const titleFrontmatter = yaml.dump({ title: this.noteTitle });
 						console.log('Replacing frontmatter with title:', titleFrontmatter);
-						return `---\n${titleFrontmatter}---\n${parsed.content}`;
+						processedContent = `---\n${titleFrontmatter}---\n${parsed.content}`;
 					} else {
-						return parsed.content;
+						processedContent = parsed.content;
 					}
+					
+					// Add printed frontmatter if requested
+					if (this.options.printFrontmatter) {
+						const frontmatterDisplay = this.formatFrontmatterForDisplay(finalFrontmatter);
+						// Insert after the title frontmatter but before content
+						const lines = processedContent.split('\n');
+						if (lines[0] === '---' && lines.findIndex(line => line === '---') > 0) {
+							const endIndex = lines.findIndex((line, i) => i > 0 && line === '---');
+							lines.splice(endIndex + 1, 0, '', frontmatterDisplay, '');
+							processedContent = lines.join('\n');
+						} else {
+							processedContent = `${frontmatterDisplay}\n\n${processedContent}`;
+						}
+					}
+					
+					return processedContent;
 				}
 			} else {
 				// No frontmatter found - add title frontmatter if we have a noteTitle
@@ -266,7 +292,18 @@ export class MarkdownPreprocessor {
 						if (this.noteTitle) {
 							const yaml = require('js-yaml');
 							const newFrontmatter = yaml.dump(frontmatter);
-							return content.replace(this.FRONTMATTER_PATTERN, `---\n${newFrontmatter}---\n`);
+							let processedContent = content.replace(this.FRONTMATTER_PATTERN, `---\n${newFrontmatter}---\n`);
+							
+							// Add printed frontmatter if requested
+							if (this.options.printFrontmatter) {
+								const frontmatterDisplay = this.formatFrontmatterForDisplay(frontmatter);
+								processedContent = processedContent.replace(
+									this.FRONTMATTER_PATTERN, 
+									`---\n${newFrontmatter}---\n\n${frontmatterDisplay}\n\n`
+								);
+							}
+							
+							return processedContent;
 						} else {
 							return content;
 						}
@@ -275,7 +312,18 @@ export class MarkdownPreprocessor {
 						if (this.noteTitle) {
 							const yaml = require('js-yaml');
 							const titleFrontmatter = yaml.dump({ title: this.noteTitle });
-							return content.replace(this.FRONTMATTER_PATTERN, `---\n${titleFrontmatter}---\n`);
+							let processedContent = content.replace(this.FRONTMATTER_PATTERN, `---\n${titleFrontmatter}---\n`);
+							
+							// Add printed frontmatter if requested
+							if (this.options.printFrontmatter) {
+								const frontmatterDisplay = this.formatFrontmatterForDisplay(frontmatter);
+								processedContent = processedContent.replace(
+									this.FRONTMATTER_PATTERN,
+									`---\n${titleFrontmatter}---\n\n${frontmatterDisplay}\n\n`
+								);
+							}
+							
+							return processedContent;
 						} else {
 							return content.replace(this.FRONTMATTER_PATTERN, '');
 						}
@@ -288,6 +336,94 @@ export class MarkdownPreprocessor {
 			return content;
 		}
 	}
+
+	/**
+	 * Format frontmatter as a readable display block
+	 */
+	private formatFrontmatterForDisplay(frontmatter: Record<string, any>): string {
+	if (!frontmatter || Object.keys(frontmatter).length === 0) {
+		return '';
+	}
+	
+	console.log('MarkdownPreprocessor: Formatting frontmatter for display:', frontmatter);
+	
+	const lines: string[] = [];
+	lines.push('**Document Information**');
+	lines.push('');
+	
+	// Format each frontmatter field
+	for (const [key, value] of Object.entries(frontmatter)) {
+		if (value !== undefined && value !== null && value !== '') {
+			// Format the key nicely (capitalize first letter, convert underscores to spaces)
+			const formattedKey = key.charAt(0).toUpperCase() + key.slice(1).replace(/_/g, ' ');
+			
+			// Handle different value types
+			let formattedValue: string;
+			if (Array.isArray(value)) {
+				// For arrays, put each item on its own line if there are many items
+				if (value.length > 3) {
+					formattedValue = '\n\n' + value.map(item => `- ${item}`).join('\n') + '\n';
+				} else {
+					formattedValue = value.join(', ');
+				}
+			} else if (typeof value === 'object') {
+				formattedValue = JSON.stringify(value);
+			} else {
+				const valueStr = String(value);
+				// If the value is very long (like email lists), break it up
+				if (valueStr.length > 80 && valueStr.includes(',')) {
+					// Split on commas and format as a bulleted list
+					const items = valueStr.split(',').map(item => item.trim());
+					if (items.length > 1) {
+						formattedValue = '\n\n' + items.map(item => `- ${item}`).join('\n') + '\n';
+					} else {
+						formattedValue = valueStr;
+					}
+				} else if (valueStr.length > 100) {
+					// For other very long values, try to break at word boundaries
+					const words = valueStr.split(' ');
+					let currentLine = '';
+					const wrappedLines: string[] = [];
+					
+					for (const word of words) {
+						if (currentLine.length + word.length + 1 > 80) {
+							if (currentLine) {
+								wrappedLines.push(currentLine);
+								currentLine = word;
+							} else {
+								wrappedLines.push(word);
+							}
+						} else {
+							currentLine += (currentLine ? ' ' : '') + word;
+						}
+					}
+					if (currentLine) {
+						wrappedLines.push(currentLine);
+					}
+					
+					formattedValue = '\n\n' + wrappedLines.join('  \n') + '\n';
+				} else {
+					formattedValue = valueStr;
+				}
+			}
+			
+			// Add line break after the property label, then the value
+			if (formattedValue.startsWith('\n')) {
+				// Value already starts with newline (like lists), so just add the label
+				lines.push(`**${formattedKey}:**${formattedValue}`);
+			} else {
+				// Add a line break after the label for regular values
+				lines.push(`**${formattedKey}:**\n${formattedValue}`);
+			}
+			console.log(`MarkdownPreprocessor: Formatted ${key} ->`, JSON.stringify(formattedValue));
+		}
+	}
+	
+	// Join with double newlines to ensure proper spacing between fields
+	const result = lines.join('\n\n');
+	console.log('MarkdownPreprocessor: Final formatted frontmatter:', JSON.stringify(result));
+	return result;
+}
 	
 	/**
 	 * Extract tags from content
