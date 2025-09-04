@@ -110,3 +110,17 @@
 .dependency-button-container button:hover {
     background-color: var(--interactive-accent-hover);
 }
+
+/* Export modal display utilities */
+.export-hidden {
+    display: none !important;
+}
+
+.export-visible {
+    display: block !important;
+}
+
+/* Progress bar styling */
+.export-progress-bar {
+    transition: width 0.3s ease;
+}
