@@ -1,8 +1,10 @@
 # Obsidian Typst PDF Export
 
-[![GitHub release (latest by date)](https://img.shields.io/github/v/release/akucera/obsidian-typst-pdf-export)](https://github.com/akucera/obsidian-typst-pdf-export/releases)
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-[![Obsidian Downloads](https://img.shields.io/badge/dynamic/json?logo=obsidian&color=%23483699&label=downloads&query=%24%5B%22obsidian-typst-pdf-export%22%5D.downloads&url=https%3A%2F%2Fraw.githubusercontent.com%2Fobsidianmd%2Fobsidian-releases%2Fmaster%2Fcommunity-plugin-stats.json)](https://obsidian.md/plugins?id=obsidian-typst-pdf-export)
+[![GitHub release (latest by date)](https://img.shields.io/github/v/release/akucera/obsidian-typst-pdf-export-blue)](https://github.com/akucera/obsidian-typst-pdf-export/releases)
+[![License: MIT](https://img.shields.io/github/license/AlexKucera/obsidian-typst-pdf-export?color=yellow)](https://opensource.org/licenses/MIT)
+[![Obsidian Downloads](https://img.shields.io/github/downloads/AlexKucera/obsidian-typst-pdf-export/total?color=green)](https://obsidian.md/plugins?id=obsidian-typst-pdf-export)
+![](https://img.shields.io/badge/desktop_only-red?label=obsidian&labelColor=purple)
+
 
 Export Obsidian notes to PDF using the Typst typesetting system. Supports customizable templates, batch processing, and advanced formatting options.
 
@@ -331,14 +333,13 @@ Contributions are welcome.
 
 ## License
 
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+This project is licensed under the GNU GPL v3.0 License - see the [LICENSE](LICENSE) file for details.
 
 ### Third-Party Licenses
 
 This plugin uses the following dependencies:
 - **gray-matter** (MIT License) - YAML front matter parsing
 - **pdf-to-img** (MIT License) - PDF to image conversion
-- **sharp** (Apache 2.0 License) - High-performance image processing
 
 ## Support
 
