@@ -429,31 +429,31 @@ export class obsidianTypstPDFExport extends Plugin {
 	 * Export a file with default configuration
 	 */
 	private async exportFile(file: TFile): Promise<void> {
-		const config: ExportConfig = {
-			template: this.settings.exportDefaults.template,
-			format: this.settings.exportDefaults.format,
-			outputFolder: this.settings.outputFolder,
-			templateVariables: {
-				// Page setup
-				pageSize: this.settings.exportDefaults.pageSize,
-				orientation: this.settings.exportDefaults.orientation,
-				flipped: this.settings.exportDefaults.orientation === 'landscape',
-				marginTop: this.settings.exportDefaults.marginTop,
-				marginBottom: this.settings.exportDefaults.marginBottom,
-				marginLeft: this.settings.exportDefaults.marginLeft,
-				marginRight: this.settings.exportDefaults.marginRight,
-				// Typography
-				bodyFont: this.settings.exportDefaults.bodyFont,
-				headingFont: this.settings.exportDefaults.headingFont,
-				monospaceFont: this.settings.exportDefaults.monospaceFont,
-				bodyFontSize: this.settings.exportDefaults.bodyFontSize
-			},
-			openAfterExport: this.settings.behavior.openAfterExport,
-			preserveFolderStructure: this.settings.behavior.preserveFolderStructure
-		};
-		
-		await this.exportFileWithConfig(file, config);
-	}
+	const config: ExportConfig = {
+		template: this.settings.exportDefaults.template,
+		format: this.settings.exportDefaults.format,
+		outputFolder: this.settings.outputFolder,
+		templateVariables: {
+			// Page setup - use NEW settings structure (same as modal)
+			pageSize: this.settings.pageSetup.size,
+			orientation: this.settings.pageSetup.orientation,
+			flipped: this.settings.pageSetup.orientation === 'landscape',
+			marginTop: this.settings.pageSetup.margins.top.toString(),
+			marginBottom: this.settings.pageSetup.margins.bottom.toString(),
+			marginLeft: this.settings.pageSetup.margins.left.toString(),
+			marginRight: this.settings.pageSetup.margins.right.toString(),
+			// Typography - use NEW settings structure (same as modal)
+			bodyFont: this.settings.typography.fonts.body,
+			headingFont: this.settings.typography.fonts.heading,
+			monospaceFont: this.settings.typography.fonts.monospace,
+			bodyFontSize: this.settings.typography.fontSizes.body
+		},
+		openAfterExport: this.settings.behavior.openAfterExport,
+		preserveFolderStructure: this.settings.behavior.preserveFolderStructure
+	};
+	
+	await this.exportFileWithConfig(file, config);
+}
 
 	/**
 	 * Export multiple files with default configuration
