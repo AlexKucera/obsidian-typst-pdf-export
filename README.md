@@ -107,7 +107,7 @@ For development or the latest changes:
 
 **Missing templates error?**
 - The plugin automatically extracts embedded templates if missing
-- Check Settings → Community Plugins → Obsidian Typst PDF Export for status
+- Check Settings → Community Plugins → Typst PDF Export for status
 
 ## Quick Start
 

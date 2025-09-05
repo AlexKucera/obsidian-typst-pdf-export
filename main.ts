@@ -705,7 +705,7 @@ ${dependencyResult.allAvailable
 			// Only show notice if dependencies are missing
 			if (missingDeps.length > 0) {
 				new Notice(
-					`Obsidian Typst PDF Export: Missing dependencies: ${missingDeps.join(', ')}. ` +
+					`Typst PDF Export: Missing dependencies: ${missingDeps.join(', ')}. ` +
 					`Run "Check Dependencies" command for details.`,
 					8000
 				);
