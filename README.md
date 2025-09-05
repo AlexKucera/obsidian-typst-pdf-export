@@ -353,6 +353,6 @@ If you find this plugin helpful, consider supporting its development:
 
 **Author**: Alexander Kucera  
 **Website**: [alexanderkucera.com](https://alexanderkucera.com)  
-**GitHub**: [@akucera](https://github.com/AlexKucera)
+**GitHub**: [@AlexKucera](https://github.com/AlexKucera)
 
 If this plugin helped you, please consider giving it a star on GitHub.
