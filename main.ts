@@ -32,6 +32,7 @@ import { MarkdownPreprocessor } from './src/converters/MarkdownPreprocessor';
 import { ExportConfigModal } from './src/ui/modal/ExportConfigModal';
 import { ExportConfig, ExportConfigModalSettings } from './src/ui/modal/modalTypes';
 import { TemplateManager } from './src/templates/TemplateManager';
+import { EmbeddedTemplateManager } from './src/templates/embeddedTemplates';
 import { FolderSuggest } from './src/ui/components/FolderSuggest';
 import { SUPPORTED_PAPER_SIZES } from './src/utils/paperSizeMapper';
 import * as path from 'path';
@@ -41,10 +42,31 @@ export class obsidianTypstPDFExport extends Plugin {
 	settings: obsidianTypstPDFExportSettings;
 	private converter: PandocTypstConverter;
 	templateManager: TemplateManager;
+	private embeddedTemplateManager: EmbeddedTemplateManager;
 	private currentExportController: AbortController | null = null;
 	
 	async onload() {
 		await this.loadSettings();
+		
+		// Initialize embedded template manager
+		const vaultPath = (this.app.vault.adapter as any).basePath;
+		const pluginDir = path.join(vaultPath, this.manifest.dir!);
+		this.embeddedTemplateManager = new EmbeddedTemplateManager(pluginDir);
+		
+		// Extract any missing templates from embedded data
+		try {
+			const extractionResult = this.embeddedTemplateManager.extractAllMissingTemplates();
+			if (extractionResult.extracted.length > 0) {
+				console.log(`Extracted ${extractionResult.extracted.length} embedded templates:`, extractionResult.extracted);
+			}
+			if (extractionResult.failed.length > 0) {
+				console.warn(`Failed to extract ${extractionResult.failed.length} templates:`, extractionResult.failed);
+				new Notice(`Warning: Failed to extract some templates. Plugin may not work correctly.`);
+			}
+		} catch (error) {
+			console.error('Error during template extraction:', error);
+			new Notice(`Error extracting templates: ${error.message}`);
+		}
 		
 		// Initialize components
 		this.converter = new PandocTypstConverter(this);

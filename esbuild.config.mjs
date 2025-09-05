@@ -1,6 +1,8 @@
 import esbuild from "esbuild";
 import process from "process";
 import builtins from "builtin-modules";
+import fs from "fs";
+import path from "path";
 
 const banner =
 `/*
@@ -11,12 +13,65 @@ if you want to view the source, please visit the github repository of this plugi
 
 const prod = (process.argv[2] === "production");
 
+// Plugin to embed template files as base64 strings
+const templateEmbedPlugin = {
+	name: 'template-embed',
+	setup(build) {
+		build.onResolve({ filter: /^template-embed:/ }, (args) => ({
+			path: args.path,
+			namespace: 'template-embed',
+		}));
+
+		build.onLoad({ filter: /.*/, namespace: 'template-embed' }, (args) => {
+			const templatesDir = './templates';
+			const templates = {};
+			
+			try {
+				const files = fs.readdirSync(templatesDir);
+				for (const file of files) {
+					if (file.endsWith('.typ')) {
+						const filePath = path.join(templatesDir, file);
+						const content = fs.readFileSync(filePath, 'utf8');
+						templates[file] = Buffer.from(content, 'utf8').toString('base64');
+					}
+				}
+			} catch (error) {
+				console.warn('Warning: Could not read templates directory:', error.message);
+			}
+
+			const contents = `
+export const embeddedTemplates = ${JSON.stringify(templates, null, 2)};
+
+export function extractTemplate(templateName, targetPath) {
+	const templateContent = embeddedTemplates[templateName];
+	if (!templateContent) {
+		throw new Error(\`Template \${templateName} not found in embedded templates\`);
+	}
+	
+	const decoded = Buffer.from(templateContent, 'base64').toString('utf8');
+	return decoded;
+}
+
+export function getAllTemplateNames() {
+	return Object.keys(embeddedTemplates);
+}
+			`;
+
+			return {
+				contents,
+				loader: 'js',
+			};
+		});
+	},
+};
+
 const context = await esbuild.context({
 	banner: {
 		js: banner,
 	},
 	entryPoints: ["main.ts"],
 	bundle: true,
+	plugins: [templateEmbedPlugin],
 	external: [
 		"obsidian",
 		"electron",

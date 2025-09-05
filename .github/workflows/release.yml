@@ -1,0 +1,190 @@
+name: Release Obsidian Plugin
+
+on:
+  push:
+    tags:
+      # Trigger on version tags without 'v' prefix (Obsidian format)
+      - '[0-9]+.[0-9]+.[0-9]+'
+      - '[0-9]+.[0-9]+.[0-9]+-*'
+
+env:
+  PLUGIN_NAME: obsidian-typst-pdf-export
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 18
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build plugin
+        run: npm run build
+
+      - name: Create package script
+        run: |
+          cat > package-plugin.js << 'EOF'
+          const fs = require('fs');
+          const path = require('path');
+          const archiver = require('archiver');
+
+          const pluginName = process.env.PLUGIN_NAME || 'obsidian-typst-pdf-export';
+          const outputPath = `${pluginName}.zip`;
+
+          console.log(`Creating release package: ${outputPath}`);
+
+          const output = fs.createWriteStream(outputPath);
+          const archive = archiver('zip', {
+            zlib: { level: 9 }
+          });
+
+          output.on('close', () => {
+            console.log(`Package created: ${archive.pointer()} total bytes`);
+            console.log('Files included in package:');
+            console.log('- main.js');
+            console.log('- manifest.json');
+            console.log('- styles.css');
+            console.log('- templates/ directory with all .typ files');
+          });
+
+          archive.on('error', (err) => {
+            throw err;
+          });
+
+          archive.pipe(output);
+
+          // Add required files
+          archive.file('main.js', { name: 'main.js' });
+          archive.file('manifest.json', { name: 'manifest.json' });
+          
+          // Add styles.css if it exists
+          if (fs.existsSync('styles.css')) {
+            archive.file('styles.css', { name: 'styles.css' });
+          }
+
+          // Add templates directory
+          archive.directory('templates/', 'templates/');
+
+          archive.finalize();
+          EOF
+
+      - name: Install archiver for packaging
+        run: npm install archiver
+
+      - name: Create release package
+        run: node package-plugin.js
+
+      - name: Get version from manifest
+        id: version
+        run: |
+          VERSION=$(node -p "require('./manifest.json').version")
+          echo "version=${VERSION}" >> $GITHUB_OUTPUT
+
+      - name: Get changelog for this version
+        id: changelog
+        run: |
+          # Try to extract changelog section for this version
+          VERSION="${{ steps.version.outputs.version }}"
+          if [ -f "CHANGELOG.md" ]; then
+            # Extract section between this version and next version/end of file
+            CHANGELOG=$(awk "/^## \[?${VERSION}\]?|^## ${VERSION}[ ,-]/{flag=1; next} /^## \[?[0-9]+\.[0-9]+\.[0-9]+\]?|^## [0-9]+\.[0-9]+\.[0-9]+[ ,-]/{if(flag) exit} flag' CHANGELOG.md | sed '/^$/N;/^\n$/d')
+            if [ -n "$CHANGELOG" ]; then
+              echo "changelog<<EOF" >> $GITHUB_OUTPUT
+              echo "$CHANGELOG" >> $GITHUB_OUTPUT
+              echo "EOF" >> $GITHUB_OUTPUT
+            else
+              echo "changelog=Release version $VERSION" >> $GITHUB_OUTPUT
+            fi
+          else
+            echo "changelog=Release version $VERSION" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Create Release
+        id: create_release
+        uses: actions/create-release@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tag_name: ${{ github.ref_name }}
+          release_name: Release ${{ steps.version.outputs.version }}
+          body: |
+            # Obsidian Typst PDF Export v${{ steps.version.outputs.version }}
+
+            ${{ steps.changelog.outputs.changelog }}
+
+            ## Installation
+
+            ### Automatic Installation (Community Plugins)
+            Search for "Typst PDF Export" in Obsidian's Community Plugins tab.
+
+            ### Manual Installation
+            1. Download the `${{ env.PLUGIN_NAME }}.zip` file from this release
+            2. Extract the ZIP file to your vault's plugins directory: `VaultFolder/.obsidian/plugins/obsidian-typst-pdf-export/`
+            3. Make sure the `templates/` directory is included
+            4. Reload Obsidian
+            5. Enable the plugin in Settings → Community Plugins
+
+            ### Requirements
+            - [Pandoc](https://pandoc.org/installing.html)
+            - [Typst](https://typst.app/docs/installation/)
+            - ImageMagick (optional, for enhanced image processing)
+
+            ## Files in this release
+            - `main.js` - Plugin code
+            - `manifest.json` - Plugin metadata  
+            - `styles.css` - Plugin styles
+            - `${{ env.PLUGIN_NAME }}.zip` - Complete package with templates
+          draft: false
+          prerelease: false
+
+      - name: Upload main.js
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ steps.create_release.outputs.upload_url }}
+          asset_path: ./main.js
+          asset_name: main.js
+          asset_content_type: text/javascript
+
+      - name: Upload manifest.json
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ steps.create_release.outputs.upload_url }}
+          asset_path: ./manifest.json
+          asset_name: manifest.json
+          asset_content_type: application/json
+
+      - name: Upload styles.css (if exists)
+        if: hashFiles('styles.css') != ''
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ steps.create_release.outputs.upload_url }}
+          asset_path: ./styles.css
+          asset_name: styles.css
+          asset_content_type: text/css
+
+      - name: Upload complete package ZIP
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ steps.create_release.outputs.upload_url }}
+          asset_path: ./${{ env.PLUGIN_NAME }}.zip
+          asset_name: ${{ env.PLUGIN_NAME }}.zip
+          asset_content_type: application/zip

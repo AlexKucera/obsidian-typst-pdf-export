@@ -52,17 +52,62 @@ Typst offers several advantages over standard PDF export:
 3. Click **Browse** and search for "Typst PDF Export"
 4. **Install** and **Enable** the plugin
 
-### Method 2: Manual Installation
+### Method 2: Manual Installation from GitHub Releases
 
-1. Download the latest release from [GitHub Releases](https://github.com/akucera/obsidian-typst-pdf-export/releases)
-2. Extract the files to `{VaultFolder}/.obsidian/plugins/obsidian-typst-pdf-export/`
-3. Reload Obsidian and enable the plugin in Settings
+**⚠️ Important**: This plugin requires template files to function. Always use the complete ZIP package.
+
+1. Go to [GitHub Releases](https://github.com/akucera/obsidian-typst-pdf-export/releases)
+2. Download the **complete ZIP package** (`obsidian-typst-pdf-export.zip`) - **NOT just main.js**
+3. Extract the entire contents to `{VaultFolder}/.obsidian/plugins/obsidian-typst-pdf-export/`
+4. Ensure the `templates/` directory is included with all `.typ` files:
+   ```
+   .obsidian/plugins/obsidian-typst-pdf-export/
+   ├── main.js
+   ├── manifest.json
+   ├── styles.css
+   └── templates/
+       ├── default.typ
+       ├── modern.typ
+       ├── article.typ
+       ├── report.typ
+       └── universal-wrapper.pandoc.typ
+   ```
+5. Reload Obsidian (`Ctrl/Cmd + R` or restart)
+6. Enable the plugin in **Settings** → **Community Plugins**
 
 ### Method 3: BRAT (Beta Reviewer's Auto-update Tool)
 
 1. Install the [BRAT plugin](https://github.com/TfTHacker/obsidian42-brat)
 2. Add this repository: `akucera/obsidian-typst-pdf-export`
 3. Enable the plugin after installation
+
+### Method 4: Developer Installation
+
+For development or the latest changes:
+
+1. Clone the repository to your vault's plugins folder:
+   ```bash
+   cd {VaultFolder}/.obsidian/plugins/
+   git clone https://github.com/akucera/obsidian-typst-pdf-export.git
+   cd obsidian-typst-pdf-export
+   ```
+2. Install dependencies and build:
+   ```bash
+   npm install
+   npm run build
+   ```
+3. Reload Obsidian and enable the plugin
+
+### Troubleshooting Installation
+
+**Plugin doesn't work after manual installation?**
+- Verify the `templates/` directory exists with all `.typ` files
+- Check the browser console (F12) for error messages
+- Try downloading the complete ZIP package again
+
+**Missing templates error?**
+- The plugin automatically extracts embedded templates if missing
+- Check Settings → Community Plugins → Obsidian Typst PDF Export for status
 
 ## Quick Start
 
