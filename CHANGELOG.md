@@ -8,6 +8,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [1.0.0]
 
 ### Added
+- **Template Embedding System**: Templates are now embedded as base64 strings in main.js as fallback
+- **Automated Release System**: GitHub Actions workflow for automated ZIP releases with templates
+- **EmbeddedTemplateManager**: Automatic template extraction when templates directory is missing
+- **Complete Distribution Packages**: ZIP releases include templates directory for all installation methods
 - PDF embedding and frontmatter display controls for enhanced document customization
 - Email Block plugin support with improved content processing
 - Export modal display utilities for better user experience
@@ -15,11 +19,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 - **BREAKING**: Replaced plugin license from MIT to GPLv3
+- **Release Process**: Now supports both manual and automated GitHub releases with proper template distribution
+- **Installation Methods**: Plugin now works with both complete ZIP packages and minimal installations
+- **Version Tagging**: Uses Obsidian-compliant version tags (1.0.0, not v1.0.0)
 - Improved export progress display with better visual feedback
 - Enhanced export modal's progress display functionality
 - Normalized output folder path handling in settings for cross-platform compatibility
 - Improved resource path caching with better error handling
-- Updated README for clarity and consistency
+- Updated README with comprehensive installation instructions and troubleshooting
 - Enhanced type safety for process event handlers
 
 ### Removed
@@ -28,6 +35,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Sharp dependency removal as part of optimization efforts
 
 ### Fixed
+- **Export Consistency**: Plain export now uses same settings structure as modal export
+- **Template Availability**: Templates are guaranteed available through embedding system
 - Export modal progress display now works correctly
 - Resource path caching error handling improved
 - Cross-platform path compatibility issues resolved
