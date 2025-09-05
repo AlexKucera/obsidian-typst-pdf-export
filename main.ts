@@ -56,9 +56,6 @@ export class obsidianTypstPDFExport extends Plugin {
 		// Extract any missing templates from embedded data
 		try {
 			const extractionResult = this.embeddedTemplateManager.extractAllMissingTemplates();
-			if (extractionResult.extracted.length > 0) {
-				console.log(`Extracted ${extractionResult.extracted.length} embedded templates:`, extractionResult.extracted);
-			}
 			if (extractionResult.failed.length > 0) {
 				console.warn(`Failed to extract ${extractionResult.failed.length} templates:`, extractionResult.failed);
 				new Notice(`Warning: Failed to extract some templates. Plugin may not work correctly.`);

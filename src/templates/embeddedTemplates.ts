@@ -64,7 +64,6 @@ export class EmbeddedTemplateManager {
             // Write template to disk
             fs.writeFileSync(filePath, content, 'utf8');
             
-            console.log(`Extracted embedded template: ${templateName}`);
             return true; // Extraction successful
         } catch (error) {
             console.error(`Failed to extract template ${templateName}:`, error);
@@ -116,7 +115,6 @@ export class EmbeddedTemplateManager {
                 
                 fs.writeFileSync(filePath, content, 'utf8');
                 extracted.push(templateName);
-                console.log(`Force extracted template: ${templateName}`);
             } catch (error) {
                 console.error(`Failed to force extract template ${templateName}:`, error);
                 failed.push(templateName);
