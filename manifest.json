@@ -1,5 +1,5 @@
 {
-	"id": "obsidian-typst-pdf-export",
+	"id": "typst-pdf-export",
 	"name": "Typst PDF Export",
 	"version": "1.0.0",
 	"minAppVersion": "1.9.12",

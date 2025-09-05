@@ -130,11 +130,11 @@ export class PdfToImageConverter {
 			// Try multiple strategies to find the plugin directory
 			const possiblePluginDirs = [
 				// Strategy 1: From process.cwd() if it's in the vault
-				path.join(process.cwd(), '.obsidian', 'plugins', 'obsidian-typst-pdf-export'),
+				path.join(process.cwd(), '.obsidian', 'plugins', 'typst-pdf-export'),
 				// Strategy 2: Assuming we're running from vault root
-				path.join('.obsidian', 'plugins', 'obsidian-typst-pdf-export'),
+				path.join('.obsidian', 'plugins', 'typst-pdf-export'),
 				// Strategy 3: Direct path if running in development
-				'/Users/alex/Obsidian/Dev/.obsidian/plugins/obsidian-typst-pdf-export'
+				'/Users/alex/Obsidian/Dev/.obsidian/plugins/typst-pdf-export'
 			];
 			
 			// Find the first directory that exists and has node_modules

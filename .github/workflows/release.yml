@@ -8,7 +8,7 @@ on:
       - '[0-9]+.[0-9]+.[0-9]+-*'
 
 env:
-  PLUGIN_NAME: obsidian-typst-pdf-export
+  PLUGIN_NAME: typst-pdf-export
 
 jobs:
   build:
@@ -39,7 +39,7 @@ jobs:
           const path = require('path');
           const archiver = require('archiver');
 
-          const pluginName = process.env.PLUGIN_NAME || 'obsidian-typst-pdf-export';
+          const pluginName = process.env.PLUGIN_NAME || 'typst-pdf-export';
           const outputPath = `${pluginName}.zip`;
 
           console.log(`Creating release package: ${outputPath}`);
@@ -117,7 +117,7 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           tag_name: ${{ github.ref_name }}
-          name: Release ${{ steps.version.outputs.version }}
+          name: ${{ steps.version.outputs.version }}
           body: |
             # Obsidian Typst PDF Export ${{ steps.version.outputs.version }}
 
@@ -130,7 +130,7 @@ jobs:
 
             ### Manual Installation
             1. Download the `${{ env.PLUGIN_NAME }}.zip` file from this release
-            2. Extract the ZIP file to your vault's plugins directory: `VaultFolder/.obsidian/plugins/obsidian-typst-pdf-export/`
+            2. Extract the ZIP file to your vault's plugins directory: `VaultFolder/.obsidian/plugins/typst-pdf-export/`
             3. Make sure the `templates/` directory is included
             4. Reload Obsidian
             5. Enable the plugin in Settings → Community Plugins
