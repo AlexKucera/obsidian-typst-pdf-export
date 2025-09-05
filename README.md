@@ -59,11 +59,11 @@ Typst offers several advantages over standard PDF export:
 **⚠️ Important**: This plugin requires template files to function. Always use the complete ZIP package.
 
 1. Go to [GitHub Releases](https://github.com/akucera/obsidian-typst-pdf-export/releases)
-2. Download the **complete ZIP package** (`obsidian-typst-pdf-export.zip`) - **NOT just main.js**
-3. Extract the entire contents to `{VaultFolder}/.obsidian/plugins/obsidian-typst-pdf-export/`
+2. Download the **complete ZIP package** (`typst-pdf-export.zip`) - **NOT just main.js**
+3. Extract the entire contents to `{VaultFolder}/.obsidian/plugins/typst-pdf-export/`
 4. Ensure the `templates/` directory is included with all `.typ` files:
    ```
-   .obsidian/plugins/obsidian-typst-pdf-export/
+   .obsidian/plugins/typst-pdf-export/
    ├── main.js
    ├── manifest.json
    ├── styles.css
@@ -90,8 +90,8 @@ For development or the latest changes:
 1. Clone the repository to your vault's plugins folder:
    ```bash
    cd {VaultFolder}/.obsidian/plugins/
-   git clone https://github.com/akucera/obsidian-typst-pdf-export.git
-   cd obsidian-typst-pdf-export
+   git clone https://github.com/akucera/obsidian-typst-pdf-export.git typst-pdf-export
+   cd typst-pdf-export
    ```
 2. Install dependencies and build:
    ```bash
@@ -268,8 +268,8 @@ JB
 
 ```bash
 # Clone the repository
-git clone https://github.com/akucera/obsidian-typst-pdf-export.git
-cd obsidian-typst-pdf-export
+git clone https://github.com/akucera/obsidian-typst-pdf-export.git typst-pdf-export
+cd typst-pdf-export
 
 # Install dependencies
 npm install
@@ -281,7 +281,7 @@ npm run dev
 ### Project Structure
 
 ```
-obsidian-typst-pdf-export/
+typst-pdf-export/
 ├── src/
 │   ├── core/              # Core system components
 │   ├── converters/        # Conversion pipeline
