@@ -16,7 +16,8 @@ export class TemplateManager {
 		// Templates are stored in the plugin directory
 		this.templatesPath = path.join(
 			(this.plugin.app.vault.adapter as any).basePath,
-			'.obsidian/plugins/typst-pdf-export/templates'
+			this.plugin.manifest.dir!,
+			'templates'
 		);
 	}
 	
