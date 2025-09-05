@@ -7,7 +7,7 @@ import { PLUGIN_DIRS } from './constants';
 export interface TempDirectoryOptions {
 	/** Base path for the vault */
 	vaultPath: string;
-	/** Plugin directory name (defaults to 'obsidian-typst-pdf-export') */
+	/** Plugin directory name (defaults to 'typst-pdf-export') */
 	pluginName?: string;
 }
 
@@ -19,7 +19,7 @@ export class TempDirectoryManager {
 
 	constructor(options: TempDirectoryOptions) {
 		this.vaultPath = options.vaultPath;
-		this.pluginName = options.pluginName || 'obsidian-typst-pdf-export';
+		this.pluginName = options.pluginName || 'typst-pdf-export';
 	}
 
 	/**

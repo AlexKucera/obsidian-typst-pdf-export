@@ -155,7 +155,8 @@ export class obsidianTypstPDFExport extends Plugin {
 			typstPath: typstPath
 		};
 		
-		await this.app.vault.adapter.write('.obsidian/plugins/obsidian-typst-pdf-export/fonts-cache.json', 
+		const fontsCachePath = path.join(this.manifest.dir!, 'fonts-cache.json');
+		await this.app.vault.adapter.write(fontsCachePath, 
 			JSON.stringify(cacheData, null, 2));
 	} catch (error) {
 		console.error('Failed to cache fonts from typst:', error);
@@ -178,7 +179,8 @@ export class obsidianTypstPDFExport extends Plugin {
 			error: error.message
 		};
 		
-		await this.app.vault.adapter.write('.obsidian/plugins/obsidian-typst-pdf-export/fonts-cache.json',
+		const fontsCachePath = path.join(this.manifest.dir!, 'fonts-cache.json');
+		await this.app.vault.adapter.write(fontsCachePath,
 			JSON.stringify(cacheData, null, 2));
 	}
 }
@@ -188,7 +190,8 @@ export class obsidianTypstPDFExport extends Plugin {
 	 */
 	async getCachedFonts(): Promise<string[]> {
 		try {
-			const cacheContent = await this.app.vault.adapter.read('.obsidian/plugins/obsidian-typst-pdf-export/fonts-cache.json');
+			const fontsCachePath = path.join(this.manifest.dir!, 'fonts-cache.json');
+			const cacheContent = await this.app.vault.adapter.read(fontsCachePath);
 			const cacheData = JSON.parse(cacheContent);
 			
 			// Check if cache is older than 24 hours or typst path changed
@@ -782,7 +785,7 @@ ${dependencyResult.allAvailable
 	const fs = require('fs');
 	
 	// Copy image to vault temp directory for access
-	const vaultTempImagesDir = pathModule.join(vaultBasePath, '.obsidian', 'plugins', 'obsidian-typst-pdf-export', 'temp-images');
+	const vaultTempImagesDir = pathModule.join(vaultBasePath, this.manifest.dir!, 'temp-images');
 	await fs.promises.mkdir(vaultTempImagesDir, { recursive: true });
 	
 	// Sanitize the basename for use in filename - replace problematic characters

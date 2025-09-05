@@ -123,7 +123,7 @@ export class TypographySection implements ModalSection {
 		try {
 			// Access the plugin instance through the app
 			// @ts-ignore - accessing private plugin manager
-			const plugin = this.app?.plugins?.plugins?.['obsidian-typst-pdf-export'];
+			const plugin = this.app?.plugins?.plugins?.['typst-pdf-export'];
 			if (plugin && plugin.getCachedFonts) {
 				return await plugin.getCachedFonts();
 			}

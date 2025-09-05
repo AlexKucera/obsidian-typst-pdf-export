@@ -12,7 +12,7 @@ const fs = require('fs');
 const path = require('path');
 const archiver = require('archiver');
 
-const PLUGIN_NAME = 'obsidian-typst-pdf-export';
+const PLUGIN_NAME = 'typst-pdf-export';
 
 async function packagePlugin() {
     const projectRoot = path.resolve(__dirname, '..');
