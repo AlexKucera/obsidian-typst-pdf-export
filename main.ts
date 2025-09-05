@@ -526,6 +526,12 @@ export class obsidianTypstPDFExport extends Plugin {
 				await this.processImageEmbeds(processedResult, vaultPath, tempDir, file);
 			}
 			
+			// Process file embeds if any were found
+			if (processedResult.metadata.fileEmbeds && processedResult.metadata.fileEmbeds.length > 0) {
+				const embedAllFiles = config.embedAllFiles ?? this.settings.behavior.embedAllFiles;
+				await this.processFileEmbeds(processedResult, vaultPath, tempDir, file, embedAllFiles);
+			}
+			
 			// Prepare output path
 			const outputPath = await this.prepareOutputPath(file, config.outputFolder || this.settings.outputFolder);
 			
@@ -825,6 +831,154 @@ ${dependencyResult.allAvailable
 		return content.filter(line => line !== null).join('\n');
 	}
 
+	/**
+	 * Generate file embed content with proper Typst pdf.embed syntax
+	 */
+	private generateFileEmbedContent(
+		relativeFilePath: string,
+		baseName: string,
+		fileExtension: string,
+		errorSuffix?: string
+	): string {
+		const description = `${baseName}${errorSuffix ? ` ${errorSuffix}` : ''}`;
+		const mimeType = this.getMimeTypeFromExtension(fileExtension);
+		const fileIcon = this.getFileTypeIcon(fileExtension);
+		
+		const content = [];
+		
+		// Add file embed using Typst's pdf.embed
+		content.push('```{=typst}');
+		content.push(`#pdf.embed("${relativeFilePath}", description: "${description}", mime-type: "${mimeType}")`);
+		content.push('```');
+		content.push('');
+		content.push(`*File attached: ${fileIcon} ${description} - check your PDF reader's attachment panel*`);
+		
+		return content.filter(line => line !== null).join('\n');
+	}
+
+	/**
+	 * Get MIME type from file extension
+	 */
+	private getMimeTypeFromExtension(extension: string): string {
+		const mimeTypes: Record<string, string> = {
+			// Office documents
+			'.xlsx': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+			'.xls': 'application/vnd.ms-excel',
+			'.pptx': 'application/vnd.openxmlformats-officedocument.presentationml.presentation',
+			'.ppt': 'application/vnd.ms-powerpoint',
+			'.docx': 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+			'.doc': 'application/msword',
+			// Open Document Format
+			'.odt': 'application/vnd.oasis.opendocument.text',
+			'.ods': 'application/vnd.oasis.opendocument.spreadsheet',
+			'.odp': 'application/vnd.oasis.opendocument.presentation',
+			// Archives
+			'.zip': 'application/zip',
+			'.rar': 'application/vnd.rar',
+			'.7z': 'application/x-7z-compressed',
+			'.tar': 'application/x-tar',
+			'.gz': 'application/gzip',
+			'.bz2': 'application/x-bzip2',
+			// Text/data formats
+			'.json': 'application/json',
+			'.xml': 'application/xml',
+			'.csv': 'text/csv',
+			'.yaml': 'text/yaml',
+			'.yml': 'text/yaml',
+			'.toml': 'text/plain',
+			'.txt': 'text/plain',
+			'.md': 'text/markdown',
+			'.rtf': 'application/rtf',
+			// Code files
+			'.js': 'text/javascript',
+			'.ts': 'text/typescript',
+			'.py': 'text/x-python',
+			'.java': 'text/x-java-source',
+			'.cpp': 'text/x-c++src',
+			'.c': 'text/x-csrc',
+			'.h': 'text/x-chdr',
+			'.css': 'text/css',
+			'.html': 'text/html',
+			'.php': 'text/x-php',
+			// Database files
+			'.db': 'application/x-sqlite3',
+			'.sqlite': 'application/x-sqlite3',
+			'.sql': 'application/sql',
+			// E-books
+			'.epub': 'application/epub+zip',
+			'.mobi': 'application/x-mobipocket-ebook',
+			// Other formats
+			'.ics': 'text/calendar',
+			'.vcf': 'text/vcard',
+			'.log': 'text/plain'
+		};
+		
+		return mimeTypes[extension.toLowerCase()] || 'application/octet-stream';
+	}
+
+	/**
+	 * Get appropriate icon for file type
+	 */
+	private getFileTypeIcon(extension: string): string {
+		const iconMap: Record<string, string> = {
+			// Office documents
+			'.xlsx': '📊', '.xls': '📊',
+			'.pptx': '📽️', '.ppt': '📽️',
+			'.docx': '📄', '.doc': '📄',
+			// Open Document
+			'.odt': '📄', '.ods': '📊', '.odp': '📽️',
+			// Archives
+			'.zip': '📦', '.rar': '📦', '.7z': '📦', '.tar': '📦', '.gz': '📦', '.bz2': '📦',
+			// Text/data
+			'.json': '🗃️', '.xml': '🗃️', '.csv': '📊', '.yaml': '⚙️', '.yml': '⚙️',
+			'.toml': '⚙️', '.txt': '📄', '.md': '📝', '.rtf': '📄',
+			// Code files
+			'.js': '💻', '.ts': '💻', '.py': '🐍', '.java': '☕', '.cpp': '💻', '.c': '💻',
+			'.h': '💻', '.css': '🎨', '.html': '🌐', '.php': '💻',
+			// Database
+			'.db': '🗄️', '.sqlite': '🗄️', '.sql': '🗄️',
+			// E-books
+			'.epub': '📖', '.mobi': '📖',
+			// Other
+			'.ics': '📅', '.vcf': '👤', '.log': '📋'
+		};
+		
+		return iconMap[extension.toLowerCase()] || '📎';
+	}
+
+	/**
+	 * Resolve file path (similar to resolvePdfPath but for generic files)
+	 */
+	private async resolveFilePath(sanitizedPath: string, vaultBasePath: string, currentFile?: TFile): Promise<string | null> {
+		const pathModule = require('path');
+		const fs = require('fs');
+		
+		// Decode the URL-encoded sanitized path back to normal characters
+		const decodedPath = decodeURIComponent(sanitizedPath);
+		
+		// Try multiple path resolution strategies
+		const possiblePaths = [
+			// Strategy 1: Relative to vault root (standard Obsidian behavior)
+			pathModule.resolve(vaultBasePath, decodedPath),
+			// Strategy 2: Relative to current file's directory (for local attachments)
+			currentFile ? pathModule.resolve(vaultBasePath, pathModule.dirname(currentFile.path), decodedPath) : null,
+			// Strategy 3: Check in attachments folder (common pattern)
+			pathModule.resolve(vaultBasePath, 'attachments', pathModule.basename(decodedPath))
+		].filter(p => p !== null);
+		
+		// Try each possible path until we find one that exists
+		for (const possiblePath of possiblePaths) {
+			try {
+				await fs.promises.access(possiblePath);
+				return possiblePath;
+			} catch {
+				// File doesn't exist, continue to next path
+			}
+		}
+		
+		return null;
+	}
+
 	private async processPdfEmbeds(processedResult: any, vaultBasePath: string, tempDir: string, currentFile?: TFile, embedPdfFiles: boolean = true): Promise<void> {
 		const { PdfToImageConverter } = await import('./src/converters/PdfToImageConverter');
 		const converter = PdfToImageConverter.getInstance(this);
@@ -982,6 +1136,65 @@ ${dependencyResult.allAvailable
 		}
 		
 		// Update the processed result with the new content  
+		processedResult.content = updatedContent;
+	}
+	
+	/**
+	 * Process file embeds - Convert to attachments using Typst's pdf.embed
+	 */
+	private async processFileEmbeds(processedResult: any, vaultBasePath: string, tempDir: string, currentFile?: TFile, embedAllFiles: boolean = true): Promise<void> {
+		const pathModule = require('path');
+		const fs = require('fs');
+		
+		let updatedContent = processedResult.content;
+		
+		for (const fileEmbed of processedResult.metadata.fileEmbeds) {
+			try {
+				
+				// Resolve file path using helper method (similar to PDF processing)
+				const fullFilePath = await this.resolveFilePath(fileEmbed.sanitizedPath, vaultBasePath, currentFile);
+				
+				if (!fullFilePath) {
+					console.warn(`Export: File not found: ${decodeURIComponent(fileEmbed.sanitizedPath)}`);
+					// Replace marker with fallback message
+					const fallbackOutput = `*⚠️ File not found: ${fileEmbed.baseName}*`;
+					updatedContent = updatedContent.replace(fileEmbed.marker, fallbackOutput);
+					continue;
+				}
+				
+				if (embedAllFiles) {
+					// Get relative path from vault base
+					const relativeFilePath = pathModule.relative(vaultBasePath, fullFilePath);
+					
+					// Create file embed content using helper method
+					const combinedOutput = this.generateFileEmbedContent(
+						relativeFilePath,
+						fileEmbed.baseName,
+						fileEmbed.fileType,
+						undefined
+					);
+					
+					// Replace the placeholder with the combined output
+					updatedContent = updatedContent.replace(fileEmbed.marker, combinedOutput);
+				} else {
+					// Just show as a link if embedding is disabled
+					const relativeFilePath = pathModule.relative(vaultBasePath, fullFilePath);
+					const fileIcon = this.getFileTypeIcon(fileEmbed.fileType);
+					const linkOutput = `[${fileIcon} ${fileEmbed.fileName}](${relativeFilePath})`;
+					updatedContent = updatedContent.replace(fileEmbed.marker, linkOutput);
+				}
+				
+			} catch (error) {
+				ExportErrorHandler.handleProcessingError('File embed', fileEmbed.originalPath, error);
+				// Still try to show as a link even if there's a processing error
+				const relativeFilePath = pathModule.relative(vaultBasePath, fileEmbed.originalPath);
+				const fileIcon = this.getFileTypeIcon(fileEmbed.fileType);
+				const fallbackOutput = `[${fileIcon} ${fileEmbed.fileName} (error occurred)](${relativeFilePath})`;
+				updatedContent = updatedContent.replace(fileEmbed.marker, fallbackOutput);
+			}
+		}
+		
+		// Update the processed result with the new content
 		processedResult.content = updatedContent;
 	}
 	
@@ -1479,6 +1692,16 @@ class ObsidianTypstPDFExportSettingTab extends PluginSettingTab {
 			.setValue(this.plugin.settings.behavior.embedPdfFiles)
 			.onChange(async (value) => {
 				this.plugin.settings.behavior.embedPdfFiles = value;
+				await this.plugin.saveSettings();
+			}));
+	
+	new Setting(containerEl)
+		.setName('Embed all file types')
+		.setDesc('Include all referenced file types (office documents, archives, etc.) as PDF attachments')
+		.addToggle(toggle => toggle
+			.setValue(this.plugin.settings.behavior.embedAllFiles)
+			.onChange(async (value) => {
+				this.plugin.settings.behavior.embedAllFiles = value;
 				await this.plugin.saveSettings();
 			}));
 	
