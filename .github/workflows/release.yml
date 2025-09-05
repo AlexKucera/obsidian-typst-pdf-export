@@ -117,9 +117,9 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           tag_name: ${{ github.ref_name }}
-          name: Release v${{ steps.version.outputs.version }}
+          name: Release ${{ steps.version.outputs.version }}
           body: |
-            # Obsidian Typst PDF Export v${{ steps.version.outputs.version }}
+            # Obsidian Typst PDF Export ${{ steps.version.outputs.version }}
 
             ${{ steps.changelog.outputs.changelog }}
 
