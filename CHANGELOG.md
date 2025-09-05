@@ -5,6 +5,14 @@ All notable changes to the Obsidian Typst PDF Export plugin will be documented i
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.0.1]
+
+### Fixed
+- **Dynamic Path Resolution**: Fixed font caching, template loading, and temp directory paths to use dynamic plugin directory resolution instead of hardcoded "obsidian-typst-pdf-export" paths
+- **Plugin Directory Detection**: Updated PdfToImageConverter to dynamically detect plugin directory name from manifest
+- **Template Manager Paths**: Fixed template directory path resolution to work with renamed plugin folder
+- **Documentation**: Updated README.md to reflect correct folder name "typst-pdf-export" in all installation instructions
+
 ## [1.0.0]
 
 ### Added
