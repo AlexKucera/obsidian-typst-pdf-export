@@ -448,8 +448,8 @@ export class obsidianTypstPDFExport extends Plugin {
 	 * Export a file with specific configuration
 	 */
 	private async exportFileWithConfig(file: TFile, config: ExportConfig): Promise<void> {
-		const pluginDir = this.manifest.dir!;
 		const vaultPath = (this.app.vault.adapter as any).basePath;
+		const pluginDir = path.join(vaultPath, this.manifest.dir!);
 		
 		// Create controller for this export (allows cancellation)
 		this.currentExportController = new AbortController();

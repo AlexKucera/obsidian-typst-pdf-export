@@ -380,17 +380,22 @@ export class PandocTypstConverter {
 			throw new Error(`Universal wrapper template not found at: ${wrapperPath}`);
 		}
 		
+		
 		args.push('--template', wrapperPath);
 		
+		// Add plugin templates directory as a resource path so Typst can find template files
+		const templatesDir = path.resolve(absolutePluginDir, 'templates');
+		// Quote the path to handle spaces and special characters
+		args.push('--resource-path', `"${templatesDir}"`);
+		
 		// Pass the actual template path as a variable
-		// Make the path relative to the vault (working directory) for Typst
+		// Use relative path from vault root for Typst import
 		let templatePathForTypst = this.pandocOptions.template;
-		if (this.pandocOptions.vaultBasePath && path.isAbsolute(templatePathForTypst)) {
-			// If template path is absolute and inside vault, make it relative
-			if (templatePathForTypst.startsWith(this.pandocOptions.vaultBasePath)) {
-				templatePathForTypst = path.relative(this.pandocOptions.vaultBasePath, templatePathForTypst);
-			}
+		if (path.isAbsolute(templatePathForTypst) && this.pandocOptions.vaultBasePath) {
+			// Make template path relative to vault for Typst import
+			templatePathForTypst = path.relative(this.pandocOptions.vaultBasePath, templatePathForTypst);
 		}
+		
 		args.push('-V', `template_path=${templatePathForTypst}`);
 	}
 
