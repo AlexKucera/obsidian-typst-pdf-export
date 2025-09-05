@@ -91,6 +91,8 @@ export interface obsidianTypstPDFExportSettings {
 		debugMode: boolean;
 		/** Whether to embed PDF files as attachments in the output PDF */
 		embedPdfFiles: boolean;
+		/** Whether to embed all file types as attachments in the output PDF */
+		embedAllFiles: boolean;
 		/** Display frontmatter as formatted text at the beginning of the document */
 		printFrontmatter: boolean;
 	};
@@ -151,6 +153,7 @@ export const DEFAULT_SETTINGS: obsidianTypstPDFExportSettings = {
 		exportConcurrency: 3,
 		debugMode: false,
 		embedPdfFiles: true,
+		embedAllFiles: true,
 		printFrontmatter: false
 	}
 };;;;

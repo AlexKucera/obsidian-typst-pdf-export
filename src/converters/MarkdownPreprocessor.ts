@@ -46,6 +46,15 @@ export interface PreprocessingResult {
 			sizeOrAlt?: string;
 			marker: string;
 		}>;
+		fileEmbeds?: Array<{
+			originalPath: string;
+			sanitizedPath: string;
+			fileName: string;
+			baseName: string;
+			fileType: string;
+			options?: string;
+			marker: string;
+		}>;
 	};
 	/** Processing errors and warnings */
 	errors: string[];
@@ -594,6 +603,9 @@ export class MarkdownPreprocessor {
 					case 'pdf':
 						return this.processPdfEmbed(cleanPath, sizeOrAlt, result);
 					
+					case 'file':
+						return this.processFileEmbed(cleanPath, sizeOrAlt, result);
+					
 					default:
 						// Fallback to link reference for unknown types
 						result.warnings.push(`Unknown file type for embed: ${cleanPath}`);
@@ -618,20 +630,39 @@ export class MarkdownPreprocessor {
 	/**
 	 * Determine file type based on extension
 	 */
-	private determineFileType(extension: string): 'image' | 'video' | 'audio' | 'document' | 'pdf' | 'unknown' {
+	private determineFileType(extension: string): 'image' | 'video' | 'audio' | 'document' | 'pdf' | 'file' | 'unknown' {
 		const imageExtensions = ['.png', '.jpg', '.jpeg', '.gif', '.svg', '.webp', '.bmp', '.ico', '.tiff'];
 		const videoExtensions = ['.mp4', '.avi', '.mov', '.wmv', '.flv', '.webm', '.mkv', '.m4v'];
 		const audioExtensions = ['.mp3', '.wav', '.ogg', '.m4a', '.flac', '.aac', '.wma'];
 		const documentExtensions = ['.md', '.txt', '.doc', '.docx', '.rtf'];
 		const pdfExtensions = ['.pdf'];
 		
+		// Additional file types that should be embedded
+		const fileExtensions = [
+			// Office documents
+			'.xlsx', '.xls', '.pptx', '.ppt', '.odt', '.ods', '.odp',
+			// Archives and compressed files
+			'.zip', '.rar', '.7z', '.tar', '.gz', '.bz2', '.xz',
+			// Data and configuration files  
+			'.json', '.xml', '.csv', '.yaml', '.yml', '.toml', '.ini', '.cfg',
+			// Code files
+			'.js', '.ts', '.py', '.java', '.cpp', '.c', '.h', '.css', '.html', '.php', '.rb', '.go', '.rs', '.swift',
+			// Database files
+			'.db', '.sqlite', '.sql',
+			// Other common files
+			'.log', '.epub', '.mobi', '.ics', '.vcf'
+		];
+		
 		if (imageExtensions.includes(extension)) return 'image';
 		if (videoExtensions.includes(extension)) return 'video';
 		if (audioExtensions.includes(extension)) return 'audio';
 		if (documentExtensions.includes(extension)) return 'document';
 		if (pdfExtensions.includes(extension)) return 'pdf';
+		if (fileExtensions.includes(extension)) return 'file';
 		
-		return 'unknown';
+		// Default to 'file' for unknown extensions instead of 'unknown'
+		// This ensures all file types get embedded unless they're explicitly excluded
+		return extension ? 'file' : 'unknown';
 	}
 	
 	/**
@@ -731,6 +762,40 @@ export class MarkdownPreprocessor {
 		});
 		
 		result.warnings.push(`PDF embed queued for processing with Typst pdf.embed: ${pdfPath}`);
+		
+		return marker;
+	}
+	
+	/**
+	 * Process generic file embeds - Convert to attachment using Typst's pdf.embed
+	 */
+	private processFileEmbed(filePath: string, options: string | undefined, result: PreprocessingResult): string {
+		const sanitizedPath = this.sanitizeFilePath(filePath);
+		
+		// For now, we'll mark this for async processing and return a placeholder
+		// The actual embedding will be handled in the main export process
+		const fileName = filePath.substring(filePath.lastIndexOf('/') + 1);
+		const baseName = fileName.replace(/\.[^/.]+$/, ""); // Remove extension
+		const fileExtension = this.getFileExtension(fileName);
+		
+		// Create a marker that the export process can detect and replace with Typst code
+		const marker = `FILE_EMBED_MARKER:${filePath}:${baseName}:${options || ''}`;
+		
+		// Add to processing queue for later conversion
+		if (!result.metadata.fileEmbeds) {
+			result.metadata.fileEmbeds = [];
+		}
+		result.metadata.fileEmbeds.push({
+			originalPath: filePath,
+			sanitizedPath: sanitizedPath,
+			fileName: fileName,
+			baseName: baseName,
+			fileType: fileExtension,
+			options: options,
+			marker: marker
+		});
+		
+		result.warnings.push(`File embed queued for processing with Typst pdf.embed: ${filePath}`);
 		
 		return marker;
 	}

@@ -55,6 +55,18 @@ export class BehaviorSection implements ModalSection {
 					});
 			});
 
+		// Embed all files toggle
+		new Setting(this.container)
+			.setName('Embed all file types as attachments')
+			.setDesc('Embed all referenced file types (office documents, archives, etc.) as PDF attachments')
+			.addToggle(toggle => {
+				toggle
+					.setValue(state.settings.embedAllFiles !== false)
+					.onChange(value => {
+						state.updateSettings({ embedAllFiles: value });
+					});
+			});
+
 		// Print frontmatter toggle
 		new Setting(this.container)
 			.setName('Print frontmatter')

@@ -20,6 +20,8 @@ export interface ExportConfig {
 	preserveFolderStructure?: boolean;
 	/** Whether to embed PDF files as attachments in the output PDF */
 	embedPdfFiles?: boolean;
+	/** Whether to embed all file types as attachments in the output PDF */
+	embedAllFiles?: boolean;
 	/** Display frontmatter as formatted text at the beginning of the document */
 	printFrontmatter?: boolean;
 }
