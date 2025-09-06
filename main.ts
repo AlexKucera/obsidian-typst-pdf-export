@@ -44,6 +44,11 @@ export class obsidianTypstPDFExport extends Plugin {
 	templateManager: TemplateManager;
 	private embeddedTemplateManager: EmbeddedTemplateManager;
 	private currentExportController: AbortController | null = null;
+
+	// Type predicate to filter for markdown TFiles
+	private isMarkdownFile(file: TAbstractFile): file is TFile {
+		return file instanceof TFile && file.extension === 'md';
+	}
 	
 	async onload() {
 		await this.loadSettings();
@@ -278,9 +283,7 @@ export class obsidianTypstPDFExport extends Plugin {
 		this.registerEvent(
 			this.app.workspace.on('files-menu', (menu: Menu, files: TAbstractFile[]) => {
 				// Filter for markdown files only
-				const markdownFiles = files.filter(file => 
-					file instanceof TFile && file.extension === 'md'
-				) as TFile[];
+				const markdownFiles = files.filter(this.isMarkdownFile);
 				
 				if (markdownFiles.length > 0) {
 					menu.addItem((item) => {
@@ -478,7 +481,7 @@ export class obsidianTypstPDFExport extends Plugin {
 		
 		try {
 			// Create temp directory for conversion
-			const tempManager = new TempDirectoryManager({ vaultPath: vaultPath });
+			const tempManager = new TempDirectoryManager({ vaultPath: vaultPath, configDir: this.app.vault.configDir });
 			const tempDir = tempManager.ensureTempDir('pandoc');
 			
 			// Load file content
@@ -584,7 +587,7 @@ export class obsidianTypstPDFExport extends Plugin {
 			
 			// Clean up temporary directories
 			try {
-				const cleanupManager = TempDirectoryManager.create(vaultPath);
+				const cleanupManager = TempDirectoryManager.create(vaultPath, this.app.vault.configDir);
 				cleanupManager.cleanupAllTempDirs();
 			} catch (cleanupError) {
 				console.warn('Export: Failed to clean up temporary directories:', cleanupError);
@@ -650,9 +653,7 @@ export class obsidianTypstPDFExport extends Plugin {
 	 */
 	private async handleFolderExport(folder: TFolder): Promise<void> {
 		// Get all markdown files in the folder
-		const markdownFiles = folder.children.filter(
-			(file) => file instanceof TFile && file.extension === 'md'
-		) as TFile[];
+		const markdownFiles = folder.children.filter(this.isMarkdownFile);
 		
 		if (markdownFiles.length === 0) {
 			new Notice('No markdown files found in this folder');
@@ -1287,7 +1288,7 @@ ${dependencyResult.allAvailable
 	private cleanupStartupTempDirectories(): void {
 		try {
 			const vaultPath = (this.app.vault.adapter as any).basePath;
-			const cleanupManager = TempDirectoryManager.create(vaultPath);
+			const cleanupManager = TempDirectoryManager.create(vaultPath, this.app.vault.configDir);
 			const result = cleanupManager.cleanupAllTempDirs();
 			
 			if (this.settings.behavior.debugMode) {
@@ -1307,7 +1308,7 @@ ${dependencyResult.allAvailable
 		// Clean up temp directories on plugin unload
 		try {
 			const vaultPath = (this.app.vault.adapter as any).basePath;
-			const cleanupManager = TempDirectoryManager.create(vaultPath);
+			const cleanupManager = TempDirectoryManager.create(vaultPath, this.app.vault.configDir);
 			cleanupManager.cleanupAllTempDirs();
 		} catch (error) {
 			console.warn('Export: Failed to clean up temp directories during unload:', error);

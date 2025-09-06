@@ -123,4 +123,14 @@
 /* Progress bar styling */
 .export-progress-bar {
     transition: width 0.3s ease;
+    width: var(--progress-width, 0%);
+}
+
+/* Modal display states */
+.export-progress-visible {
+    display: block !important;
+}
+
+.export-form-hidden {
+    display: none !important;
 }

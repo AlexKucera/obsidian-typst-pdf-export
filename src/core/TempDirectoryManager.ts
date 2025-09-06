@@ -7,6 +7,8 @@ import { PLUGIN_DIRS } from './constants';
 export interface TempDirectoryOptions {
 	/** Base path for the vault */
 	vaultPath: string;
+	/** Configuration directory path (from Vault#configDir) */
+	configDir: string;
 	/** Plugin directory name (defaults to 'typst-pdf-export') */
 	pluginName?: string;
 }
@@ -15,10 +17,12 @@ export class TempDirectoryManager {
 	private readonly fs = require('fs');
 	private readonly path = require('path');
 	private readonly vaultPath: string;
+	private readonly configDir: string;
 	private readonly pluginName: string;
 
 	constructor(options: TempDirectoryOptions) {
 		this.vaultPath = options.vaultPath;
+		this.configDir = options.configDir;
 		this.pluginName = options.pluginName || 'typst-pdf-export';
 	}
 
@@ -26,7 +30,7 @@ export class TempDirectoryManager {
 	 * Get the plugin directory path
 	 */
 	private getPluginDir(): string {
-		return this.path.join(this.vaultPath, '.obsidian', 'plugins', this.pluginName);
+		return this.path.join(this.vaultPath, this.configDir, 'plugins', this.pluginName);
 	}
 
 	/**
@@ -83,10 +87,10 @@ export class TempDirectoryManager {
 	}
 
 	/**
-	 * Static helper to create manager from vault path
+	 * Static helper to create manager from vault path and configDir
 	 */
-	public static create(vaultPath: string, pluginName?: string): TempDirectoryManager {
-		return new TempDirectoryManager({ vaultPath, pluginName });
+	public static create(vaultPath: string, configDir: string, pluginName?: string): TempDirectoryManager {
+		return new TempDirectoryManager({ vaultPath, configDir, pluginName });
 	}
 
 	/**

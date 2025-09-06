@@ -324,13 +324,13 @@ export class ExportConfigModal extends Modal {
 	}
 	
 	private showProgress(message: string, percent: number): void {
-		this.progressContainer.style.display = 'block';
-		this.formContainer.style.display = 'none';
+		this.progressContainer.addClass('export-progress-visible');
+		this.formContainer.addClass('export-form-hidden');
 		
 		this.progressText.textContent = message;
 		
 		if (percent >= 0) {
-			this.progressBar.style.width = `${percent}%`;
+			this.progressBar.style.setProperty('--progress-width', `${percent}%`);
 			const percentEl = this.progressContainer.querySelector('.export-progress-percent');
 			if (percentEl) {
 				percentEl.textContent = `${Math.round(percent)}%`;

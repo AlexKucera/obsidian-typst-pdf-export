@@ -250,7 +250,8 @@ export class PandocTypstConverter {
 		if (!this.tempDir) {
 			if (this.pandocOptions.vaultBasePath) {
 				// Use TempDirectoryManager for plugin temp directories
-				const tempManager = TempDirectoryManager.create(this.pandocOptions.vaultBasePath);
+				const configDir = this.plugin?.app?.vault?.configDir || '.obsidian';
+				const tempManager = TempDirectoryManager.create(this.pandocOptions.vaultBasePath, configDir);
 				this.tempDir = tempManager.ensureTempDir('pandoc');
 			} else {
 				// Fallback to system temp if plugin folder not available
