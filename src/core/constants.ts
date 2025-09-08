@@ -53,12 +53,28 @@ export const DEPENDENCY_CONSTANTS = {
 	},
 	
 	/**
-	 * Common paths to augment PATH with
+	 * Common paths to augment PATH with - these are always checked regardless of user settings
 	 */
-	COMMON_PATHS: [
-		'/.local/bin',
-		'/.cargo/bin',
-		'/usr/local/bin',
-		'/opt/homebrew/bin'
-	]
+	COMMON_PATHS: {
+		/**
+		 * Paths relative to home directory (will have HOME prepended)
+		 */
+		HOME_RELATIVE: [
+			'/.local/bin',
+			'/.cargo/bin',
+			'/go/bin',
+			'/.npm-global/bin'
+		],
+		/**
+		 * System-wide absolute paths (used as-is)
+		 */
+		ABSOLUTE: [
+			'/usr/local/bin',
+			'/opt/homebrew/bin',
+			'/usr/bin',
+			'/bin',
+			'/opt/local/bin',
+			'/snap/bin'
+		]
+	}
 } as const;

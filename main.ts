@@ -70,8 +70,11 @@ export class obsidianTypstPDFExport extends Plugin {
 			new Notice(`Error extracting templates: ${error.message}`);
 		}
 		
-		// Initialize components
-		this.converter = new PandocTypstConverter(this);
+		// Initialize components with executable paths from settings
+		this.converter = new PandocTypstConverter(this, {
+			pandocPath: this.settings.pandocPath,
+			typstPath: this.settings.typstPath
+		});
 		this.templateManager = new TemplateManager(this);
 		
 		// Register custom icon
@@ -105,13 +108,49 @@ export class obsidianTypstPDFExport extends Plugin {
 	}
 
 	/**
+	 * Resolve an executable path, handling empty settings by falling back to system search
+	 */
+	private resolveExecutablePath(userPath: string | undefined, defaultName: string): string {
+		// If user provided a path and it's not empty, use it
+		if (userPath && userPath.trim() !== '') {
+			return userPath;
+		}
+		
+		// Try to find the executable using which command
+		const { spawnSync } = require('child_process');
+		try {
+			const augmentedEnv = {
+				...process.env,
+				PATH: `/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:${process.env.PATH || ''}`
+			};
+			
+			const result = spawnSync('which', [defaultName], {
+				encoding: 'utf8',
+				env: augmentedEnv
+			});
+			
+			if (result.status === 0 && result.stdout) {
+				const foundPath = result.stdout.trim();
+				if (foundPath) {
+					return foundPath;
+				}
+			}
+		} catch {
+			// Ignore errors from which command
+		}
+		
+		// Fall back to the default name (will be found via PATH if available)
+		return defaultName;
+	}
+
+	/**
 	 * Cache available fonts from typst to a file for quick access
 	 */
 	private async cacheAvailableFonts(): Promise<void> {
 	try {
 		const { spawn } = require('child_process');
 		
-		const typstPath = this.settings.typstPath || 'typst';
+		const typstPath = this.resolveExecutablePath(this.settings.typstPath, 'typst');
 		
 		// Use spawn instead of exec for security - arguments passed separately
 		const stdout = await new Promise<string>((resolve, reject) => {
@@ -201,7 +240,8 @@ export class obsidianTypstPDFExport extends Plugin {
 			
 			// Check if cache is older than 24 hours or typst path changed
 			const isStale = Date.now() - cacheData.timestamp > 24 * 60 * 60 * 1000;
-			const pathChanged = cacheData.typstPath !== (this.settings.typstPath || 'typst');
+			const resolvedTypstPath = this.resolveExecutablePath(this.settings.typstPath, 'typst');
+			const pathChanged = cacheData.typstPath !== resolvedTypstPath;
 			
 			if (isStale || pathChanged) {
 				// Refresh cache in background
@@ -683,7 +723,8 @@ export class obsidianTypstPDFExport extends Plugin {
 		const dependencyResult = await DependencyChecker.checkAllDependencies(
 			this.settings.pandocPath,
 			this.settings.typstPath,
-			this.settings.executablePaths?.imagemagickPath
+			this.settings.executablePaths?.imagemagickPath,
+			this.settings.executablePaths?.additionalPaths || []
 		);
 		
 		const formatVersion = (dep: any) => dep.isAvailable ? (dep.version || 'Available') : 'Not found';
@@ -706,7 +747,8 @@ ${dependencyResult.allAvailable
 			const missingDeps = DependencyChecker.checkDependenciesSync(
 				this.settings.pandocPath,
 				this.settings.typstPath,
-				this.settings.executablePaths?.imagemagickPath
+				this.settings.executablePaths?.imagemagickPath,
+				this.settings.executablePaths?.additionalPaths || []
 			);
 			
 			// Only show notice if dependencies are missing
