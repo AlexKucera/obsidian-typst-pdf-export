@@ -37,6 +37,7 @@ import { FolderSuggest } from './src/ui/components/FolderSuggest';
 import { SUPPORTED_PAPER_SIZES } from './src/utils/paperSizeMapper';
 import { PluginLifecycle } from './src/plugin/PluginLifecycle';
 import { CommandRegistry } from './src/plugin/CommandRegistry';
+import { EventHandlers } from './src/plugin/EventHandlers';
 import * as path from 'path';
 import * as fs from 'fs';
 
@@ -48,9 +49,10 @@ export class obsidianTypstPDFExport extends Plugin {
 	currentExportController: AbortController | null = null;
 	private lifecycle: PluginLifecycle;
 	private commandRegistry: CommandRegistry;
+	private eventHandlers: EventHandlers;
 
 	// Type predicate to filter for markdown TFiles
-	private isMarkdownFile(file: TAbstractFile): file is TFile {
+	isMarkdownFile(file: TAbstractFile): file is TFile {
 		return file instanceof TFile && file.extension === 'md';
 	}
 	
@@ -64,6 +66,9 @@ export class obsidianTypstPDFExport extends Plugin {
 		// Initialize command registry
 		this.commandRegistry = new CommandRegistry(this);
 		
+		// Initialize event handlers
+		this.eventHandlers = new EventHandlers(this);
+		
 		// Register custom icon
 		addIcon('typst-pdf-export', `<svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" xml:space="preserve" style="fill-rule:evenodd;clip-rule:evenodd;stroke-linejoin:round;stroke-miterlimit:2">
   <path d="m9.002 4.175 4.343-2.13V6l4.033-.304V8.13h-4.033c-.017.223-.001 8.368 0 9.432.001.65.889 1.217 1.551 1.217.775 0 3.102-1.217 3.102-1.217l.931 1.522s-2.741 1.774-4.033 2.129c-1.195.329-2.017.761-3.723 0-1.073-.478-2.144-1.582-2.171-2.738-.052-2.231 0-10.649 0-10.649L7.14 8.13l-.31-1.825L9.002 6z" style="fill:#828282"/>
@@ -72,14 +77,14 @@ export class obsidianTypstPDFExport extends Plugin {
 		
 		// Add ribbon icon using custom icon
 		this.addRibbonIcon('typst-pdf-export', 'Export to PDF with Typst', (event: MouseEvent) => {
-			this.handleRibbonClick(event);
+			this.eventHandlers.handleRibbonClick(event);
 		});
 		
 		// Register commands
 		this.commandRegistry.registerCommands();
 		
 		// Register event handlers
-		this.registerEventHandlers();
+		this.eventHandlers.registerEventHandlers();
 		
 		// Add settings tab
 		this.addSettingTab(new ObsidianTypstPDFExportSettingTab(this.app, this));
@@ -237,103 +242,6 @@ export class obsidianTypstPDFExport extends Plugin {
 		}
 	}
 	
-	
-	private registerEventHandlers(): void {
-		// Add context menu item
-		this.registerEvent(
-			this.app.workspace.on('file-menu', (menu: Menu, file: TFile) => {
-				if (file.extension === 'md') {
-					menu.addItem((item) => {
-						item
-							.setTitle('Export to PDF (Typst)')
-							.setIcon('file-output')
-							.onClick(() => {
-								this.exportFile(file);
-							});
-					});
-				}
-			})
-		);
-		
-		// Add editor menu item
-		this.registerEvent(
-			this.app.workspace.on('editor-menu', (menu: Menu, editor: Editor, view: MarkdownView) => {
-				menu.addItem((item) => {
-					item
-						.setTitle('Export to PDF (Typst)')
-						.setIcon('file-output')
-						.onClick(() => {
-							this.exportCurrentNote(view);
-						});
-				});
-			})
-		);
-		
-		// Add multi-file menu item (for multiple selected files in file explorer)
-		this.registerEvent(
-			this.app.workspace.on('files-menu', (menu: Menu, files: TAbstractFile[]) => {
-				// Filter for markdown files only
-				const markdownFiles = files.filter(this.isMarkdownFile);
-				
-				if (markdownFiles.length > 0) {
-					menu.addItem((item) => {
-						item
-							.setTitle(`Export to PDF (Typst)`)
-							.setIcon('file-output')
-							.onClick(() => {
-								this.exportFiles(markdownFiles);
-							});
-					});
-					
-					menu.addItem((item) => {
-						item
-							.setTitle(`Export with configuration...`)
-							.setIcon('settings')
-							.onClick(() => {
-								this.showExportModalForFiles(markdownFiles);
-							});
-					});
-				}
-			})
-		);
-	}
-
-	
-	/**
-	 * Handle ribbon icon click
-	 */
-	private handleRibbonClick(event: MouseEvent): void {
-		const activeView = this.app.workspace.getActiveViewOfType(MarkdownView);
-		
-		if (!activeView || !activeView.file) {
-			new Notice('Please open a markdown file to export');
-			return;
-		}
-		
-		// Create context menu for ribbon click
-		const menu = new Menu();
-		
-		menu.addItem((item) =>
-			item
-				.setTitle('Export current note(s)')
-				.setIcon('file-output')
-				.onClick(() => {
-					this.exportFile(activeView.file!);
-				})
-		);
-		
-		menu.addItem((item) =>
-			item
-				.setTitle('Export with configuration…')
-				.setIcon('settings')
-				.onClick(() => {
-					this.showExportModal(activeView);
-				})
-		);
-		
-		menu.showAtMouseEvent(event);
-	}
-	
 	/**
 	 * Export the current note with default settings
 	 */
@@ -386,7 +294,7 @@ export class obsidianTypstPDFExport extends Plugin {
 	/**
 	 * Show the export configuration modal for multiple files
 	 */
-	private async showExportModalForFiles(files: TFile[]): Promise<void> {
+	async showExportModalForFiles(files: TFile[]): Promise<void> {
 		if (files.length === 0) {
 			new Notice('No files to export');
 			return;
@@ -421,7 +329,7 @@ export class obsidianTypstPDFExport extends Plugin {
 	/**
 	 * Export a file with default configuration
 	 */
-	private async exportFile(file: TFile): Promise<void> {
+	async exportFile(file: TFile): Promise<void> {
 	const config: ExportConfig = {
 		template: this.settings.exportDefaults.template,
 		format: this.settings.exportDefaults.format,
@@ -451,7 +359,7 @@ export class obsidianTypstPDFExport extends Plugin {
 	/**
 	 * Export multiple files with default configuration
 	 */
-	private async exportFiles(files: TFile[]): Promise<void> {
+	async exportFiles(files: TFile[]): Promise<void> {
 		await this.processBatchExport(
 			files,
 			`Exporting ${files.length} files to PDF...`,
