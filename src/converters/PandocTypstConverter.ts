@@ -277,11 +277,8 @@ export class PandocTypstConverter {
 	args.push('--from', 'markdown-smart');
 
 	// Set PDF engine to Typst (use configured path if available)
-	if (this.pandocOptions.typstPath) {
-		args.push(`--pdf-engine=${this.pandocOptions.typstPath}`);
-	} else {
-		args.push('--pdf-engine=typst');
-	}
+	const typstPath = this.resolveExecutablePath(this.pandocOptions.typstPath, 'typst');
+	args.push(`--pdf-engine=${typstPath}`);
 
 	// Enable standalone mode (required for PDF output)
 	args.push('--standalone');
@@ -550,11 +547,47 @@ export class PandocTypstConverter {
 }
 
 	/**
+	 * Resolve an executable path, handling empty settings by falling back to system search
+	 */
+	private resolveExecutablePath(userPath: string | undefined, defaultName: string): string {
+		// If user provided a path and it's not empty, use it
+		if (userPath && userPath.trim() !== '') {
+			return userPath;
+		}
+		
+		// Try to find the executable using which command
+		const { spawnSync } = require('child_process');
+		try {
+			const augmentedEnv = {
+				...process.env,
+				PATH: `/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:${process.env.PATH || ''}`
+			};
+			
+			const result = spawnSync('which', [defaultName], {
+				encoding: 'utf8',
+				env: augmentedEnv
+			});
+			
+			if (result.status === 0 && result.stdout) {
+				const foundPath = result.stdout.trim();
+				if (foundPath) {
+					return foundPath;
+				}
+			}
+		} catch {
+			// Ignore errors from which command
+		}
+		
+		// Fall back to the default name (will be found via PATH if available)
+		return defaultName;
+	}
+
+	/**
 	 * Execute pandoc process with the given arguments
 	 */
 	private async executePandoc(args: string[], progressCallback?: ProgressCallback): Promise<ConversionResult> {
 		return new Promise((resolve) => {
-			const pandocPath = this.pandocOptions.pandocPath || 'pandoc';
+			const pandocPath = this.resolveExecutablePath(this.pandocOptions.pandocPath, 'pandoc');
 			const timeout = this.pandocOptions.timeout || 60000;
 
 			// Log the exact command being executed for debugging
