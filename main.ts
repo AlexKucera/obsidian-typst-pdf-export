@@ -39,6 +39,7 @@ import { PluginLifecycle } from './src/plugin/PluginLifecycle';
 import { CommandRegistry } from './src/plugin/CommandRegistry';
 import { EventHandlers } from './src/plugin/EventHandlers';
 import { ExportOrchestrator } from './src/plugin/ExportOrchestrator';
+import { FontManager } from './src/plugin/FontManager';
 import * as path from 'path';
 import * as fs from 'fs';
 
@@ -52,6 +53,7 @@ export class obsidianTypstPDFExport extends Plugin {
 	private commandRegistry: CommandRegistry;
 	private eventHandlers: EventHandlers;
 	private exportOrchestrator: ExportOrchestrator;
+	fontManager: FontManager;
 
 	// Type predicate to filter for markdown TFiles
 	isMarkdownFile(file: TAbstractFile): file is TFile {
@@ -61,6 +63,9 @@ export class obsidianTypstPDFExport extends Plugin {
 	async onload() {
 		// Initialize lifecycle manager
 		this.lifecycle = new PluginLifecycle(this);
+		
+		// Initialize font manager first (needed by PluginLifecycle)
+		this.fontManager = new FontManager(this);
 		
 		// Initialize core plugin functionality
 		await this.lifecycle.initialize();
@@ -98,7 +103,7 @@ export class obsidianTypstPDFExport extends Plugin {
 	/**
 	 * Resolve an executable path, handling empty settings by falling back to system search
 	 */
-	private resolveExecutablePath(userPath: string | undefined, defaultName: string): string {
+	resolveExecutablePath(userPath: string | undefined, defaultName: string): string {
 		// If user provided a path and it's not empty, use it
 		if (userPath && userPath.trim() !== '') {
 			return userPath;
@@ -131,121 +136,7 @@ export class obsidianTypstPDFExport extends Plugin {
 		return defaultName;
 	}
 
-	/**
-	 * Cache available fonts from typst to a file for quick access
-	 */
-	async cacheAvailableFonts(): Promise<void> {
-	try {
-		const { spawn } = require('child_process');
-		
-		const typstPath = this.resolveExecutablePath(this.settings.typstPath, 'typst');
-		
-		// Use spawn instead of exec for security - arguments passed separately
-		const stdout = await new Promise<string>((resolve, reject) => {
-			const typstProcess = spawn(typstPath, ['fonts'], { 
-				stdio: ['pipe', 'pipe', 'pipe'],
-				env: { 
-					...process.env,
-					PATH: `/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:${process.env.PATH || ''}`
-				}
-			});
-			
-			let output = '';
-			let error = '';
-			
-			typstProcess.stdout?.on('data', (data: Buffer) => {
-				output += data.toString();
-			});
-			
-			typstProcess.stderr?.on('data', (data: Buffer) => {
-				error += data.toString();
-			});
-			
-			typstProcess.on('close', (code: number | null) => {
-				if (code === 0) {
-					resolve(output);
-				} else {
-					reject(new Error(`typst fonts command failed with code ${code}: ${error}`));
-				}
-			});
-			
-			typstProcess.on('error', (err: Error) => {
-				reject(new Error(`Failed to spawn typst process: ${err.message}`));
-			});
-		});
-		
-		const fonts = stdout
-			.split('\n')
-			.map((line: string) => line.trim())
-			.filter((line: string) => line.length > 0)
-			.sort();
-		
-		// Write fonts to cache file in plugin data directory
-		const cacheData = {
-			fonts: fonts,
-			timestamp: Date.now(),
-			typstPath: typstPath
-		};
-		
-		const fontsCachePath = path.join(this.manifest.dir!, 'fonts-cache.json');
-		await this.app.vault.adapter.write(fontsCachePath, 
-			JSON.stringify(cacheData, null, 2));
-	} catch (error) {
-		console.error('Failed to cache fonts from typst:', error);
-		
-		// Notify user of font caching failure (only if debug mode is enabled or if it's a critical error)
-		if (this.settings.behavior.debugMode) {
-			new Notice(`Font caching failed: ${error.message}. Using fallback fonts.`, 5000);
-		} else {
-			// For non-debug mode, show a more gentle notice
-			new Notice('Font list may be incomplete. Check debug mode for details.', 3000);
-		}
-		
-		// Create fallback cache file
-		const fallbackFonts = FALLBACK_FONTS;
-		
-		const cacheData = {
-			fonts: fallbackFonts,
-			timestamp: Date.now(),
-			typstPath: 'fallback',
-			error: error.message
-		};
-		
-		const fontsCachePath = path.join(this.manifest.dir!, 'fonts-cache.json');
-		await this.app.vault.adapter.write(fontsCachePath,
-			JSON.stringify(cacheData, null, 2));
-	}
-}
 
-	/**
-	 * Get cached fonts list
-	 */
-	async getCachedFonts(): Promise<string[]> {
-		try {
-			const fontsCachePath = path.join(this.manifest.dir!, 'fonts-cache.json');
-			const cacheContent = await this.app.vault.adapter.read(fontsCachePath);
-			const cacheData = JSON.parse(cacheContent);
-			
-			// Check if cache is older than 24 hours or typst path changed
-			const isStale = Date.now() - cacheData.timestamp > 24 * 60 * 60 * 1000;
-			const resolvedTypstPath = this.resolveExecutablePath(this.settings.typstPath, 'typst');
-			const pathChanged = cacheData.typstPath !== resolvedTypstPath;
-			
-			if (isStale || pathChanged) {
-				// Refresh cache in background
-				this.cacheAvailableFonts();
-			}
-			
-			return cacheData.fonts || [];
-		} catch (error) {
-			console.error('Failed to read fonts cache:', error);
-			// Try to recreate cache
-			await this.cacheAvailableFonts();
-			
-			// Return fallback fonts
-			return [...FALLBACK_FONTS];
-		}
-	}
 	
 	/**
 	 * Export the current note with default settings
@@ -343,6 +234,20 @@ export class obsidianTypstPDFExport extends Plugin {
 	 */
 	async exportFiles(files: TFile[]): Promise<void> {
 		return this.exportOrchestrator.exportFiles(files);
+	}
+	
+	/**
+	 * Cache available fonts (delegated to FontManager)
+	 */
+	async cacheAvailableFonts(): Promise<void> {
+		return this.fontManager.cacheAvailableFonts();
+	}
+	
+	/**
+	 * Get cached fonts list (delegated to FontManager)
+	 */
+	async getCachedFonts(): Promise<string[]> {
+		return this.fontManager.getCachedFonts();
 	}
 	
 	
@@ -1376,7 +1281,7 @@ class ObsidianTypstPDFExportSettingTab extends PluginSettingTab {
 	
 	// Helper methods for fonts
 	private async getAvailableFonts(): Promise<string[]> {
-		return await this.plugin.getCachedFonts();
+		return await this.plugin.fontManager.getCachedFonts();
 	}
 	
 	// Helper methods for margin conversion
