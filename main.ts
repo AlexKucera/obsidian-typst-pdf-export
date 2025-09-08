@@ -38,6 +38,7 @@ import { SUPPORTED_PAPER_SIZES } from './src/utils/paperSizeMapper';
 import { PluginLifecycle } from './src/plugin/PluginLifecycle';
 import { CommandRegistry } from './src/plugin/CommandRegistry';
 import { EventHandlers } from './src/plugin/EventHandlers';
+import { ExportOrchestrator } from './src/plugin/ExportOrchestrator';
 import * as path from 'path';
 import * as fs from 'fs';
 
@@ -50,6 +51,7 @@ export class obsidianTypstPDFExport extends Plugin {
 	private lifecycle: PluginLifecycle;
 	private commandRegistry: CommandRegistry;
 	private eventHandlers: EventHandlers;
+	private exportOrchestrator: ExportOrchestrator;
 
 	// Type predicate to filter for markdown TFiles
 	isMarkdownFile(file: TAbstractFile): file is TFile {
@@ -68,6 +70,9 @@ export class obsidianTypstPDFExport extends Plugin {
 		
 		// Initialize event handlers
 		this.eventHandlers = new EventHandlers(this);
+		
+		// Initialize export orchestrator
+		this.exportOrchestrator = new ExportOrchestrator(this);
 		
 		// Register custom icon
 		addIcon('typst-pdf-export', `<svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" xml:space="preserve" style="fill-rule:evenodd;clip-rule:evenodd;stroke-linejoin:round;stroke-miterlimit:2">
@@ -252,7 +257,7 @@ export class obsidianTypstPDFExport extends Plugin {
 			return;
 		}
 		
-		await this.exportFile(file);
+		await this.exportOrchestrator.exportFile(file);
 	}
 	
 	/**
@@ -281,10 +286,10 @@ export class obsidianTypstPDFExport extends Plugin {
 		this,
 		modalSettings,
 		async (config: ExportConfig) => {
-			await this.exportFileWithConfig(file, config);
+			await this.exportOrchestrator.exportFileWithConfig(file, config);
 		},
 		() => {
-			this.cancelExport();
+			this.exportOrchestrator.cancelExport();
 		}
 	);
 	
@@ -316,10 +321,10 @@ export class obsidianTypstPDFExport extends Plugin {
 			this,
 			modalSettings,
 			async (config: ExportConfig) => {
-				await this.exportFilesWithConfig(files, config);
+				await this.exportOrchestrator.exportFilesWithConfig(files, config);
 			},
 			() => {
-				this.cancelExport();
+				this.exportOrchestrator.cancelExport();
 			}
 		);
 		
@@ -327,252 +332,19 @@ export class obsidianTypstPDFExport extends Plugin {
 	}
 	
 	/**
-	 * Export a file with default configuration
+	 * Export a file with default configuration (delegated to ExportOrchestrator)
 	 */
 	async exportFile(file: TFile): Promise<void> {
-	const config: ExportConfig = {
-		template: this.settings.exportDefaults.template,
-		format: this.settings.exportDefaults.format,
-		outputFolder: this.settings.outputFolder,
-		templateVariables: {
-			// Page setup - use NEW settings structure (same as modal)
-			pageSize: this.settings.pageSetup.size,
-			orientation: this.settings.pageSetup.orientation,
-			flipped: this.settings.pageSetup.orientation === 'landscape',
-			marginTop: this.settings.pageSetup.margins.top.toString(),
-			marginBottom: this.settings.pageSetup.margins.bottom.toString(),
-			marginLeft: this.settings.pageSetup.margins.left.toString(),
-			marginRight: this.settings.pageSetup.margins.right.toString(),
-			// Typography - use NEW settings structure (same as modal)
-			bodyFont: this.settings.typography.fonts.body,
-			headingFont: this.settings.typography.fonts.heading,
-			monospaceFont: this.settings.typography.fonts.monospace,
-			bodyFontSize: this.settings.typography.fontSizes.body
-		},
-		openAfterExport: this.settings.behavior.openAfterExport,
-		preserveFolderStructure: this.settings.behavior.preserveFolderStructure
-	};
-	
-	await this.exportFileWithConfig(file, config);
-}
+		return this.exportOrchestrator.exportFile(file);
+	}
 
 	/**
-	 * Export multiple files with default configuration
+	 * Export multiple files with default configuration (delegated to ExportOrchestrator)  
 	 */
 	async exportFiles(files: TFile[]): Promise<void> {
-		await this.processBatchExport(
-			files,
-			`Exporting ${files.length} files to PDF...`,
-			(file: TFile) => this.exportFile(file)
-		);
+		return this.exportOrchestrator.exportFiles(files);
 	}
 	
-	/**
-	 * Export a file with specific configuration
-	 */
-	private async exportFileWithConfig(file: TFile, config: ExportConfig): Promise<void> {
-		const vaultPath = (this.app.vault.adapter as any).basePath;
-		const pluginDir = path.join(vaultPath, this.manifest.dir!);
-		
-		// Create controller for this export (allows cancellation)
-		this.currentExportController = new AbortController();
-		
-		try {
-			// Create temp directory for conversion
-			const tempManager = new TempDirectoryManager({ vaultPath: vaultPath, configDir: this.app.vault.configDir });
-			const tempDir = tempManager.ensureTempDir('pandoc');
-			
-			// Load file content
-			const content = await this.app.vault.read(file);
-			
-			// Create progress notice with cancel button
-			const progressNotice = new Notice('', 0);
-			const cancelButton = progressNotice.noticeEl.createEl('button', {
-				text: 'Cancel',
-				cls: 'mod-warning'
-			});
-			cancelButton.addEventListener('click', () => this.cancelExport());
-			progressNotice.setMessage('Preprocessing markdown content...');
-			
-			// Preprocess markdown
-			const preprocessor = new MarkdownPreprocessor({
-				vaultPath: vaultPath,
-				options: {
-					includeMetadata: true,
-					preserveFrontmatter: config.printFrontmatter ?? this.settings.behavior.printFrontmatter,
-					baseUrl: undefined,
-					printFrontmatter: config.printFrontmatter ?? this.settings.behavior.printFrontmatter
-				},
-				wikilinkConfig: {
-					format: 'md',
-					extension: '.md'
-				},
-				noteTitle: file.basename
-			});
-			
-			const processedResult = await preprocessor.process(content);
-			
-			if (processedResult.errors.length > 0) {
-				console.warn('Preprocessing errors:', processedResult.errors);
-			}
-			if (processedResult.warnings.length > 0) {
-				console.warn('Preprocessing warnings:', processedResult.warnings);
-			}
-			
-			// Process PDF embeds if any were found
-			if (processedResult.metadata.pdfEmbeds && processedResult.metadata.pdfEmbeds.length > 0) {
-				const embedPdfFiles = config.embedPdfFiles ?? this.settings.behavior.embedPdfFiles;
-				await this.processPdfEmbeds(processedResult, vaultPath, tempDir, file, embedPdfFiles);
-			}
-			
-			// Process image embeds if any were found
-			if (processedResult.metadata.imageEmbeds && processedResult.metadata.imageEmbeds.length > 0) {
-				await this.processImageEmbeds(processedResult, vaultPath, tempDir, file);
-			}
-			
-			// Process file embeds if any were found
-			if (processedResult.metadata.fileEmbeds && processedResult.metadata.fileEmbeds.length > 0) {
-				const embedAllFiles = config.embedAllFiles ?? this.settings.behavior.embedAllFiles;
-				await this.processFileEmbeds(processedResult, vaultPath, tempDir, file, embedAllFiles);
-			}
-			
-			// Prepare output path
-			const outputPath = await this.prepareOutputPath(file, config.outputFolder || this.settings.outputFolder);
-			
-			// Get full template path
-			const templatePath = config.template ? 
-				this.templateManager.getTemplatePath(config.template) : 
-				this.templateManager.getTemplatePath('default.typ');
-			
-			// Convert to PDF using the preprocessed content
-			const templateVariables = {
-				...(config.templateVariables || {}),
-				// Add format from config if specified (takes priority over settings default)
-				...(config.format && { export_format: config.format })
-			};
-			
-			const result = await this.converter.convertMarkdownToPDF(
-				processedResult.content,  // Use preprocessed content instead of raw content
-				outputPath,
-				{
-					template: templatePath,
-					variables: templateVariables,
-					pluginDir: pluginDir,
-					vaultBasePath: vaultPath
-				},
-				(message: string, progress?: number) => {
-					progressNotice.setMessage(`${message}${progress ? ` (${Math.round(progress)}%)` : ''}`);
-				}
-			);
-			
-			// Hide progress notice
-			progressNotice.hide();
-			
-			if (result.success) {
-				new Notice(`PDF exported successfully to ${result.outputPath}`);
-				
-				// Open PDF if configured
-				if (this.settings.behavior.openAfterExport) {
-					this.openPDF(result.outputPath!);
-				}
-			} else {
-				new Notice(`Export failed: ${result.error}`);
-			}
-		} catch (error) {
-			ExportErrorHandler.handleSingleExportError(error);
-		} finally {
-			this.currentExportController = null;
-			
-			// Clean up temporary directories
-			try {
-				const cleanupManager = TempDirectoryManager.create(vaultPath, this.app.vault.configDir);
-				cleanupManager.cleanupAllTempDirs();
-			} catch (cleanupError) {
-				console.warn('Export: Failed to clean up temporary directories:', cleanupError);
-			}
-		}
-	}
-
-	/**
-	 * Export multiple files with specific configuration
-	 */
-	private async exportFilesWithConfig(files: TFile[], config: ExportConfig): Promise<void> {
-		await this.processBatchExport(
-			files,
-			`Exporting ${files.length} files with custom configuration...`,
-			(file: TFile) => this.exportFileWithConfig(file, config)
-		);
-	}
-
-	/**
-	 * Common batch processing logic for exporting multiple files
-	 */
-	private async processBatchExport(
-		files: TFile[], 
-		progressMessage: string, 
-		exportFunction: (file: TFile) => Promise<void>
-	): Promise<void> {
-		if (files.length === 0) {
-			new Notice('No files to export');
-			return;
-		}
-
-		ExportErrorHandler.showProgressNotice(progressMessage);
-
-		const { recordSuccess, recordError, getResult } = ExportErrorHandler.createBatchTracker();
-
-		for (const file of files) {
-			try {
-				await exportFunction(file);
-				recordSuccess();
-			} catch (error) {
-				recordError(file.name, error);
-			}
-		}
-
-		// Show final result
-		ExportErrorHandler.handleBatchResult(getResult());
-	}
-	
-	/**
-	 * Cancel the current export
-	 */
-	private cancelExport(): void {
-		if (this.currentExportController) {
-			this.currentExportController.abort();
-			this.currentExportController = null;
-			ExportErrorHandler.showCancellationNotice();
-		}
-	}
-
-	
-	/**
-	 * Export an entire folder to PDF
-	 */
-	private async handleFolderExport(folder: TFolder): Promise<void> {
-		// Get all markdown files in the folder
-		const markdownFiles = folder.children.filter(this.isMarkdownFile);
-		
-		if (markdownFiles.length === 0) {
-			new Notice('No markdown files found in this folder');
-			return;
-		}
-		
-		ExportErrorHandler.showProgressNotice(`Exporting ${markdownFiles.length} files from ${folder.name}...`);
-		
-		const { recordSuccess, recordError, getResult } = ExportErrorHandler.createBatchTracker();
-		
-		for (const file of markdownFiles) {
-			try {
-				await this.exportFile(file);
-				recordSuccess();
-			} catch (error) {
-				recordError(file.name, error);
-			}
-		}
-		
-		ExportErrorHandler.handleBatchResult(getResult());
-	}
 	
 	/**
 	 * Show dependency status modal
@@ -883,7 +655,7 @@ ${dependencyResult.allAvailable
 		return null;
 	}
 
-	private async processPdfEmbeds(processedResult: any, vaultBasePath: string, tempDir: string, currentFile?: TFile, embedPdfFiles: boolean = true): Promise<void> {
+	async processPdfEmbeds(processedResult: any, vaultBasePath: string, tempDir: string, currentFile?: TFile, embedPdfFiles: boolean = true): Promise<void> {
 		const { PdfToImageConverter } = await import('./src/converters/PdfToImageConverter');
 		const converter = PdfToImageConverter.getInstance(this);
 		const pathModule = require('path');
@@ -974,7 +746,7 @@ ${dependencyResult.allAvailable
 	/**
 	 * Process image embeds - ensure images are accessible for Typst
 	 */
-	private async processImageEmbeds(processedResult: any, vaultBasePath: string, tempDir: string, currentFile?: TFile): Promise<void> {
+	async processImageEmbeds(processedResult: any, vaultBasePath: string, tempDir: string, currentFile?: TFile): Promise<void> {
 		const pathModule = require('path');
 		const fs = require('fs');
 		
@@ -1046,7 +818,7 @@ ${dependencyResult.allAvailable
 	/**
 	 * Process file embeds - Convert to attachments using Typst's pdf.embed
 	 */
-	private async processFileEmbeds(processedResult: any, vaultBasePath: string, tempDir: string, currentFile?: TFile, embedAllFiles: boolean = true): Promise<void> {
+	async processFileEmbeds(processedResult: any, vaultBasePath: string, tempDir: string, currentFile?: TFile, embedAllFiles: boolean = true): Promise<void> {
 		const pathModule = require('path');
 		const fs = require('fs');
 		
@@ -1105,7 +877,7 @@ ${dependencyResult.allAvailable
 	/**
 	 * Prepare the output path for a file
 	 */
-	private async prepareOutputPath(file: TFile, outputFolder: string): Promise<string> {
+	async prepareOutputPath(file: TFile, outputFolder: string): Promise<string> {
 		// Validate output folder for security
 		if (!SecurityUtils.validateOutputPath(outputFolder)) {
 			throw new Error(`Invalid output folder path: ${outputFolder}. Path contains invalid characters or traversal attempts.`);
@@ -1156,7 +928,7 @@ ${dependencyResult.allAvailable
 	/**
 	 * Open a PDF file in the default viewer
 	 */
-	private openPDF(pdfPath: string): void {
+	openPDF(pdfPath: string): void {
 		const { shell } = require('electron');
 		shell.openPath(pdfPath);
 	}
