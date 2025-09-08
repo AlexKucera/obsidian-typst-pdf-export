@@ -5,6 +5,23 @@ All notable changes to the Obsidian Typst PDF Export plugin will be documented i
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.1.0]
+
+### Added
+- **Generic File Embedding**: Added support for embedding any file type as attachments in the output PDF
+- **Comprehensive Dependency Discovery**: Enhanced dependency checker to automatically find executables in common installation locations including Homebrew, Cargo, npm-global, and system directories
+- **Smart Path Resolution**: Added intelligent path resolution that handles both full paths and bare executable names with fallback to `which` command
+
+### Fixed
+- **ImageMagick Compatibility**: Updated to use `magick` command instead of deprecated `convert` command for ImageMagick v7 compatibility
+- **PDF Conversion PATH Issues**: Fixed pdf2img execution failures by ensuring Node.js paths are included in the execution environment
+- **Dependency Checker Robustness**: Improved executable discovery to work with user-configured additional paths and system installations
+- **Obsidian Plugin Store Compatibility**: Addressed feedback from Obsidian Review Bot for plugin submission requirements
+
+### Changed
+- **Default ImageMagick Command**: Changed from `convert` to `magick` in default settings and UI labels
+- **Path Environment Handling**: Enhanced PATH augmentation to include comprehensive system and package manager locations
+
 ## [1.0.1]
 
 ### Fixed
