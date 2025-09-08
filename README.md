@@ -28,6 +28,7 @@ Export Obsidian notes to PDF using the Typst typesetting system. Supports custom
 - **🎨 Multiple Templates**: Choose from built-in templates (default, modern, article, report) or create custom ones
 - **📁 Batch Export**: Export entire folders of notes with a single click
 - **🖼️ Media Support**: Smart handling of embedded images and PDFs
+- **📎 File Embedding**: Embed any file type as attachments in the output PDF
 - **⚡ Real-time Progress**: Visual progress tracking with cancellation support
 - **🔧 Advanced Configuration**: Comprehensive export options including typography, layout, and behavior settings
 - **🔍 Font Discovery**: Automatic system font detection and caching

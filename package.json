@@ -1,6 +1,6 @@
 {
 	"name": "obsidian-typst-pdf-export",
-	"version": "1.0.1",
+	"version": "1.1.0",
 	"description": "Exports a note or collection of notes to a pretty Typst PDF.",
 	"main": "main.js",
 	"scripts": {
