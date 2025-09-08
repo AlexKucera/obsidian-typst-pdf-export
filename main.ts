@@ -35,15 +35,17 @@ import { TemplateManager } from './src/templates/TemplateManager';
 import { EmbeddedTemplateManager } from './src/templates/embeddedTemplates';
 import { FolderSuggest } from './src/ui/components/FolderSuggest';
 import { SUPPORTED_PAPER_SIZES } from './src/utils/paperSizeMapper';
+import { PluginLifecycle } from './src/plugin/PluginLifecycle';
 import * as path from 'path';
 import * as fs from 'fs';
 
 export class obsidianTypstPDFExport extends Plugin {
 	settings: obsidianTypstPDFExportSettings;
-	private converter: PandocTypstConverter;
+	converter: PandocTypstConverter;
 	templateManager: TemplateManager;
-	private embeddedTemplateManager: EmbeddedTemplateManager;
-	private currentExportController: AbortController | null = null;
+	embeddedTemplateManager: EmbeddedTemplateManager;
+	currentExportController: AbortController | null = null;
+	private lifecycle: PluginLifecycle;
 
 	// Type predicate to filter for markdown TFiles
 	private isMarkdownFile(file: TAbstractFile): file is TFile {
@@ -51,31 +53,11 @@ export class obsidianTypstPDFExport extends Plugin {
 	}
 	
 	async onload() {
-		await this.loadSettings();
+		// Initialize lifecycle manager
+		this.lifecycle = new PluginLifecycle(this);
 		
-		// Initialize embedded template manager
-		const vaultPath = (this.app.vault.adapter as any).basePath;
-		const pluginDir = path.join(vaultPath, this.manifest.dir!);
-		this.embeddedTemplateManager = new EmbeddedTemplateManager(pluginDir);
-		
-		// Extract any missing templates from embedded data
-		try {
-			const extractionResult = this.embeddedTemplateManager.extractAllMissingTemplates();
-			if (extractionResult.failed.length > 0) {
-				console.warn(`Failed to extract ${extractionResult.failed.length} templates:`, extractionResult.failed);
-				new Notice(`Warning: Failed to extract some templates. Plugin may not work correctly.`);
-			}
-		} catch (error) {
-			console.error('Error during template extraction:', error);
-			new Notice(`Error extracting templates: ${error.message}`);
-		}
-		
-		// Initialize components with executable paths from settings
-		this.converter = new PandocTypstConverter(this, {
-			pandocPath: this.settings.pandocPath,
-			typstPath: this.settings.typstPath
-		});
-		this.templateManager = new TemplateManager(this);
+		// Initialize core plugin functionality
+		await this.lifecycle.initialize();
 		
 		// Register custom icon
 		addIcon('typst-pdf-export', `<svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" xml:space="preserve" style="fill-rule:evenodd;clip-rule:evenodd;stroke-linejoin:round;stroke-miterlimit:2">
@@ -96,15 +78,6 @@ export class obsidianTypstPDFExport extends Plugin {
 		
 		// Add settings tab
 		this.addSettingTab(new ObsidianTypstPDFExportSettingTab(this.app, this));
-		
-		// Clean up any leftover temp directories from previous sessions
-		this.cleanupStartupTempDirectories();
-		
-		// Check dependencies on startup (async, don't await)
-		this.checkDependenciesAsync();
-		
-		// Cache available fonts (async, don't await)
-		this.cacheAvailableFonts();
 	}
 
 	/**
@@ -146,7 +119,7 @@ export class obsidianTypstPDFExport extends Plugin {
 	/**
 	 * Cache available fonts from typst to a file for quick access
 	 */
-	private async cacheAvailableFonts(): Promise<void> {
+	async cacheAvailableFonts(): Promise<void> {
 	try {
 		const { spawn } = require('child_process');
 		
@@ -741,7 +714,7 @@ ${dependencyResult.allAvailable
 		new Notice(message, 12000); // Show for 12 seconds (longer due to more content)
 	}
 
-	private async checkDependenciesAsync(): Promise<void> {
+	async checkDependenciesAsync(): Promise<void> {
 		// Check dependencies silently on startup
 		try {
 			const missingDeps = DependencyChecker.checkDependenciesSync(
@@ -1324,38 +1297,10 @@ ${dependencyResult.allAvailable
 		}
 	}
 	
-	/**
-	 * Clean up leftover temp directories from previous sessions
-	 */
-	private cleanupStartupTempDirectories(): void {
-		try {
-			const vaultPath = (this.app.vault.adapter as any).basePath;
-			const cleanupManager = TempDirectoryManager.create(vaultPath, this.app.vault.configDir);
-			const result = cleanupManager.cleanupAllTempDirs();
-			
-			if (this.settings.behavior.debugMode) {
-			}
-		} catch (error) {
-			console.warn('Export: Startup temp directory cleanup failed (non-critical):', error);
-			// Don't throw - this shouldn't prevent plugin from loading
-		}
-	}
 	
 	onunload() {
-		// Cancel any ongoing exports
-		if (this.currentExportController) {
-			this.currentExportController.abort();
-		}
-		
-		// Clean up temp directories on plugin unload
-		try {
-			const vaultPath = (this.app.vault.adapter as any).basePath;
-			const cleanupManager = TempDirectoryManager.create(vaultPath, this.app.vault.configDir);
-			cleanupManager.cleanupAllTempDirs();
-		} catch (error) {
-			console.warn('Export: Failed to clean up temp directories during unload:', error);
-		}
-		
+		// Use lifecycle manager for cleanup
+		this.lifecycle.cleanup();
 	}
 }
 
