@@ -180,11 +180,21 @@ export class PdfToImageConverter {
 				const additionalPaths = this.plugin?.settings?.executablePaths?.additionalPaths || 
 					['/opt/homebrew/bin', '/usr/local/bin', '/usr/bin'];
 				
+				// Ensure Node.js paths are included for pdf2img execution
+				const nodePaths = [
+					'/usr/local/bin',     // Common Node.js installation
+					'/opt/homebrew/bin',  // Homebrew on macOS
+					'/usr/bin',           // System Node.js
+					'/usr/local/node/bin' // Alternative Node.js location
+				];
+				
 				const env = {
 					...process.env,
-					PATH: process.env.PATH + (additionalPaths.length > 0 
-						? ':' + additionalPaths.join(':')
-						: '')
+					PATH: [
+						process.env.PATH,
+						...nodePaths,
+						...additionalPaths
+					].filter(Boolean).join(':')
 				};
 				
 				const result = await execAsync(cliCommand, { 
@@ -263,7 +273,6 @@ export class PdfToImageConverter {
 					
 					// Use ImageMagick to convert PNG to JPEG
 					const convertProcess = spawn('magick', [
-						'convert',
 						actualOutputPath,
 						'-quality', opts.quality.toString(),
 						finalOutputPath

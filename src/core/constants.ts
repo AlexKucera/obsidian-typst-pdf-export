@@ -49,7 +49,7 @@ export const DEPENDENCY_CONSTANTS = {
 	DEFAULT_EXECUTABLES: {
 		pandoc: 'pandoc',
 		typst: 'typst',
-		imagemagick: 'convert'
+		imagemagick: 'magick'
 	},
 	
 	/**

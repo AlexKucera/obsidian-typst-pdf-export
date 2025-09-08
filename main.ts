@@ -1437,10 +1437,10 @@ class ObsidianTypstPDFExportSettingTab extends PluginSettingTab {
 				}));
 		
 		new Setting(containerEl)
-			.setName('ImageMagick convert path')
-			.setDesc('Path to ImageMagick convert executable (leave empty to use system PATH)')
+			.setName('ImageMagick path')
+			.setDesc('Path to ImageMagick executable (leave empty to use system PATH)')
 			.addText(text => text
-				.setPlaceholder('convert')
+				.setPlaceholder('magick')
 				.setValue(this.plugin.settings.executablePaths.imagemagickPath)
 				.onChange(async (value) => {
 					if (!SecurityUtils.validateExecutablePath(value)) {

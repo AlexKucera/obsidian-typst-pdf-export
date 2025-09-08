@@ -19,7 +19,7 @@ export interface obsidianTypstPDFExportSettings {
 	
 	/** Executable paths configuration */
 	executablePaths: {
-		/** Path to ImageMagick convert command (optional, uses PATH if not specified) */
+		/** Path to ImageMagick command (optional, uses PATH if not specified) */
 		imagemagickPath: string;
 		/** Additional paths to append to PATH environment variable */
 		additionalPaths: string[];
