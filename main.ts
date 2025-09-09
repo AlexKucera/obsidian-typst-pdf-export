@@ -24,16 +24,12 @@ import { obsidianTypstPDFExportSettings, DEFAULT_SETTINGS, ExportFormat } from '
 import { FALLBACK_FONTS, PLUGIN_DIRS } from './src/core/constants';
 import { DependencyChecker } from './src/core/DependencyChecker';
 import { SecurityUtils } from './src/core/SecurityUtils';
-import { ModalSettingsHelper } from './src/core/ModalSettingsHelper';
 import { ExportErrorHandler } from './src/core/ExportErrorHandler';
 import { TempDirectoryManager } from './src/core/TempDirectoryManager';
 import { PandocTypstConverter } from './src/converters/PandocTypstConverter';
 import { MarkdownPreprocessor } from './src/converters/MarkdownPreprocessor';
-import { ExportConfigModal } from './src/ui/modal/ExportConfigModal';
-import { ExportConfig, ExportConfigModalSettings } from './src/ui/modal/modalTypes';
 import { TemplateManager } from './src/templates/TemplateManager';
 import { EmbeddedTemplateManager } from './src/templates/embeddedTemplates';
-import { FolderSuggest } from './src/ui/components/FolderSuggest';
 import { SUPPORTED_PAPER_SIZES } from './src/utils/paperSizeMapper';
 import { PluginLifecycle } from './src/plugin/PluginLifecycle';
 import { CommandRegistry } from './src/plugin/CommandRegistry';
@@ -128,74 +124,17 @@ export class obsidianTypstPDFExport extends Plugin {
 	}
 	
 	/**
-	 * Show the export configuration modal
+	 * Show the export configuration modal (delegated to ExportOrchestrator)
 	 */
 	async showExportModal(view: MarkdownView): Promise<void> {
-	const file = view.file;
-	if (!file) {
-		new Notice('No active file to export');
-		return;
+		return this.exportOrchestrator.showExportModal(view);
 	}
-	
-	// Get available templates first
-	const availableTemplates = await this.templateManager.getAvailableTemplates();
-	
-	// Prepare modal settings using helper
-	const modalSettings = ModalSettingsHelper.prepareForSingleFile(
-		file, 
-		availableTemplates, 
-		this.settings
-	);
-	
-	// Show modal - ModalState will handle localStorage hierarchy automatically
-	const modal = new ExportConfigModal(
-		this.app,
-		this,
-		modalSettings,
-		async (config: ExportConfig) => {
-			await this.exportOrchestrator.exportFileWithConfig(file, config);
-		},
-		() => {
-			this.exportOrchestrator.cancelExport();
-		}
-	);
-	
-	modal.open();
-}
 
 	/**
-	 * Show the export configuration modal for multiple files
+	 * Show the export configuration modal for multiple files (delegated to ExportOrchestrator)
 	 */
 	async showExportModalForFiles(files: TFile[]): Promise<void> {
-		if (files.length === 0) {
-			new Notice('No files to export');
-			return;
-		}
-
-		// Get available templates first
-		const availableTemplates = await this.templateManager.getAvailableTemplates();
-		
-		// Prepare modal settings using helper
-		const modalSettings = ModalSettingsHelper.prepareForMultiFile(
-			files, 
-			availableTemplates, 
-			this.settings
-		);
-		
-		// Show modal - ModalState will handle localStorage hierarchy automatically
-		const modal = new ExportConfigModal(
-			this.app,
-			this,
-			modalSettings,
-			async (config: ExportConfig) => {
-				await this.exportOrchestrator.exportFilesWithConfig(files, config);
-			},
-			() => {
-				this.exportOrchestrator.cancelExport();
-			}
-		);
-		
-		modal.open();
+		return this.exportOrchestrator.showExportModalForFiles(files);
 	}
 	
 	/**

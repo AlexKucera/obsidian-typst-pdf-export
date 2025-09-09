@@ -3,9 +3,11 @@
  * Handles the coordination and execution of all export workflows
  */
 
-import { TFile, TFolder, Notice } from 'obsidian';
+import { TFile, TFolder, Notice, MarkdownView } from 'obsidian';
 import type { obsidianTypstPDFExport } from '../../main';
 import { ExportConfig } from '../ui/modal/modalTypes';
+import { ExportConfigModal } from '../ui/modal/ExportConfigModal';
+import { ModalSettingsHelper } from '../core/ModalSettingsHelper';
 import { MarkdownPreprocessor } from '../converters/MarkdownPreprocessor';
 import { TempDirectoryManager } from '../core/TempDirectoryManager';
 import { ExportErrorHandler } from '../core/ExportErrorHandler';
@@ -53,6 +55,77 @@ export class ExportOrchestrator {
 			`Exporting ${files.length} files to PDF...`,
 			(file: TFile) => this.exportFile(file)
 		);
+	}
+	
+	/**
+	 * Show the export configuration modal
+	 */
+	async showExportModal(view: MarkdownView): Promise<void> {
+		const file = view.file;
+		if (!file) {
+			new Notice('No active file to export');
+			return;
+		}
+		
+		// Get available templates first
+		const availableTemplates = await this.plugin.templateManager.getAvailableTemplates();
+		
+		// Prepare modal settings using helper
+		const modalSettings = ModalSettingsHelper.prepareForSingleFile(
+			file, 
+			availableTemplates, 
+			this.plugin.settings
+		);
+		
+		// Show modal - ModalState will handle localStorage hierarchy automatically
+		const modal = new ExportConfigModal(
+			this.plugin.app,
+			this.plugin,
+			modalSettings,
+			async (config: ExportConfig) => {
+				await this.exportFileWithConfig(file, config);
+			},
+			() => {
+				this.cancelExport();
+			}
+		);
+		
+		modal.open();
+	}
+
+	/**
+	 * Show the export configuration modal for multiple files
+	 */
+	async showExportModalForFiles(files: TFile[]): Promise<void> {
+		if (files.length === 0) {
+			new Notice('No files to export');
+			return;
+		}
+
+		// Get available templates first
+		const availableTemplates = await this.plugin.templateManager.getAvailableTemplates();
+		
+		// Prepare modal settings using helper
+		const modalSettings = ModalSettingsHelper.prepareForMultiFile(
+			files, 
+			availableTemplates, 
+			this.plugin.settings
+		);
+		
+		// Show modal - ModalState will handle localStorage hierarchy automatically
+		const modal = new ExportConfigModal(
+			this.plugin.app,
+			this.plugin,
+			modalSettings,
+			async (config: ExportConfig) => {
+				await this.exportFilesWithConfig(files, config);
+			},
+			() => {
+				this.cancelExport();
+			}
+		);
+		
+		modal.open();
 	}
 	
 	/**
