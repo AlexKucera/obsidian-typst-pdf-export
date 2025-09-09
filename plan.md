@@ -122,7 +122,7 @@ The main.ts file is the plugin entry point and most critical to get right.
 
 **STOP** → Verify build → Test wikilink conversion works
 
-### Step 2.3: Create EmbedProcessor.ts - IN PROGRESS
+### Step 2.3: Create EmbedProcessor.ts - DONE
 **Location:** `src/converters/preprocessors/EmbedProcessor.ts` (~250 lines)
 **Extract:**
 - `parseEmbeds()` method
@@ -134,7 +134,7 @@ The main.ts file is the plugin entry point and most critical to get right.
 
 **STOP** → Verify build → Test all embed types work
 
-### Step 2.4: Create CalloutProcessor.ts
+### Step 2.4: Create CalloutProcessor.ts - DONE
 **Location:** `src/converters/preprocessors/CalloutProcessor.ts` (~200 lines)
 **Extract:**
 - `parseCallouts()` method
@@ -144,7 +144,7 @@ The main.ts file is the plugin entry point and most critical to get right.
 
 **STOP** → Verify build → Test callouts and email blocks work
 
-### Step 2.5: Create MetadataExtractor.ts
+### Step 2.5: Create MetadataExtractor.ts - DONE
 **Location:** `src/converters/preprocessors/MetadataExtractor.ts` (~150 lines)
 **Extract:**
 - `extractTags()` method
@@ -154,7 +154,7 @@ The main.ts file is the plugin entry point and most critical to get right.
 
 **STOP** → Verify build → Test metadata extraction works
 
-### Step 2.6: Update MarkdownPreprocessor.ts
+### Step 2.6: Update MarkdownPreprocessor.ts - IN PROGRESS
 **Final size:** ~200 lines
 **Keep:**
 - Main `preprocess()` method

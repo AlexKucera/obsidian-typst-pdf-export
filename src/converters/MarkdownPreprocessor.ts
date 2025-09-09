@@ -7,6 +7,7 @@ import { FrontmatterProcessor, FrontmatterProcessorConfig } from './preprocessor
 import { WikilinkProcessor, WikilinkConfig, WikilinkProcessorConfig } from './preprocessors/WikilinkProcessor';
 import { EmbedProcessor, EmbedProcessorConfig } from './preprocessors/EmbedProcessor';
 import { CalloutProcessor } from './preprocessors/CalloutProcessor';
+import { MetadataExtractor } from './preprocessors/MetadataExtractor';
 
 export interface PreprocessorOptions {
 	/** Include metadata extraction in processing */
@@ -135,7 +136,7 @@ export class MarkdownPreprocessor {
 			
 			// Step 2: Extract additional tags from content (combine with frontmatter tags)
 			if (this.options.includeMetadata) {
-				const contentTags = this.extractTags(result.content);
+				const contentTags = MetadataExtractor.extractTags(result.content);
 				
 				// Merge content tags with frontmatter tags, avoiding duplicates
 				for (const tag of contentTags) {
@@ -161,11 +162,11 @@ export class MarkdownPreprocessor {
 			result.content = this.calloutProcessor.processCallouts(result.content, result);
 			
 			// Step 8: Calculate final metadata
-			result.metadata.wordCount = this.calculateWordCount(result.content);
+			result.metadata.wordCount = MetadataExtractor.calculateWordCount(result.content);
 			
 			// Use title from frontmatter if available, otherwise extract from content
 			if (!result.metadata.title) {
-				result.metadata.title = this.extractTitle(result.content);
+				result.metadata.title = MetadataExtractor.extractTitle(result.content);
 			}
 			
 		} catch (error) {
@@ -175,72 +176,8 @@ export class MarkdownPreprocessor {
 		return result;
 	}
 	
-	/**
-	 * Extract tags from content
-	 */
-	private extractTags(content: string): string[] {
-		const tags: string[] = [];
-		
-		// Use more sophisticated regex to avoid false positives
-		// This pattern matches hashtags that are:
-		// 1. At the start of a line (with optional whitespace)
-		// 2. After whitespace
-		// 3. Not part of headings (# ## ### etc.)
-		// 4. Not inside code blocks or inline code
-		const enhancedTagPattern = /(?:^|\s)#([a-zA-Z][a-zA-Z0-9_/-]*[a-zA-Z0-9_]|[a-zA-Z][a-zA-Z0-9_]*)/gm;
-		
-		// Remove code blocks to avoid extracting tags from them
-		const contentWithoutCodeBlocks = content
-			.replace(/```[\s\S]*?```/g, '') // Remove fenced code blocks
-			.replace(/`[^`\n]*`/g, ''); // Remove inline code
-		
-		let match;
-		while ((match = enhancedTagPattern.exec(contentWithoutCodeBlocks)) !== null) {
-			const tag = match[1]; // Get the tag without the # prefix
-			
-			// Additional validation to ensure it's a proper tag
-			if (tag && tag.length > 0 && !tags.includes(tag)) {
-				// Skip if it looks like a heading (check if preceded by multiple #)
-				const fullMatch = match[0];
-				const beforeTag = contentWithoutCodeBlocks.substring(Math.max(0, match.index - 5), match.index);
-				
-				// Skip if this appears to be part of a markdown heading
-				if (!beforeTag.includes('#')) {
-					tags.push(tag);
-				}
-			}
-		}
-		
-		enhancedTagPattern.lastIndex = 0; // Reset regex state
-		return tags;
-	}
 
-	/**
-	 * Calculate word count from processed content
-	 */
-	private calculateWordCount(content: string): number {
-		// Remove markdown syntax and count words
-		const plainText = content
-			.replace(/[#*_`~\[\]()]/g, '') // Remove markdown formatting
-			.replace(/\s+/g, ' ') // Normalize whitespace
-			.trim();
-			
-		return plainText ? plainText.split(/\s+/).length : 0;
-	}
 	
-	/**
-	 * Extract title from content (first heading or inferred from filename)
-	 */
-	private extractTitle(content: string): string | undefined {
-		// Look for first heading
-		const headingMatch = content.match(/^#+\s+(.+)$/m);
-		if (headingMatch) {
-			return headingMatch[1].trim();
-		}
-		
-		// Could be enhanced to use filename or frontmatter title
-		return undefined;
-	}
 	
 	/**
 	 * Update configuration
