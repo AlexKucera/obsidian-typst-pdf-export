@@ -154,8 +154,8 @@ The main.ts file is the plugin entry point and most critical to get right.
 
 **STOP** → Verify build → Test metadata extraction works
 
-### Step 2.6: Update MarkdownPreprocessor.ts - IN PROGRESS
-**Final size:** ~200 lines
+### Step 2.6: Update MarkdownPreprocessor.ts - DONE
+**Final size:** 204 lines (target ~200 lines)
 **Keep:**
 - Main `preprocess()` method
 - Orchestration logic

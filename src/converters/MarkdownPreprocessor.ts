@@ -80,10 +80,6 @@ export class MarkdownPreprocessor {
 	private embedProcessor: EmbedProcessor;
 	private calloutProcessor: CalloutProcessor;
 	
-	// Regex patterns for Obsidian syntax
-	private readonly WIKILINK_PATTERN = /\[\[([^\|\]]+)(?:\|([^\]]+))?\]\]/g;
-	private readonly TAG_PATTERN = /#(?:[^\s#]+)/g;
-	
 	constructor(config: MarkdownPreprocessorConfig) {
 		this.vaultPath = config.vaultPath;
 		this.options = config.options;
@@ -130,20 +126,19 @@ export class MarkdownPreprocessor {
 			// Step 1: Extract and process frontmatter first (always process for metadata extraction)
 			result.content = this.frontmatterProcessor.processFrontmatter(result.content, result);
 			
-			
-			// Step 3: Convert email blocks to Typst format
+			// Step 2: Convert email blocks to Typst format
 			result.content = this.calloutProcessor.processEmailBlocks(result.content, result);
 			
-			// Step 4: Filter out unnecessary links (Open: links and Mail.app links)
+			// Step 3: Filter out unnecessary links (Open: links and Mail.app links)
 			result.content = this.calloutProcessor.filterUnnecessaryLinks(result.content, result);
 			
-			// Step 5: Convert embeds FIRST (before wikilinks to avoid .md extension being added)
+			// Step 4: Convert embeds FIRST (before wikilinks to avoid .md extension being added)
 			result.content = this.embedProcessor.processEmbeds(result.content, result);
 			
-			// Step 6: Convert wikilinks (after embeds are processed)
+			// Step 5: Convert wikilinks (after embeds are processed)
 			result.content = this.wikilinkProcessor.processWikilinks(result.content, result);
 			
-			// Step 7: Convert callouts
+			// Step 6: Convert callouts
 			result.content = this.calloutProcessor.processCallouts(result.content, result);
 			
 			// Extract title from content if not available from frontmatter
@@ -157,9 +152,6 @@ export class MarkdownPreprocessor {
 		
 		return result;
 	}
-	
-
-	
 	
 	/**
 	 * Update configuration
