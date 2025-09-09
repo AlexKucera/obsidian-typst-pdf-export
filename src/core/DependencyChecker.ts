@@ -2,7 +2,9 @@
  * Dependency checking utilities for Obsidian Typst PDF Export plugin
  */
 
+import { Notice } from 'obsidian';
 import { DEPENDENCY_CONSTANTS } from './constants';
+import { ExportErrorHandler } from './ExportErrorHandler';
 
 export interface DependencyInfo {
 	name: string;
@@ -316,5 +318,66 @@ export class DependencyChecker {
 		}
 
 		return missingDeps;
+	}
+
+	/**
+	 * Show dependency status modal
+	 */
+	public static async showDependencyStatus(
+		pandocPath?: string,
+		typstPath?: string,
+		imagemagickPath?: string,
+		additionalPaths: string[] = []
+	): Promise<void> {
+		const dependencyResult = await this.checkAllDependencies(
+			pandocPath,
+			typstPath,
+			imagemagickPath,
+			additionalPaths
+		);
+		
+		const formatVersion = (dep: DependencyInfo) => dep.isAvailable ? (dep.version || 'Available') : 'Not found';
+		
+		const message = `Dependency Status:
+Pandoc: ${formatVersion(dependencyResult.pandoc)}
+Typst: ${formatVersion(dependencyResult.typst)}
+ImageMagick: ${formatVersion(dependencyResult.imagemagick)}
+
+${dependencyResult.allAvailable 
+			? 'All dependencies found!' 
+			: `Missing dependencies: ${dependencyResult.missingDependencies.join(', ')}. Please install them and check the paths in settings.`}`;
+		
+		new Notice(message, 12000); // Show for 12 seconds (longer due to more content)
+	}
+
+	/**
+	 * Check dependencies silently on startup and show notice if missing
+	 */
+	public static async checkDependenciesAsync(
+		pandocPath?: string,
+		typstPath?: string,
+		imagemagickPath?: string,
+		additionalPaths: string[] = []
+	): Promise<void> {
+		// Check dependencies silently on startup
+		try {
+			const missingDeps = this.checkDependenciesSync(
+				pandocPath,
+				typstPath,
+				imagemagickPath,
+				additionalPaths
+			);
+			
+			// Only show notice if dependencies are missing
+			if (missingDeps.length > 0) {
+				new Notice(
+					`Typst PDF Export: Missing dependencies: ${missingDeps.join(', ')}. ` +
+					`Run "Check Dependencies" command for details.`,
+					8000
+				);
+			}
+		} catch (error) {
+			ExportErrorHandler.handleDependencyError('Dependencies', error, false);
+		}
 	}
 }

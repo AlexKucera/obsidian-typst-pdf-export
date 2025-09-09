@@ -7,30 +7,20 @@ import {
 	App,
 	addIcon,
 	Plugin,
-	PluginSettingTab,
-	Setting,
 	TFile,
 	TFolder,
 	TAbstractFile,
 	Notice,
 	Menu,
-	MarkdownView,
-	Editor,
-	AbstractInputSuggest,
-	normalizePath
+	MarkdownView
 } from 'obsidian';
 
-import { obsidianTypstPDFExportSettings, DEFAULT_SETTINGS, ExportFormat } from './src/core/settings';
-import { FALLBACK_FONTS, PLUGIN_DIRS } from './src/core/constants';
+import { obsidianTypstPDFExportSettings, DEFAULT_SETTINGS } from './src/core/settings';
 import { DependencyChecker } from './src/core/DependencyChecker';
-import { SecurityUtils } from './src/core/SecurityUtils';
 import { ExportErrorHandler } from './src/core/ExportErrorHandler';
-import { TempDirectoryManager } from './src/core/TempDirectoryManager';
 import { PandocTypstConverter } from './src/converters/PandocTypstConverter';
-import { MarkdownPreprocessor } from './src/converters/MarkdownPreprocessor';
 import { TemplateManager } from './src/templates/TemplateManager';
 import { EmbeddedTemplateManager } from './src/templates/embeddedTemplates';
-import { SUPPORTED_PAPER_SIZES } from './src/utils/paperSizeMapper';
 import { PluginLifecycle } from './src/plugin/PluginLifecycle';
 import { CommandRegistry } from './src/plugin/CommandRegistry';
 import { EventHandlers } from './src/plugin/EventHandlers';
@@ -184,48 +174,21 @@ export class obsidianTypstPDFExport extends Plugin {
 	 * Show dependency status modal
 	 */
 	async showDependencyStatus(): Promise<void> {
-		const dependencyResult = await DependencyChecker.checkAllDependencies(
+		return DependencyChecker.showDependencyStatus(
 			this.settings.pandocPath,
 			this.settings.typstPath,
 			this.settings.executablePaths?.imagemagickPath,
 			this.settings.executablePaths?.additionalPaths || []
 		);
-		
-		const formatVersion = (dep: any) => dep.isAvailable ? (dep.version || 'Available') : 'Not found';
-		
-		const message = `Dependency Status:
-Pandoc: ${formatVersion(dependencyResult.pandoc)}
-Typst: ${formatVersion(dependencyResult.typst)}
-ImageMagick: ${formatVersion(dependencyResult.imagemagick)}
-
-${dependencyResult.allAvailable 
-	? 'All dependencies found!' 
-	: `Missing dependencies: ${dependencyResult.missingDependencies.join(', ')}. Please install them and check the paths in settings.`}`;
-		
-		new Notice(message, 12000); // Show for 12 seconds (longer due to more content)
 	}
 
 	async checkDependenciesAsync(): Promise<void> {
-		// Check dependencies silently on startup
-		try {
-			const missingDeps = DependencyChecker.checkDependenciesSync(
-				this.settings.pandocPath,
-				this.settings.typstPath,
-				this.settings.executablePaths?.imagemagickPath,
-				this.settings.executablePaths?.additionalPaths || []
-			);
-			
-			// Only show notice if dependencies are missing
-			if (missingDeps.length > 0) {
-				new Notice(
-					`Typst PDF Export: Missing dependencies: ${missingDeps.join(', ')}. ` +
-					`Run "Check Dependencies" command for details.`,
-					8000
-				);
-			}
-		} catch (error) {
-			ExportErrorHandler.handleDependencyError('Dependencies', error, false);
-		}
+		return DependencyChecker.checkDependenciesAsync(
+			this.settings.pandocPath,
+			this.settings.typstPath,
+			this.settings.executablePaths?.imagemagickPath,
+			this.settings.executablePaths?.additionalPaths || []
+		);
 	}
 
 	/**
