@@ -591,15 +591,6 @@ export class MarkdownPreprocessor {
 					case 'image':
 						return this.processImageEmbed(cleanPath, sizeOrAlt, result);
 					
-					case 'video':
-						return this.processVideoEmbed(cleanPath, sizeOrAlt, result);
-					
-					case 'audio':
-						return this.processAudioEmbed(cleanPath, sizeOrAlt, result);
-					
-					case 'document':
-						return this.processDocumentEmbed(cleanPath, result);
-					
 					case 'pdf':
 						return this.processPdfEmbed(cleanPath, sizeOrAlt, result);
 					
@@ -607,9 +598,9 @@ export class MarkdownPreprocessor {
 						return this.processFileEmbed(cleanPath, sizeOrAlt, result);
 					
 					default:
-						// Fallback to link reference for unknown types
-						result.warnings.push(`Unknown file type for embed: ${cleanPath}`);
-						return `[${cleanPath}](${cleanPath})`;
+						// This should never happen with the simplified type system
+						result.warnings.push(`Unexpected file type for embed: ${cleanPath}`);
+						return this.processFileEmbed(cleanPath, sizeOrAlt, result);
 				}
 				
 			} catch (error) {
@@ -629,40 +620,16 @@ export class MarkdownPreprocessor {
 	
 	/**
 	 * Determine file type based on extension
+	 * Simplified to 3 types: image (displayed), pdf (embedded with preview), file (embedded)
 	 */
-	private determineFileType(extension: string): 'image' | 'video' | 'audio' | 'document' | 'pdf' | 'file' | 'unknown' {
+	private determineFileType(extension: string): 'image' | 'pdf' | 'file' {
 		const imageExtensions = ['.png', '.jpg', '.jpeg', '.gif', '.svg', '.webp', '.bmp', '.ico', '.tiff'];
-		const videoExtensions = ['.mp4', '.avi', '.mov', '.wmv', '.flv', '.webm', '.mkv', '.m4v'];
-		const audioExtensions = ['.mp3', '.wav', '.ogg', '.m4a', '.flac', '.aac', '.wma'];
-		const documentExtensions = ['.md', '.txt', '.doc', '.docx', '.rtf'];
-		const pdfExtensions = ['.pdf'];
-		
-		// Additional file types that should be embedded
-		const fileExtensions = [
-			// Office documents
-			'.xlsx', '.xls', '.pptx', '.ppt', '.odt', '.ods', '.odp',
-			// Archives and compressed files
-			'.zip', '.rar', '.7z', '.tar', '.gz', '.bz2', '.xz',
-			// Data and configuration files  
-			'.json', '.xml', '.csv', '.yaml', '.yml', '.toml', '.ini', '.cfg',
-			// Code files
-			'.js', '.ts', '.py', '.java', '.cpp', '.c', '.h', '.css', '.html', '.php', '.rb', '.go', '.rs', '.swift',
-			// Database files
-			'.db', '.sqlite', '.sql',
-			// Other common files
-			'.log', '.epub', '.mobi', '.ics', '.vcf'
-		];
 		
 		if (imageExtensions.includes(extension)) return 'image';
-		if (videoExtensions.includes(extension)) return 'video';
-		if (audioExtensions.includes(extension)) return 'audio';
-		if (documentExtensions.includes(extension)) return 'document';
-		if (pdfExtensions.includes(extension)) return 'pdf';
-		if (fileExtensions.includes(extension)) return 'file';
+		if (extension === '.pdf') return 'pdf';
 		
-		// Default to 'file' for unknown extensions instead of 'unknown'
-		// This ensures all file types get embedded unless they're explicitly excluded
-		return extension ? 'file' : 'unknown';
+		// All other file types (including DOCX, videos, audio, etc.) are treated as files to be embedded
+		return 'file';
 	}
 	
 	/**
@@ -697,42 +664,6 @@ export class MarkdownPreprocessor {
 		return marker;
 	}
 	
-	/**
-	 * Process video embeds
-	 */
-	private processVideoEmbed(videoPath: string, options: string | undefined, result: PreprocessingResult): string {
-		const sanitizedPath = this.sanitizeFilePath(videoPath);
-		
-		// For Typst/Pandoc, videos are typically handled as links with descriptive text
-		const fileName = videoPath.substring(videoPath.lastIndexOf('/') + 1);
-		result.warnings.push(`Video embed converted to link: ${videoPath}`);
-		
-		return `[🎥 ${fileName}](${sanitizedPath})`;
-	}
-	
-	/**
-	 * Process audio embeds
-	 */
-	private processAudioEmbed(audioPath: string, options: string | undefined, result: PreprocessingResult): string {
-		const sanitizedPath = this.sanitizeFilePath(audioPath);
-		
-		// For Typst/Pandoc, audio is typically handled as links with descriptive text
-		const fileName = audioPath.substring(audioPath.lastIndexOf('/') + 1);
-		result.warnings.push(`Audio embed converted to link: ${audioPath}`);
-		
-		return `[🎵 ${fileName}](${sanitizedPath})`;
-	}
-	
-	/**
-	 * Process document embeds
-	 */
-	private processDocumentEmbed(docPath: string, result: PreprocessingResult): string {
-		const sanitizedPath = this.sanitizeFilePath(docPath);
-		
-		// For document embeds, create a clear link reference
-		const fileName = docPath.substring(docPath.lastIndexOf('/') + 1);
-		return `[📄 ${fileName}](${sanitizedPath})`;
-	}
 	
 	/**
 	 * Process PDF embeds - Convert to image preview with PDF attachment using Typst's pdf.embed

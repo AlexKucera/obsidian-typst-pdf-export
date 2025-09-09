@@ -19,7 +19,7 @@ Refactoring 6 large files (200-1800 lines) into smaller, focused modules to impr
 5. **PdfToImageConverter.ts** - 444 lines → ~150 lines + 3 modules
 6. **DependencyChecker.ts** - 319 lines → ~170 lines + 2 modules
 
-## PHASE 1: Refactor main.ts (MOST CRITICAL)
+## PHASE 1: Refactor main.ts (MOST CRITICAL)- DONE
 
 The main.ts file is the plugin entry point and most critical to get right.
 
@@ -78,7 +78,7 @@ The main.ts file is the plugin entry point and most critical to get right.
 **STOP** → Verify: `npm run build` passes
 **STOP** → Test: Font detection works in settings
 
-### Step 1.6: Create PathResolver.ts - IN PROGRESS
+### Step 1.6: Create PathResolver.ts - DONE
 **Location:** `src/plugin/PathResolver.ts` (~200 lines)
 **Extract:**
 - `resolveExecutablePath()` method
@@ -89,7 +89,7 @@ The main.ts file is the plugin entry point and most critical to get right.
 **STOP** → Verify: `npm run build` passes
 **STOP** → Test: Pandoc/Typst detection works
 
-### Step 1.7: Update main.ts
+### Step 1.7: Update main.ts- DONE
 **Final size:** ~200 lines
 **Keep:**
 - Plugin class declaration
@@ -99,9 +99,9 @@ The main.ts file is the plugin entry point and most critical to get right.
 
 **STOP** → Full integration test of all functionality
 
-**CHECKPOINT: Complete test of all Phase 1 functionality**
+**CHECKPOINT: Complete test of all Phase 1 functionality** - DONE
 
-## PHASE 2: Refactor MarkdownPreprocessor.ts
+## PHASE 2: Refactor MarkdownPreprocessor.ts - IN PROGRESS
 
 ### Step 2.1: Create FrontmatterProcessor.ts
 **Location:** `src/converters/preprocessors/FrontmatterProcessor.ts` (~200 lines)
