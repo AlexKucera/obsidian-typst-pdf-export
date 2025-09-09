@@ -40,6 +40,7 @@ import { CommandRegistry } from './src/plugin/CommandRegistry';
 import { EventHandlers } from './src/plugin/EventHandlers';
 import { ExportOrchestrator } from './src/plugin/ExportOrchestrator';
 import { FontManager } from './src/plugin/FontManager';
+import { PathResolver } from './src/plugin/PathResolver';
 import * as path from 'path';
 import * as fs from 'fs';
 
@@ -54,6 +55,7 @@ export class obsidianTypstPDFExport extends Plugin {
 	private eventHandlers: EventHandlers;
 	private exportOrchestrator: ExportOrchestrator;
 	fontManager: FontManager;
+	pathResolver: PathResolver;
 
 	// Type predicate to filter for markdown TFiles
 	isMarkdownFile(file: TAbstractFile): file is TFile {
@@ -66,6 +68,9 @@ export class obsidianTypstPDFExport extends Plugin {
 		
 		// Initialize font manager first (needed by PluginLifecycle)
 		this.fontManager = new FontManager(this);
+		
+		// Initialize path resolver
+		this.pathResolver = new PathResolver(this);
 		
 		// Initialize core plugin functionality
 		await this.lifecycle.initialize();
@@ -100,41 +105,6 @@ export class obsidianTypstPDFExport extends Plugin {
 		this.addSettingTab(new ObsidianTypstPDFExportSettingTab(this.app, this));
 	}
 
-	/**
-	 * Resolve an executable path, handling empty settings by falling back to system search
-	 */
-	resolveExecutablePath(userPath: string | undefined, defaultName: string): string {
-		// If user provided a path and it's not empty, use it
-		if (userPath && userPath.trim() !== '') {
-			return userPath;
-		}
-		
-		// Try to find the executable using which command
-		const { spawnSync } = require('child_process');
-		try {
-			const augmentedEnv = {
-				...process.env,
-				PATH: `/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:${process.env.PATH || ''}`
-			};
-			
-			const result = spawnSync('which', [defaultName], {
-				encoding: 'utf8',
-				env: augmentedEnv
-			});
-			
-			if (result.status === 0 && result.stdout) {
-				const foundPath = result.stdout.trim();
-				if (foundPath) {
-					return foundPath;
-				}
-			}
-		} catch {
-			// Ignore errors from which command
-		}
-		
-		// Fall back to the default name (will be found via PATH if available)
-		return defaultName;
-	}
 
 
 	
@@ -248,6 +218,20 @@ export class obsidianTypstPDFExport extends Plugin {
 	 */
 	async getCachedFonts(): Promise<string[]> {
 		return this.fontManager.getCachedFonts();
+	}
+	
+	/**
+	 * Resolve an executable path (delegated to PathResolver)
+	 */
+	resolveExecutablePath(userPath: string | undefined, defaultName: string): string {
+		return this.pathResolver.resolveExecutablePath(userPath, defaultName);
+	}
+	
+	/**
+	 * Prepare the output path for a file (delegated to PathResolver)
+	 */
+	async prepareOutputPath(file: TFile, outputFolder: string): Promise<string> {
+		return this.pathResolver.prepareOutputPath(file, outputFolder);
 	}
 	
 	
@@ -779,56 +763,6 @@ ${dependencyResult.allAvailable
 		processedResult.content = updatedContent;
 	}
 	
-	/**
-	 * Prepare the output path for a file
-	 */
-	async prepareOutputPath(file: TFile, outputFolder: string): Promise<string> {
-		// Validate output folder for security
-		if (!SecurityUtils.validateOutputPath(outputFolder)) {
-			throw new Error(`Invalid output folder path: ${outputFolder}. Path contains invalid characters or traversal attempts.`);
-		}
-		
-		const vaultPath = (this.app.vault.adapter as any).basePath;
-		const outputDir = path.join(vaultPath, outputFolder);
-		
-		// Create output directory if it doesn't exist
-		try {
-			await fs.promises.access(outputDir);
-		} catch {
-			// Directory doesn't exist, create it
-			try {
-				await fs.promises.mkdir(outputDir, { recursive: true });
-			} catch (error) {
-				throw new Error(`Failed to create output directory ${outputDir}: ${error.message}`);
-			}
-		}
-		
-		// Preserve folder structure if configured
-		let relativePath = '';
-		if (this.settings.behavior.preserveFolderStructure) {
-			const folderPath = path.dirname(file.path);
-			if (folderPath !== '.') {
-				relativePath = folderPath;
-				const fullOutputDir = path.join(outputDir, relativePath);
-				try {
-					await fs.promises.access(fullOutputDir);
-				} catch {
-					// Directory doesn't exist, create it
-					try {
-						await fs.promises.mkdir(fullOutputDir, { recursive: true });
-					} catch (error) {
-						throw new Error(`Failed to create nested output directory ${fullOutputDir}: ${error.message}`);
-					}
-				}
-			}
-		}
-		
-		// Generate output filename (just use the note name without timestamp)
-		const baseName = file.basename;
-		const outputFileName = `${baseName}.pdf`;
-		
-		return path.join(outputDir, relativePath, outputFileName);
-	}
 	
 	/**
 	 * Open a PDF file in the default viewer
