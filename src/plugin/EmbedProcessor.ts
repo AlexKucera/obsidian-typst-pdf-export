@@ -222,7 +222,7 @@ export class EmbedProcessor {
 	}
 
 	/**
-	 * Resolve PDF path using multiple strategies
+	 * Resolve PDF path using Obsidian's link resolution API and filesystem fallbacks
 	 * @param sanitizedPath The sanitized path from the embed
 	 * @param vaultBasePath Base path of the vault
 	 * @param currentFile Current file being processed (optional)
@@ -232,11 +232,30 @@ export class EmbedProcessor {
 		// Decode the URL-encoded sanitized path back to normal characters
 		const decodedPath = decodeURIComponent(sanitizedPath);
 		
-		// Try multiple path resolution strategies
+		// Strategy 1: Use Obsidian's link resolution API (primary strategy)
+		if (currentFile) {
+			const resolvedFile = this.plugin.app.metadataCache.getFirstLinkpathDest(
+				decodedPath, 
+				currentFile.path
+			);
+			
+			if (resolvedFile && resolvedFile instanceof TFile) {
+				// Convert to full filesystem path
+				const fullPath = path.resolve(vaultBasePath, resolvedFile.path);
+				try {
+					await fs.promises.access(fullPath);
+					return fullPath;
+				} catch {
+					// File exists in metadata but not on filesystem, continue to fallbacks
+				}
+			}
+		}
+		
+		// Fallback strategies: Try filesystem-based resolution
 		const possiblePaths = [
-			// Strategy 1: Relative to vault root (standard Obsidian behavior)
+			// Strategy 2: Relative to vault root (standard Obsidian behavior)
 			path.resolve(vaultBasePath, decodedPath),
-			// Strategy 2: Relative to current file's directory (for local attachments)
+			// Strategy 3: Relative to current file's directory (for local attachments)
 			currentFile ? path.resolve(vaultBasePath, path.dirname(currentFile.path), decodedPath) : null
 		].filter((p): p is string => p !== null);
 		
@@ -254,19 +273,38 @@ export class EmbedProcessor {
 	}
 
 	/**
-	 * Resolve file path (similar to resolvePdfPath but for generic files)
+	 * Resolve file path using Obsidian's link resolution API and filesystem fallbacks
 	 */
 	private async resolveFilePath(sanitizedPath: string, vaultBasePath: string, currentFile?: TFile): Promise<string | null> {
 		// Decode the URL-encoded sanitized path back to normal characters
 		const decodedPath = decodeURIComponent(sanitizedPath);
 		
-		// Try multiple path resolution strategies
+		// Strategy 1: Use Obsidian's link resolution API (primary strategy)
+		if (currentFile) {
+			const resolvedFile = this.plugin.app.metadataCache.getFirstLinkpathDest(
+				decodedPath, 
+				currentFile.path
+			);
+			
+			if (resolvedFile && resolvedFile instanceof TFile) {
+				// Convert to full filesystem path
+				const fullPath = path.resolve(vaultBasePath, resolvedFile.path);
+				try {
+					await fs.promises.access(fullPath);
+					return fullPath;
+				} catch {
+					// File exists in metadata but not on filesystem, continue to fallbacks
+				}
+			}
+		}
+		
+		// Fallback strategies: Try filesystem-based resolution
 		const possiblePaths = [
-			// Strategy 1: Relative to vault root (standard Obsidian behavior)
+			// Strategy 2: Relative to vault root (standard Obsidian behavior)
 			path.resolve(vaultBasePath, decodedPath),
-			// Strategy 2: Relative to current file's directory (for local attachments)
+			// Strategy 3: Relative to current file's directory (for local attachments)
 			currentFile ? path.resolve(vaultBasePath, path.dirname(currentFile.path), decodedPath) : null,
-			// Strategy 3: Check in attachments folder (common pattern)
+			// Strategy 4: Check in attachments folder (common pattern)
 			path.resolve(vaultBasePath, 'attachments', path.basename(decodedPath))
 		].filter((p): p is string => p !== null);
 		
