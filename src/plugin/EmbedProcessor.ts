@@ -136,27 +136,89 @@ export class EmbedProcessor {
 				if (!fullImagePath) {
 					console.warn(`Export: Image file not found: ${decodedPath}`);
 					// Keep the original marker or replace with placeholder
-					const fallbackOutput = `[⚠️ **Image not found:** ${imageEmbed.alt || imageEmbed.originalPath}]`;
+					const fallbackOutput = `[⚠️ **Image not found:** ${imageEmbed.sizeOrAlt || imageEmbed.originalPath}]`;
 					updatedContent = updatedContent.replace(imageEmbed.marker, fallbackOutput);
 					continue;
 				}
 				
-				// Get relative path from vault base for the image
-				const relativeImagePath = path.relative(vaultBasePath, fullImagePath);
+				// Handle WebP conversion if needed
+				let finalImagePath = fullImagePath;
+				const fileExtension = path.extname(fullImagePath).toLowerCase();
 				
-				// Replace the marker with Markdown image syntax (Pandoc will convert to Typst)
-				const markdownImage = imageEmbed.alt ? 
-					`![${imageEmbed.alt}](${relativeImagePath})` :
-					`![](${relativeImagePath})`;
+				if (fileExtension === '.webp') {
+					// Convert WebP to PNG using ImageMagick
+					const originalImageName = path.basename(fullImagePath);
+					const pngFileName = originalImageName.replace(/\.webp$/i, '.png');
+					const vaultTempImagesDir = path.join(vaultBasePath, this.plugin.manifest.dir!, 'temp-images');
+					await fs.promises.mkdir(vaultTempImagesDir, { recursive: true });
+					
+					const convertedImagePath = path.join(vaultTempImagesDir, pngFileName);
+					
+					console.log(`Export: Converting WebP to PNG: ${originalImageName} -> ${pngFileName}`);
+					
+					const { exec } = require('child_process');
+					const util = require('util');
+					const execAsync = util.promisify(exec);
+					
+					try {
+						// Use PathResolver to get the correct ImageMagick path
+						const { PathResolver } = await import('./PathResolver');
+						const pathResolver = new PathResolver(this.plugin);
+						const imagemagickPath = pathResolver.resolveExecutablePath(
+							this.plugin.settings.executablePaths.imagemagickPath,
+							'magick'
+						);
+						
+						if (!imagemagickPath) {
+							throw new Error('ImageMagick not found - please install ImageMagick or configure the path in settings');
+						}
+						
+						// Use resolved ImageMagick path to convert WebP to PNG
+						await execAsync(`"${imagemagickPath}" "${fullImagePath}" "${convertedImagePath}"`);
+						console.log(`Export: Successfully converted WebP to PNG: ${pngFileName}`);
+						finalImagePath = convertedImagePath;
+					} catch (convertError) {
+						console.error(`Export: Failed to convert WebP image: ${convertError.message}`);
+						// Fall back to original path and let Typst/Pandoc handle the error
+						console.warn(`Export: Proceeding with original WebP file: ${fullImagePath}`);
+					}
+				}
 				
-				updatedContent = updatedContent.replace(imageEmbed.marker, markdownImage);
+				// Get relative path from vault base for the final image
+				const relativeImagePath = path.relative(vaultBasePath, finalImagePath);
+				
+				// Create the appropriate markdown output based on size/alt text
+				let imageOutput;
+				if (imageEmbed.sizeOrAlt) {
+					// Check if it's size information (width x height pattern)
+					const sizeMatch = imageEmbed.sizeOrAlt.match(/^(\d+)(?:x(\d+))?$/);
+					if (sizeMatch) {
+						const width = sizeMatch[1];
+						const height = sizeMatch[2];
+						
+						// Create image with size attributes (optimized for Pandoc → Typst conversion)
+						if (height) {
+							imageOutput = `<img src="${relativeImagePath}" width="${width}" height="${height}" alt="${imageEmbed.baseName}" />`;
+						} else {
+							imageOutput = `<img src="${relativeImagePath}" width="${width}" alt="${imageEmbed.baseName}" />`;
+						}
+					} else {
+						// Treat as alt text
+						imageOutput = `![${imageEmbed.sizeOrAlt}](${relativeImagePath})`;
+					}
+				} else {
+					// Standard image reference
+					imageOutput = `![${imageEmbed.baseName}](${relativeImagePath})`;
+				}
+				
+				updatedContent = updatedContent.replace(imageEmbed.marker, imageOutput);
 				
 			} catch (error) {
 				const { fallback } = ExportErrorHandler.handleProcessingError(
 					'image embed',
 					imageEmbed.originalPath,
 					error,
-					`[⚠️ **Image processing error:** ${imageEmbed.alt || imageEmbed.originalPath}]`
+					`[⚠️ **Image processing error:** ${imageEmbed.sizeOrAlt || imageEmbed.originalPath}]`
 				);
 				updatedContent = updatedContent.replace(imageEmbed.marker, fallback);
 			}

@@ -5,6 +5,7 @@
 
 import { FrontmatterProcessor, FrontmatterProcessorConfig } from './preprocessors/FrontmatterProcessor';
 import { WikilinkProcessor, WikilinkConfig, WikilinkProcessorConfig } from './preprocessors/WikilinkProcessor';
+import { EmbedProcessor, EmbedProcessorConfig } from './preprocessors/EmbedProcessor';
 
 export interface PreprocessorOptions {
 	/** Include metadata extraction in processing */
@@ -77,11 +78,10 @@ export class MarkdownPreprocessor {
 	private noteTitle?: string;
 	private frontmatterProcessor: FrontmatterProcessor;
 	private wikilinkProcessor: WikilinkProcessor;
+	private embedProcessor: EmbedProcessor;
 	
 	// Regex patterns for Obsidian syntax
 	private readonly WIKILINK_PATTERN = /\[\[([^\|\]]+)(?:\|([^\]]+))?\]\]/g;
-	private readonly EMBED_PATTERN = /!\[\[([^\|\]]+)(?:\|([^\]]+))?\]\]/g;
-	private readonly EMBED_SIZE_PATTERN = /(\d+)(?:x(\d+))?/;
 	private readonly CALLOUT_PATTERN = /^>\s*\[!([\w-]+)\]([+-]?)\s*(.*)$/gm;
 	private readonly MULTI_LINE_CALLOUT_PATTERN = /^(>\s*\[!([\w-]+)\]([+-]?)\s*(.*(?:\n(?:>.*|$))*?))/gm;
 	private readonly TAG_PATTERN = /#(?:[^\s#]+)/g;
@@ -105,6 +105,11 @@ export class MarkdownPreprocessor {
 			baseUrl: this.options.baseUrl
 		};
 		this.wikilinkProcessor = new WikilinkProcessor(wikilinkProcessorConfig);
+		
+		const embedProcessorConfig: EmbedProcessorConfig = {
+			wikilinkProcessor: this.wikilinkProcessor
+		};
+		this.embedProcessor = new EmbedProcessor(embedProcessorConfig);
 	}
 	
 	/**
@@ -146,7 +151,7 @@ export class MarkdownPreprocessor {
 			result.content = this.filterUnnecessaryLinks(result.content, result);
 			
 			// Step 5: Convert embeds FIRST (before wikilinks to avoid .md extension being added)
-			result.content = this.parseEmbeds(result.content, result);
+			result.content = this.embedProcessor.processEmbeds(result.content, result);
 			
 			// Step 6: Convert wikilinks (after embeds are processed)
 			result.content = this.wikilinkProcessor.processWikilinks(result.content, result);
@@ -211,167 +216,6 @@ export class MarkdownPreprocessor {
 	
 	
 	
-	/**
-	 * Convert embed syntax to standard markdown references
-	 */
-	private parseEmbeds(content: string, result: PreprocessingResult): string {
-		return content.replace(this.EMBED_PATTERN, (match, embedPath, sizeOrAlt) => {
-			try {
-				const cleanPath = embedPath.trim();
-				
-				if (!cleanPath) {
-					result.warnings.push(`Empty embed path found: ${match}`);
-					return match;
-				}
-				
-				// Parse file extension and path
-				const fileExtension = this.getFileExtension(cleanPath);
-				const fileType = this.determineFileType(fileExtension);
-				
-				// Handle different file types
-				switch (fileType) {
-					case 'image':
-						return this.processImageEmbed(cleanPath, sizeOrAlt, result);
-					
-					case 'pdf':
-						return this.processPdfEmbed(cleanPath, sizeOrAlt, result);
-					
-					case 'file':
-						return this.processFileEmbed(cleanPath, sizeOrAlt, result);
-					
-					default:
-						// This should never happen with the simplified type system
-						result.warnings.push(`Unexpected file type for embed: ${cleanPath}`);
-						return this.processFileEmbed(cleanPath, sizeOrAlt, result);
-				}
-				
-			} catch (error) {
-				result.warnings.push(`Failed to process embed: ${match} - ${error.message}`);
-				return match; // Return original on error
-			}
-		});
-	}
-	
-	/**
-	 * Get file extension from path
-	 */
-	private getFileExtension(filePath: string): string {
-		const lastDot = filePath.lastIndexOf('.');
-		return lastDot > 0 ? filePath.substring(lastDot).toLowerCase() : '';
-	}
-	
-	/**
-	 * Determine file type based on extension
-	 * Simplified to 3 types: image (displayed), pdf (embedded with preview), file (embedded)
-	 */
-	private determineFileType(extension: string): 'image' | 'pdf' | 'file' {
-		const imageExtensions = ['.png', '.jpg', '.jpeg', '.gif', '.svg', '.webp', '.bmp', '.ico', '.tiff'];
-		
-		if (imageExtensions.includes(extension)) return 'image';
-		if (extension === '.pdf') return 'pdf';
-		
-		// All other file types (including DOCX, videos, audio, etc.) are treated as files to be embedded
-		return 'file';
-	}
-	
-	/**
-	 * Process image embeds with size parameters
-	 */
-	private processImageEmbed(imagePath: string, sizeOrAlt: string | undefined, result: PreprocessingResult): string {
-		const sanitizedPath = this.wikilinkProcessor.sanitizeFilePath(imagePath);
-		
-		// For now, we'll mark this for async processing and return a placeholder
-		// The actual copying will be handled in the main export process
-		const fileName = imagePath.substring(imagePath.lastIndexOf('/') + 1);
-		const baseName = fileName.replace(/\.[^/.]+$/, ""); // Remove extension
-		
-		// Create a marker that the export process can detect and replace
-		const marker = `IMAGE_EMBED_MARKER:${imagePath}:${baseName}:${sizeOrAlt || ''}`;
-		
-		// Add to processing queue for later copying
-		if (!result.metadata.imageEmbeds) {
-			result.metadata.imageEmbeds = [];
-		}
-		result.metadata.imageEmbeds.push({
-			originalPath: imagePath,
-			sanitizedPath: sanitizedPath,
-			fileName: fileName,
-			baseName: baseName,
-			sizeOrAlt: sizeOrAlt,
-			marker: marker
-		});
-		
-		result.warnings.push(`Image embed queued for processing: ${imagePath}`);
-		
-		return marker;
-	}
-	
-	
-	/**
-	 * Process PDF embeds - Convert to image preview with PDF attachment using Typst's pdf.embed
-	 */
-	private processPdfEmbed(pdfPath: string, options: string | undefined, result: PreprocessingResult): string {
-		const sanitizedPath = this.wikilinkProcessor.sanitizeFilePath(pdfPath);
-		
-		// For now, we'll mark this for async processing and return a placeholder
-		// The actual conversion will be handled in the main export process
-		const fileName = pdfPath.substring(pdfPath.lastIndexOf('/') + 1);
-		const baseName = fileName.replace(/\.[^/.]+$/, ""); // Remove extension
-		
-		// Create a marker that the export process can detect and replace with Typst code
-		const marker = `TYPST_PDF_EMBED_MARKER:${pdfPath}:${baseName}:${options || ''}`;
-		
-		// Add to processing queue for later conversion
-		if (!result.metadata.pdfEmbeds) {
-			result.metadata.pdfEmbeds = [];
-		}
-		result.metadata.pdfEmbeds.push({
-			originalPath: pdfPath,
-			sanitizedPath: sanitizedPath,
-			fileName: fileName,
-			baseName: baseName,
-			options: options,
-			marker: marker
-		});
-		
-		result.warnings.push(`PDF embed queued for processing with Typst pdf.embed: ${pdfPath}`);
-		
-		return marker;
-	}
-	
-	/**
-	 * Process generic file embeds - Convert to attachment using Typst's pdf.embed
-	 */
-	private processFileEmbed(filePath: string, options: string | undefined, result: PreprocessingResult): string {
-		const sanitizedPath = this.wikilinkProcessor.sanitizeFilePath(filePath);
-		
-		// For now, we'll mark this for async processing and return a placeholder
-		// The actual embedding will be handled in the main export process
-		const fileName = filePath.substring(filePath.lastIndexOf('/') + 1);
-		const baseName = fileName.replace(/\.[^/.]+$/, ""); // Remove extension
-		const fileExtension = this.getFileExtension(fileName);
-		
-		// Create a marker that the export process can detect and replace with Typst code
-		const marker = `FILE_EMBED_MARKER:${filePath}:${baseName}:${options || ''}`;
-		
-		// Add to processing queue for later conversion
-		if (!result.metadata.fileEmbeds) {
-			result.metadata.fileEmbeds = [];
-		}
-		result.metadata.fileEmbeds.push({
-			originalPath: filePath,
-			sanitizedPath: sanitizedPath,
-			fileName: fileName,
-			baseName: baseName,
-			fileType: fileExtension,
-			options: options,
-			marker: marker
-		});
-		
-		result.warnings.push(`File embed queued for processing with Typst pdf.embed: ${filePath}`);
-		
-		return marker;
-	}
 	
 	/**
 	 * Convert Obsidian callouts to standard blockquotes with styling markers
@@ -788,6 +632,11 @@ export class MarkdownPreprocessor {
 			this.wikilinkProcessor.updateConfig({
 				wikilinkConfig: this.wikilinkConfig,
 				baseUrl: this.options.baseUrl
+			});
+			
+			// Update EmbedProcessor since it depends on WikilinkProcessor
+			this.embedProcessor.updateConfig({
+				wikilinkProcessor: this.wikilinkProcessor
 			});
 		}
 	}
