@@ -4,6 +4,7 @@
  */
 
 import { FrontmatterProcessor, FrontmatterProcessorConfig } from './preprocessors/FrontmatterProcessor';
+import { WikilinkProcessor, WikilinkConfig, WikilinkProcessorConfig } from './preprocessors/WikilinkProcessor';
 
 export interface PreprocessorOptions {
 	/** Include metadata extraction in processing */
@@ -16,12 +17,6 @@ export interface PreprocessorOptions {
 	printFrontmatter?: boolean;
 }
 
-export interface WikilinkConfig {
-	/** Format for wikilink conversion ('md' for .md extension, 'none' for no extension) */
-	format: 'md' | 'none';
-	/** File extension to append to wikilinks */
-	extension: string;
-}
 
 export interface PreprocessingResult {
 	/** Processed markdown content */
@@ -81,10 +76,10 @@ export class MarkdownPreprocessor {
 	private wikilinkConfig: WikilinkConfig;
 	private noteTitle?: string;
 	private frontmatterProcessor: FrontmatterProcessor;
+	private wikilinkProcessor: WikilinkProcessor;
 	
 	// Regex patterns for Obsidian syntax
 	private readonly WIKILINK_PATTERN = /\[\[([^\|\]]+)(?:\|([^\]]+))?\]\]/g;
-	private readonly WIKILINK_WITH_HEADING_PATTERN = /\[\[([^#\|\]]+)(?:#([^|\]]+))?(?:\|([^\]]+))?\]\]/g;
 	private readonly EMBED_PATTERN = /!\[\[([^\|\]]+)(?:\|([^\]]+))?\]\]/g;
 	private readonly EMBED_SIZE_PATTERN = /(\d+)(?:x(\d+))?/;
 	private readonly CALLOUT_PATTERN = /^>\s*\[!([\w-]+)\]([+-]?)\s*(.*)$/gm;
@@ -104,6 +99,12 @@ export class MarkdownPreprocessor {
 			printFrontmatter: this.options.printFrontmatter || false
 		};
 		this.frontmatterProcessor = new FrontmatterProcessor(frontmatterConfig);
+		
+		const wikilinkProcessorConfig: WikilinkProcessorConfig = {
+			wikilinkConfig: this.wikilinkConfig,
+			baseUrl: this.options.baseUrl
+		};
+		this.wikilinkProcessor = new WikilinkProcessor(wikilinkProcessorConfig);
 	}
 	
 	/**
@@ -148,7 +149,7 @@ export class MarkdownPreprocessor {
 			result.content = this.parseEmbeds(result.content, result);
 			
 			// Step 6: Convert wikilinks (after embeds are processed)
-			result.content = this.parseWikilinks(result.content, result);
+			result.content = this.wikilinkProcessor.processWikilinks(result.content, result);
 			
 			// Step 7: Convert callouts
 			result.content = this.parseCallouts(result.content, result);
@@ -208,106 +209,7 @@ export class MarkdownPreprocessor {
 		return tags;
 	}
 	
-	/**
-	 * Convert wikilinks to standard markdown links
-	 */
-	private parseWikilinks(content: string, result: PreprocessingResult): string {
-		// Use the more comprehensive pattern that handles headings
-		return content.replace(this.WIKILINK_WITH_HEADING_PATTERN, (match, notePath, headingPath, alias) => {
-			try {
-				// Clean the paths
-				const cleanNotePath = notePath ? notePath.trim() : '';
-				const cleanHeadingPath = headingPath ? headingPath.trim() : '';
-				const cleanAlias = alias ? alias.trim() : '';
-				
-				if (!cleanNotePath) {
-					result.warnings.push(`Empty wikilink path found: ${match}`);
-					return match;
-				}
-				
-				// Handle special characters in filenames
-				const sanitizedNotePath = this.sanitizeFilePath(cleanNotePath);
-				
-				// Build the final path
-				let finalPath = sanitizedNotePath;
-				
-				// Add extension based on configuration
-				if (this.wikilinkConfig.format === 'md') {
-					finalPath += this.wikilinkConfig.extension;
-				}
-				
-				// Add heading anchor if present
-				if (cleanHeadingPath) {
-					const sanitizedHeading = this.sanitizeHeadingForLink(cleanHeadingPath);
-					finalPath += `#${sanitizedHeading}`;
-				}
-				
-				// Determine display text
-				let displayText: string;
-				if (cleanAlias) {
-					displayText = cleanAlias;
-				} else if (cleanHeadingPath) {
-					displayText = `${cleanNotePath}#${cleanHeadingPath}`;
-				} else {
-					displayText = cleanNotePath;
-				}
-				
-				// Handle relative path resolution if baseUrl is provided
-				if (this.options.baseUrl) {
-					finalPath = this.resolveRelativePath(finalPath);
-				}
-				
-				// Create standard markdown link
-				return `[${displayText}](${finalPath})`;
-				
-			} catch (error) {
-				result.warnings.push(`Failed to process wikilink: ${match} - ${error.message}`);
-				return match; // Return original on error
-			}
-		});
-	}
 	
-	/**
-	 * Sanitize file paths for cross-platform compatibility
-	 */
-	private sanitizeFilePath(filePath: string): string {
-		// Remove or replace characters that might cause issues
-		return filePath
-			.replace(/[<>:"|?*]/g, '_') // Replace problematic characters
-			.replace(/\s+/g, '%20') // URL encode spaces
-			.replace(/[\\\/]/g, '/'); // Normalize path separators
-	}
-	
-	/**
-	 * Sanitize heading text for use in markdown links
-	 */
-	private sanitizeHeadingForLink(heading: string): string {
-		return heading
-			.toLowerCase()
-			.replace(/\s+/g, '-') // Replace spaces with dashes
-			.replace(/[^\w\-]/g, '') // Remove special characters except dashes
-			.replace(/--+/g, '-'); // Collapse multiple dashes
-	}
-	
-	/**
-	 * Resolve relative paths if baseUrl is configured
-	 */
-	private resolveRelativePath(path: string): string {
-		if (!this.options.baseUrl) {
-			return path;
-		}
-		
-		// Simple relative path resolution
-		if (path.startsWith('/')) {
-			return path; // Already absolute
-		}
-		
-		const baseUrl = this.options.baseUrl.endsWith('/') ? 
-			this.options.baseUrl : 
-			`${this.options.baseUrl}/`;
-			
-		return `${baseUrl}${path}`;
-	}
 	
 	/**
 	 * Convert embed syntax to standard markdown references
@@ -376,7 +278,7 @@ export class MarkdownPreprocessor {
 	 * Process image embeds with size parameters
 	 */
 	private processImageEmbed(imagePath: string, sizeOrAlt: string | undefined, result: PreprocessingResult): string {
-		const sanitizedPath = this.sanitizeFilePath(imagePath);
+		const sanitizedPath = this.wikilinkProcessor.sanitizeFilePath(imagePath);
 		
 		// For now, we'll mark this for async processing and return a placeholder
 		// The actual copying will be handled in the main export process
@@ -409,7 +311,7 @@ export class MarkdownPreprocessor {
 	 * Process PDF embeds - Convert to image preview with PDF attachment using Typst's pdf.embed
 	 */
 	private processPdfEmbed(pdfPath: string, options: string | undefined, result: PreprocessingResult): string {
-		const sanitizedPath = this.sanitizeFilePath(pdfPath);
+		const sanitizedPath = this.wikilinkProcessor.sanitizeFilePath(pdfPath);
 		
 		// For now, we'll mark this for async processing and return a placeholder
 		// The actual conversion will be handled in the main export process
@@ -441,7 +343,7 @@ export class MarkdownPreprocessor {
 	 * Process generic file embeds - Convert to attachment using Typst's pdf.embed
 	 */
 	private processFileEmbed(filePath: string, options: string | undefined, result: PreprocessingResult): string {
-		const sanitizedPath = this.sanitizeFilePath(filePath);
+		const sanitizedPath = this.wikilinkProcessor.sanitizeFilePath(filePath);
 		
 		// For now, we'll mark this for async processing and return a placeholder
 		// The actual embedding will be handled in the main export process
@@ -879,6 +781,14 @@ export class MarkdownPreprocessor {
 		}
 		if (config.wikilinkConfig) {
 			this.wikilinkConfig = { ...this.wikilinkConfig, ...config.wikilinkConfig };
+		}
+		
+		// Update WikilinkProcessor configuration if relevant options changed
+		if (config.wikilinkConfig || config.options?.baseUrl !== undefined) {
+			this.wikilinkProcessor.updateConfig({
+				wikilinkConfig: this.wikilinkConfig,
+				baseUrl: this.options.baseUrl
+			});
 		}
 	}
 	

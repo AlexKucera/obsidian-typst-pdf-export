@@ -89,7 +89,7 @@ The main.ts file is the plugin entry point and most critical to get right.
 **STOP** → Verify: `npm run build` passes
 **STOP** → Test: Pandoc/Typst detection works
 
-### Step 1.7: Update main.ts- DONE
+### Step 1.7: Update main.ts - DONE
 **Final size:** ~200 lines
 **Keep:**
 - Plugin class declaration
@@ -103,7 +103,7 @@ The main.ts file is the plugin entry point and most critical to get right.
 
 ## PHASE 2: Refactor MarkdownPreprocessor.ts - IN PROGRESS
 
-### Step 2.1: Create FrontmatterProcessor.ts
+### Step 2.1: Create FrontmatterProcessor.ts - DONE
 **Location:** `src/converters/preprocessors/FrontmatterProcessor.ts` (~200 lines)
 **Extract:**
 - `processFrontmatter()` method
@@ -112,7 +112,7 @@ The main.ts file is the plugin entry point and most critical to get right.
 
 **STOP** → Verify build → Test frontmatter parsing works
 
-### Step 2.2: Create WikilinkProcessor.ts
+### Step 2.2: Create WikilinkProcessor.ts - DONE
 **Location:** `src/converters/preprocessors/WikilinkProcessor.ts` (~150 lines)
 **Extract:**
 - `parseWikilinks()` method
@@ -122,7 +122,7 @@ The main.ts file is the plugin entry point and most critical to get right.
 
 **STOP** → Verify build → Test wikilink conversion works
 
-### Step 2.3: Create EmbedProcessor.ts
+### Step 2.3: Create EmbedProcessor.ts - IN PROGRESS
 **Location:** `src/converters/preprocessors/EmbedProcessor.ts` (~250 lines)
 **Extract:**
 - `parseEmbeds()` method
