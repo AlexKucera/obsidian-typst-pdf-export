@@ -10,8 +10,6 @@ import { CalloutProcessor } from './preprocessors/CalloutProcessor';
 import { MetadataExtractor } from './preprocessors/MetadataExtractor';
 
 export interface PreprocessorOptions {
-	/** Include metadata extraction in processing */
-	includeMetadata: boolean;
 	/** Preserve existing frontmatter */
 	preserveFrontmatter: boolean;
 	/** Base URL for relative link resolution */
@@ -29,7 +27,6 @@ export interface PreprocessingResult {
 		tags: string[];
 		frontmatter?: Record<string, any>;
 		title?: string;
-		wordCount: number;
 		pdfEmbeds?: Array<{
 			originalPath: string;
 			sanitizedPath: string;
@@ -123,8 +120,7 @@ export class MarkdownPreprocessor {
 			metadata: {
 				tags: [],
 				frontmatter: undefined,
-				title: undefined,
-				wordCount: 0
+				title: undefined
 			},
 			errors: [],
 			warnings: []
@@ -134,17 +130,6 @@ export class MarkdownPreprocessor {
 			// Step 1: Extract and process frontmatter first (always process for metadata extraction)
 			result.content = this.frontmatterProcessor.processFrontmatter(result.content, result);
 			
-			// Step 2: Extract additional tags from content (combine with frontmatter tags)
-			if (this.options.includeMetadata) {
-				const contentTags = MetadataExtractor.extractTags(result.content);
-				
-				// Merge content tags with frontmatter tags, avoiding duplicates
-				for (const tag of contentTags) {
-					if (!result.metadata.tags.includes(tag)) {
-						result.metadata.tags.push(tag);
-					}
-				}
-			}
 			
 			// Step 3: Convert email blocks to Typst format
 			result.content = this.calloutProcessor.processEmailBlocks(result.content, result);
@@ -161,10 +146,7 @@ export class MarkdownPreprocessor {
 			// Step 7: Convert callouts
 			result.content = this.calloutProcessor.processCallouts(result.content, result);
 			
-			// Step 8: Calculate final metadata
-			result.metadata.wordCount = MetadataExtractor.calculateWordCount(result.content);
-			
-			// Use title from frontmatter if available, otherwise extract from content
+			// Extract title from content if not available from frontmatter
 			if (!result.metadata.title) {
 				result.metadata.title = MetadataExtractor.extractTitle(result.content);
 			}
@@ -221,7 +203,6 @@ export class MarkdownPreprocessor {
 
 // Default configurations
 export const DEFAULT_PREPROCESSOR_OPTIONS: PreprocessorOptions = {
-	includeMetadata: true,
 	preserveFrontmatter: true,
 	baseUrl: ''
 };

@@ -159,7 +159,6 @@ export class ExportOrchestrator {
 			const preprocessor = new MarkdownPreprocessor({
 				vaultPath: vaultPath,
 				options: {
-					includeMetadata: true,
 					preserveFrontmatter: config.printFrontmatter ?? this.plugin.settings.behavior.printFrontmatter,
 					baseUrl: undefined,
 					printFrontmatter: config.printFrontmatter ?? this.plugin.settings.behavior.printFrontmatter

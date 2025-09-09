@@ -19,7 +19,6 @@ export interface PreprocessingResult {
 		tags: string[];
 		frontmatter?: Record<string, any>;
 		title?: string;
-		wordCount: number;
 		pdfEmbeds?: Array<{
 			originalPath: string;
 			sanitizedPath: string;
