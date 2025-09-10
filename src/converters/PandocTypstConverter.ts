@@ -13,16 +13,13 @@ import { PandocOptions, TypstSettings, ConversionResult, ProgressCallback } from
 import type { obsidianTypstPDFExportSettings } from '../core/settings';
 import { TempDirectoryManager } from '../core/TempDirectoryManager';
 
+import { PandocCommandBuilder } from './pandoc/PandocCommandBuilder';
+
 export class PandocTypstConverter {
 	private tempDir: string | null = null;
 	private cleanupHandlers: (() => void)[] = [];
 	private plugin: any; // Will be properly typed when we refactor the main plugin class
-	
-	// Cache for directory scanning optimization
-	private resourcePathCache: string[] = [];
-	private resourcePathCacheTimestamp: number = 0;
-	private resourcePathCacheVaultPath: string = '';
-	private readonly CACHE_EXPIRY_MS = 5 * 60 * 1000; // 5 minutes
+	private commandBuilder: PandocCommandBuilder;
 
 	/**
 	 * Create a new PandocTypstConverter instance
@@ -36,6 +33,7 @@ export class PandocTypstConverter {
 		private typstSettings: TypstSettings = {}
 	) {
 		this.plugin = plugin;
+		this.commandBuilder = new PandocCommandBuilder(plugin);
 		// Set up cleanup handlers for process termination
 		this.setupCleanup();
 	}
@@ -58,8 +56,16 @@ export class PandocTypstConverter {
 			// Create temporary directory if needed
 			await this.ensureTempDirectory();
 			
+			// Add temp directory to pandocOptions for command builder
+			const optionsWithTempDir = {
+				...this.pandocOptions,
+				tempDir: this.tempDir || undefined,
+				typstSettings: this.typstSettings,
+				cleanupHandlers: this.cleanupHandlers
+			};
+			
 			// Build pandoc arguments
-			const args = await this.buildPandocArgs(inputPath, outputPath);
+			const args = await this.commandBuilder.buildPandocArgs(inputPath, outputPath, optionsWithTempDir);
 			
 			progressCallback?.('Executing Pandoc with Typst engine...', 30);
 			
@@ -262,332 +268,11 @@ export class PandocTypstConverter {
 	}
 
 	/**
-	 * Build pandoc command-line arguments
-	 */
-	private async buildPandocArgs(inputPath: string, outputPath: string): Promise<string[]> {
-	const args: string[] = [];
-
-	// Input file
-	args.push(inputPath);
-
-	// Output file
-	args.push('-o', outputPath);
-
-	// Specify input format as markdown with smart extension disabled
-	args.push('--from', 'markdown-smart');
-
-	// Set PDF engine to Typst (use configured path if available)
-	const typstPath = this.resolveExecutablePath(this.pandocOptions.typstPath, 'typst');
-	args.push(`--pdf-engine=${typstPath}`);
-
-	// Enable standalone mode (required for PDF output)
-	args.push('--standalone');
-
-	// Embed resources (images, etc.) directly into the output
-	args.push('--embed-resources');
-
-	// Add resource paths for attachment resolution
-	if (this.pandocOptions.vaultBasePath) {
-		const fs = require('fs');
-		
-		// Add vault root as primary resource path
-		args.push('--resource-path', this.pandocOptions.vaultBasePath);
-		
-		// Add common attachment directories as additional resource paths
-		const commonAttachmentPaths = [
-			path.join(this.pandocOptions.vaultBasePath, 'attachments'),
-			path.join(this.pandocOptions.vaultBasePath, 'assets'),
-			path.join(this.pandocOptions.vaultBasePath, 'files'),
-			path.join(this.pandocOptions.vaultBasePath, 'images'),
-			path.join(this.pandocOptions.vaultBasePath, '.attachments')
-		];
-		
-		// Check if these directories exist and add them
-		for (const attachPath of commonAttachmentPaths) {
-			if (fs.existsSync(attachPath)) {
-				args.push('--resource-path', attachPath);
-			}
-		}
-		
-		// Also scan for note-specific attachment folders (Obsidian often creates these)
-		// Use cache to avoid scanning entire vault on every export
-		const now = Date.now();
-		const cacheIsValid = this.resourcePathCacheVaultPath === this.pandocOptions.vaultBasePath &&
-			(now - this.resourcePathCacheTimestamp) < this.CACHE_EXPIRY_MS &&
-			this.resourcePathCache.length > 0;
-			
-		if (cacheIsValid) {
-			// Use cached resource paths
-			for (const cachedPath of this.resourcePathCache) {
-				args.push('--resource-path', cachedPath);
-			}
-		} else {
-			// Cache is invalid or expired, perform fresh scan
-			const foundResourcePaths: string[] = [];
-			
-			try {
-				const vaultContents = fs.readdirSync(this.pandocOptions.vaultBasePath);
-				for (const item of vaultContents) {
-					const itemPath = path.join(this.pandocOptions.vaultBasePath, item);
-					
-					let stat;
-					try {
-						stat = await fsPromises.stat(itemPath);
-					} catch (error) {
-						// File might have been deleted between readdirSync and statSync
-						console.warn(`Export: Unable to stat ${itemPath}:`, error.message);
-						continue;
-					}
-					
-					if (stat.isDirectory() && !item.startsWith('.') && !item.startsWith('_')) {
-						// Check if this directory contains images
-						try {
-							const dirContents = fs.readdirSync(itemPath);
-							const hasImages = dirContents.some((file: string) => 
-								/\.(png|jpg|jpeg|gif|svg|webp|bmp|ico|tiff)$/i.test(file)
-							);
-							if (hasImages) {
-								foundResourcePaths.push(itemPath);
-								args.push('--resource-path', itemPath);
-							}
-						} catch (e) {
-							// Ignore directories we can't read
-						}
-					}
-				}
-				
-				// Update cache with fresh results
-				this.resourcePathCache = foundResourcePaths;
-				this.resourcePathCacheTimestamp = now;
-				this.resourcePathCacheVaultPath = this.pandocOptions.vaultBasePath;
-			} catch (e) {
-				console.warn('Could not scan vault for attachment directories:', e);
-			}
-		}
-	}
-
-	// Use universal wrapper with --template and pass actual template as template_path variable
-	if (this.pandocOptions.template) {
-		// Get absolute path to universal wrapper using plugin directory from pandocOptions
-		const fs = require('fs');
-		const absolutePluginDir = this.pandocOptions.pluginDir || '';
-		const wrapperPath = path.resolve(absolutePluginDir, 'templates', 'universal-wrapper.pandoc.typ');
-		
-		// Verify wrapper exists
-		if (!fs.existsSync(wrapperPath)) {
-			throw new Error(`Universal wrapper template not found at: ${wrapperPath}`);
-		}
-		
-		
-		args.push('--template', wrapperPath);
-		
-		// Add plugin templates directory as a resource path so Typst can find template files
-		const templatesDir = path.resolve(absolutePluginDir, 'templates');
-		// Quote the path to handle spaces and special characters
-		args.push('--resource-path', `"${templatesDir}"`);
-		
-		// Pass the actual template path as a variable
-		// Use relative path from vault root for Typst import
-		let templatePathForTypst = this.pandocOptions.template;
-		if (path.isAbsolute(templatePathForTypst) && this.pandocOptions.vaultBasePath) {
-			// Make template path relative to vault for Typst import
-			templatePathForTypst = path.relative(this.pandocOptions.vaultBasePath, templatePathForTypst);
-		}
-		
-		args.push('-V', `template_path=${templatePathForTypst}`);
-	}
-
-	// Add variables from the ExportConfig (these take priority)
-	// These come from the modal and include all the new template variables
-	if (this.pandocOptions.variables) {
-		for (const [key, value] of Object.entries(this.pandocOptions.variables)) {
-			if (value !== null && value !== undefined && value.toString().trim() !== '') {
-				// Handle special variable name mappings for Typst compatibility
-				let variableName = key;
-				let processedValue = value;
-				
-				switch (key) {
-					case 'bodyFont':
-						variableName = 'font';
-						break;
-					case 'headingFont':
-						variableName = 'heading_font';
-						break;
-					case 'monospaceFont':
-						variableName = 'monospace_font';
-						break;
-					case 'bodyFontSize':
-						variableName = 'fontsize';
-						processedValue = value + 'pt';
-						break;
-					case 'pageSize':
-						variableName = 'paper';
-						// Convert to Typst-compatible paper size
-						processedValue = mapToTypstPaperSize(value.toString());
-						break;
-					case 'marginTop':
-						variableName = 'margin_top';
-						processedValue = value + 'cm';
-						break;
-					case 'marginBottom':
-						variableName = 'margin_bottom';
-						processedValue = value + 'cm';
-						break;
-					case 'marginLeft':
-						variableName = 'margin_left';
-						processedValue = value + 'cm';
-						break;
-					case 'marginRight':
-						variableName = 'margin_right';
-						processedValue = value + 'cm';
-						break;
-					// Keep other variables as-is (orientation, flipped, width, etc.)
-				}
-				
-				args.push('-V', `${variableName}=${processedValue}`);
-			}
-		}
-	}
-
-	// Add fallback typography and page setup from plugin settings
-	// Only add these if not already provided by ExportConfig variables
-	if (this.plugin && this.plugin.settings) {
-		const settings: obsidianTypstPDFExportSettings = this.plugin.settings;
-		const existingVars = this.pandocOptions.variables || {};
-		
-		// Add typography variables only if not already present in variables
-		if (settings.typography) {
-			if (settings.typography.fonts) {
-				// Only add if not already in variables from ExportConfig
-				if (!existingVars.bodyFont && !existingVars.font && settings.typography.fonts.body) {
-					args.push('-V', `font=${settings.typography.fonts.body}`);
-				}
-				if (!existingVars.headingFont && !existingVars.heading_font && settings.typography.fonts.heading) {
-					args.push('-V', `heading_font=${settings.typography.fonts.heading}`);
-				}
-				if (!existingVars.monospaceFont && !existingVars.monospace_font && settings.typography.fonts.monospace) {
-					args.push('-V', `monospace_font=${settings.typography.fonts.monospace}`);
-				}
-			}
-			
-			if (settings.typography.fontSizes) {
-				if (!existingVars.bodyFontSize && !existingVars.fontsize && settings.typography.fontSizes.body) {
-					args.push('-V', `fontsize=${settings.typography.fontSizes.body}pt`);
-				}
-			}
-		}
-		
-		// Add page setup variables only if not already present
-		if (settings.pageSetup) {
-			if (!existingVars.pageSize && !existingVars.paper && settings.pageSetup.size) {
-				const typstPaperSize = mapToTypstPaperSize(settings.pageSetup.size);
-				args.push('-V', `paper=${typstPaperSize}`);
-			}
-			if (!existingVars.orientation && settings.pageSetup.orientation) {
-				args.push('-V', `orientation=${settings.pageSetup.orientation}`);
-			}
-			
-			// Add margin fallbacks only if not already specified
-			if (settings.pageSetup.margins) {
-				const margins = settings.pageSetup.margins;
-				if (!existingVars.marginTop && !existingVars.margin_top && margins.top !== undefined) {
-					args.push('-V', `margin_top=${margins.top}cm`);
-				}
-				if (!existingVars.marginRight && !existingVars.margin_right && margins.right !== undefined) {
-					args.push('-V', `margin_right=${margins.right}cm`);
-				}
-				if (!existingVars.marginBottom && !existingVars.margin_bottom && margins.bottom !== undefined) {
-					args.push('-V', `margin_bottom=${margins.bottom}cm`);
-				}
-				if (!existingVars.marginLeft && !existingVars.margin_left && margins.left !== undefined) {
-					args.push('-V', `margin_left=${margins.left}cm`);
-				}
-			}
-		}
-		
-		// Add export format variable - only use settings default if not already provided
-		if (!existingVars.export_format && settings.exportDefaults && settings.exportDefaults.format) {
-			args.push('-V', `export_format=${settings.exportDefaults.format}`);
-		}
-	}
-
-	// Add Typst engine options
-	if (this.typstSettings.engineOptions) {
-		for (const option of this.typstSettings.engineOptions) {
-			args.push('--pdf-engine-opt', option);
-		}
-	}
-
-	// Generate intermediate Typst file if requested
-	if (this.pandocOptions.generateIntermediateTypst) {
-		const tempDir = await this.ensureTempDirectory();
-		const typstPath = path.join(tempDir, 'intermediate.typ');
-		args.push('--output', typstPath);
-		
-		// Also create a copy to keep for debugging
-		const debugTypstPath = path.join(tempDir, 'debug.typ');
-		this.cleanupHandlers.push(() => {
-			try {
-				const fs = require('fs');
-				if (fs.existsSync(typstPath)) {
-					fs.copyFileSync(typstPath, debugTypstPath);
-				}
-			} catch (e) {
-				console.warn('Could not create debug Typst file:', e);
-			}
-		});
-	}
-
-	// Add working directory for relative paths
-	if (this.pandocOptions.vaultBasePath) {
-		process.chdir(this.pandocOptions.vaultBasePath);
-	}
-
-	return args;
-}
-
-	/**
-	 * Resolve an executable path, handling empty settings by falling back to system search
-	 */
-	private resolveExecutablePath(userPath: string | undefined, defaultName: string): string {
-		// If user provided a path and it's not empty, use it
-		if (userPath && userPath.trim() !== '') {
-			return userPath;
-		}
-		
-		// Try to find the executable using which command
-		const { spawnSync } = require('child_process');
-		try {
-			const augmentedEnv = {
-				...process.env,
-				PATH: `/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:${process.env.PATH || ''}`
-			};
-			
-			const result = spawnSync('which', [defaultName], {
-				encoding: 'utf8',
-				env: augmentedEnv
-			});
-			
-			if (result.status === 0 && result.stdout) {
-				const foundPath = result.stdout.trim();
-				if (foundPath) {
-					return foundPath;
-				}
-			}
-		} catch {
-			// Ignore errors from which command
-		}
-		
-		// Fall back to the default name (will be found via PATH if available)
-		return defaultName;
-	}
-
-	/**
 	 * Execute pandoc process with the given arguments
 	 */
 	private async executePandoc(args: string[], progressCallback?: ProgressCallback): Promise<ConversionResult> {
 		return new Promise((resolve) => {
-			const pandocPath = this.resolveExecutablePath(this.pandocOptions.pandocPath, 'pandoc');
+			const pandocPath = this.commandBuilder.resolveExecutablePath(this.pandocOptions.pandocPath, 'pandoc');
 			const timeout = this.pandocOptions.timeout || 60000;
 
 			// Log the exact command being executed for debugging
