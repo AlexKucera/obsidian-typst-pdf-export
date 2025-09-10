@@ -62,7 +62,7 @@ export class WikilinkProcessor {
 	private baseUrl?: string;
 	
 	// Regex pattern for comprehensive wikilink matching with headings
-	private readonly WIKILINK_WITH_HEADING_PATTERN = /\[\[([^#\|\]]+)(?:#([^|\]]+))?(?:\|([^\]]+))?\]\]/g;
+	private readonly WIKILINK_WITH_HEADING_PATTERN = /\[\[([^#|\]]+)(?:#([^|\]]+))?(?:\|([^\]]+))?\]\]/g;
 	
 	constructor(config: WikilinkProcessorConfig) {
 		this.wikilinkConfig = config.wikilinkConfig;
@@ -137,7 +137,7 @@ export class WikilinkProcessor {
 		return filePath
 			.replace(/[<>:"|?*]/g, '_') // Replace problematic characters
 			.replace(/\s+/g, '%20') // URL encode spaces
-			.replace(/[\\\/]/g, '/'); // Normalize path separators
+			.replace(/[\\]/g, '/'); // Normalize path separators
 	}
 	
 	/**
@@ -147,7 +147,7 @@ export class WikilinkProcessor {
 		return heading
 			.toLowerCase()
 			.replace(/\s+/g, '-') // Replace spaces with dashes
-			.replace(/[^\w\-]/g, '') // Remove special characters except dashes
+			.replace(/[^\w-]/g, '') // Remove special characters except dashes
 			.replace(/--+/g, '-'); // Collapse multiple dashes
 	}
 	

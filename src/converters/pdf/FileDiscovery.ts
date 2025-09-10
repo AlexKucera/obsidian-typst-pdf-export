@@ -36,7 +36,7 @@ export class FileDiscovery {
 				filePath: expectedOutputPath,
 				found: true
 			};
-		} catch (error) {
+		} catch {
 			// File not found with expected name, try to find alternatives
 			return await this.findAlternativeFile(outputDir, expectedFileName, expectedOutputPath);
 		}
@@ -82,7 +82,7 @@ export class FileDiscovery {
 						filePath: actualOutputPath,
 						found: true
 					};
-				} catch (finalError) {
+				} catch {
 					return {
 						filePath: '',
 						found: false,

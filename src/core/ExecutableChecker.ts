@@ -85,7 +85,7 @@ export class ExecutableChecker {
 			
 			const foundPath = stdout.trim();
 			return foundPath || null;
-		} catch (error) {
+		} catch {
 			return null;
 		}
 	}
@@ -198,7 +198,7 @@ export class ExecutableChecker {
 				isAvailable: true,
 				executablePath
 			};
-		} catch (error) {
+		} catch {
 			return {
 				name,
 				version: null,

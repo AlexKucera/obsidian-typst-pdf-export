@@ -4,21 +4,17 @@
  */
 
 import {
-	App,
 	addIcon,
 	Plugin,
 	TFile,
-	TFolder,
 	TAbstractFile,
 	Notice,
-	Menu,
 	MarkdownView
 } from 'obsidian';
 
 import { obsidianTypstPDFExportSettings, DEFAULT_SETTINGS } from './src/core/settings';
 import { DependencyChecker } from './src/core/DependencyChecker';
 import type { PreprocessingResult } from './src/converters/MarkdownPreprocessor';
-import { ExportErrorHandler } from './src/core/ExportErrorHandler';
 import { PandocTypstConverter } from './src/converters/PandocTypstConverter';
 import { TemplateManager } from './src/templates/TemplateManager';
 import { EmbeddedTemplateManager } from './src/templates/embeddedTemplates';
@@ -30,8 +26,6 @@ import { FontManager } from './src/plugin/FontManager';
 import { PathResolver } from './src/plugin/PathResolver';
 import { ObsidianTypstPDFExportSettingTab } from './src/plugin/SettingsTab';
 import { EmbedProcessor } from './src/plugin/EmbedProcessor';
-import * as path from 'path';
-import * as fs from 'fs';
 
 export class obsidianTypstPDFExport extends Plugin {
 	settings: obsidianTypstPDFExportSettings;

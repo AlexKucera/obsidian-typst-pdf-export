@@ -7,7 +7,6 @@ import {
 	App,
 	PluginSettingTab,
 	Setting,
-	Notice,
 	normalizePath
 } from 'obsidian';
 import type { obsidianTypstPDFExport } from '../../main';

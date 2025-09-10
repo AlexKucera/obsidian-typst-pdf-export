@@ -55,7 +55,7 @@ export class EmbedProcessor {
 	private wikilinkProcessor: WikilinkProcessor;
 	
 	// Regex patterns for embed matching
-	private readonly EMBED_PATTERN = /!\[\[([^\|\]]+)(?:\|([^\]]+))?\]\]/g;
+	private readonly EMBED_PATTERN = /!\[\[([^|\]]+)(?:\|([^\]]+))?\]\]/g;
 	private readonly EMBED_SIZE_PATTERN = /(\d+)(?:x(\d+))?/;
 	
 	constructor(config: EmbedProcessorConfig) {
