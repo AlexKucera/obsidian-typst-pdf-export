@@ -21,6 +21,12 @@ export interface PandocOptions {
 	vaultBasePath?: string;
 	/** Plugin directory path for resolving plugin-relative paths */
 	pluginDir?: string;
+	/** Temporary directory path for intermediate files */
+	tempDir?: string;
+	/** Cleanup handlers to be executed when process completes */
+	cleanupHandlers?: (() => void)[];
+	/** Typst-specific settings */
+	typstSettings?: TypstSettings;
 }
 
 export interface TypstSettings {

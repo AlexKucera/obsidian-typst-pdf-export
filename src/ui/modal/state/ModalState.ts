@@ -4,7 +4,7 @@
  */
 
 import { ExportConfigModalSettings, ExportConfig, ModalState as IModalState } from '../modalTypes';
-import { ExportFormat } from '../../../core/settings';
+import { ExportFormat, obsidianTypstPDFExportSettings } from '../../../core/settings';
 
 export class ModalState implements IModalState {
 	settings: ExportConfigModalSettings;
@@ -138,7 +138,7 @@ export class ModalState implements IModalState {
 	/**
 	 * Reset state to defaults
 	 */
-	reset(pluginDefaults: any): void {
+	reset(pluginDefaults: obsidianTypstPDFExportSettings): void {
 		// Reset to plugin defaults, not hardcoded defaults
 		this.settings = {
 			...this.settings,

@@ -3,7 +3,7 @@
  * Handles font selection and size configuration
  */
 
-import { Setting, App } from 'obsidian';
+import { Setting, App, DropdownComponent } from 'obsidian';
 import { ModalSection, ModalState, ValidationResult } from '../modalTypes';
 
 export class TypographySection implements ModalSection {
@@ -161,7 +161,7 @@ export class TypographySection implements ModalSection {
 		}
 	}
 	
-	private addFallbackBodyFonts(dropdown: any, state: ModalState, fontType: 'body' | 'heading'): void {
+	private addFallbackBodyFonts(dropdown: DropdownComponent, state: ModalState, fontType: 'body' | 'heading'): void {
 		dropdown
 			.addOption('Concourse OT', 'Concourse OT')
 			.addOption('Times New Roman', 'Times New Roman')
@@ -189,7 +189,7 @@ export class TypographySection implements ModalSection {
 			});
 	}
 	
-	private addFallbackMonospaceFonts(dropdown: any, state: ModalState): void {
+	private addFallbackMonospaceFonts(dropdown: DropdownComponent, state: ModalState): void {
 		dropdown
 			.addOption('Source Code Pro', 'Source Code Pro')
 			.addOption('Courier New', 'Courier New')
