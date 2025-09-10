@@ -1,0 +1,163 @@
+/**
+ * File discovery utilities for finding generated PDF to image conversion outputs.
+ * Handles filename pattern matching when pdf2img generates files with different names.
+ */
+
+import * as fs from 'fs/promises';
+import * as path from 'path';
+
+export interface FileDiscoveryResult {
+	/** Path to the discovered file */
+	filePath: string;
+	/** Whether the file was found successfully */
+	found: boolean;
+	/** Error message if file was not found */
+	error?: string;
+}
+
+export class FileDiscovery {
+	/**
+	 * Find the generated image file in the output directory.
+	 * Handles cases where pdf2img sanitizes filenames differently than expected.
+	 * @param outputDir Directory where files were generated
+	 * @param expectedFileName Expected output filename
+	 * @returns Discovery result with actual file path
+	 */
+	public static async findGeneratedFile(
+		outputDir: string,
+		expectedFileName: string
+	): Promise<FileDiscoveryResult> {
+		const expectedOutputPath = path.join(outputDir, expectedFileName);
+
+		// Check if the expected output file exists first
+		try {
+			await fs.access(expectedOutputPath);
+			return {
+				filePath: expectedOutputPath,
+				found: true
+			};
+		} catch (error) {
+			// File not found with expected name, try to find alternatives
+			return await this.findAlternativeFile(outputDir, expectedFileName, expectedOutputPath);
+		}
+	}
+
+	/**
+	 * Find alternative files when the expected filename doesn't match.
+	 * @param outputDir Output directory to search
+	 * @param expectedFileName Expected filename for pattern matching
+	 * @param expectedOutputPath Full expected output path
+	 * @returns Discovery result with alternative file if found
+	 */
+	private static async findAlternativeFile(
+		outputDir: string,
+		expectedFileName: string,
+		expectedOutputPath: string
+	): Promise<FileDiscoveryResult> {
+		try {
+			// Debug: List what files are actually in the output directory
+			const files = await fs.readdir(outputDir);
+			
+			// Look for any PNG files that might match
+			const pngFiles = files.filter(f => f.endsWith('.png'));
+			if (pngFiles.length === 0) {
+				return {
+					filePath: '',
+					found: false,
+					error: `No PNG files found in output directory: ${outputDir}`
+				};
+			}
+			
+			// Try to find a file that matches the pattern (with or without exact name)
+			// pdf2img might sanitize filenames differently
+			const matchingFile = this.matchFilePattern(pngFiles, expectedFileName);
+			
+			if (matchingFile) {
+				const actualOutputPath = path.join(outputDir, matchingFile);
+				
+				// Final check if we found an alternative file
+				try {
+					await fs.access(actualOutputPath);
+					return {
+						filePath: actualOutputPath,
+						found: true
+					};
+				} catch (finalError) {
+					return {
+						filePath: '',
+						found: false,
+						error: `Alternative file not accessible: ${actualOutputPath}`
+					};
+				}
+			} else {
+				return {
+					filePath: '',
+					found: false,
+					error: `Generated image file not found: ${expectedOutputPath}. Available files: ${pngFiles.join(', ')}`
+				};
+			}
+
+		} catch (listError: any) {
+			console.error(`Failed to list output directory:`, listError);
+			return {
+				filePath: '',
+				found: false,
+				error: `Failed to search output directory: ${listError.message}`
+			};
+		}
+	}
+
+	/**
+	 * Match files against expected filename patterns.
+	 * Handles filename sanitization that pdf2img might apply.
+	 * @param files Array of available filenames
+	 * @param expectedFileName Expected filename pattern
+	 * @returns Matching filename or null if no match found
+	 */
+	private static matchFilePattern(files: string[], expectedFileName: string): string | null {
+		// Try exact match first
+		const exactMatch = files.find(f => f === expectedFileName);
+		if (exactMatch) {
+			return exactMatch;
+		}
+
+		// Try partial match by removing special characters
+		const simplifiedExpected = this.sanitizeFilename(expectedFileName);
+		const matchingFile = files.find(f => {
+			const simplifiedActual = this.sanitizeFilename(f);
+			return simplifiedActual === simplifiedExpected;
+		});
+
+		if (matchingFile) {
+			return matchingFile;
+		}
+
+		// Fallback to first PNG file if no pattern matches
+		return files.length > 0 ? files[0] : null;
+	}
+
+	/**
+	 * Sanitize filename by removing special characters for pattern matching.
+	 * @param filename Original filename
+	 * @returns Sanitized filename for comparison
+	 */
+	private static sanitizeFilename(filename: string): string {
+		return filename.replace(/[^a-zA-Z0-9.-]/g, '');
+	}
+
+	/**
+	 * Generate expected output filename for pdf2img conversion.
+	 * pdf2img uses the pattern: "filename-1.png" for first page.
+	 * @param pdfBaseName Base name of the PDF file (without extension)
+	 * @param pageNumber Page number (1-based)
+	 * @param format Output format ('png' or 'jpeg')
+	 * @returns Expected output filename
+	 */
+	public static generateExpectedFilename(
+		pdfBaseName: string,
+		pageNumber: number = 1,
+		format: string = 'png'
+	): string {
+		return `${pdfBaseName}-${pageNumber}.${format}`;
+	}
+}
