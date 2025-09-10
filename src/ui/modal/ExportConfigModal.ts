@@ -13,6 +13,7 @@ import { PageSetupSection } from './sections/PageSetupSection';
 import { BehaviorSection } from './sections/BehaviorSection';
 import { TemplateManager } from '../../templates/TemplateManager';
 import { ModalRenderer, ModalRendererCallbacks } from './ModalRenderer';
+import { ModalValidator } from './ModalValidator';
 
 export class ExportConfigModal extends Modal {
 	plugin: obsidianTypstPDFExport;
@@ -21,6 +22,7 @@ export class ExportConfigModal extends Modal {
 	private onSubmit: (config: ExportConfig) => void;
 	private onCancel?: () => void;
 	private renderer: ModalRenderer;
+	private validator: ModalValidator;
 	
 	constructor(
 		app: App,
@@ -47,6 +49,9 @@ export class ExportConfigModal extends Modal {
 			onSubmit: () => this.handleSubmit()
 		};
 		this.renderer = new ModalRenderer(this.state, this.sections, callbacks, this.app);
+		
+		// Initialize validator
+		this.validator = new ModalValidator();
 		
 		// Listen for state changes
 		this.state.onChange(() => this.handleStateChange());
@@ -143,7 +148,7 @@ export class ExportConfigModal extends Modal {
 	
 	private async handleSubmit(): Promise<void> {
 		// Validate all sections
-		const validationResults = this.validateAllSections();
+		const validationResults = this.validator.validateAllSections(Array.from(this.sections.values()));
 		
 		if (!validationResults.isValid) {
 			this.showValidationErrors(validationResults.errors);
@@ -151,7 +156,7 @@ export class ExportConfigModal extends Modal {
 		}
 		
 		// Show any warnings
-		if (validationResults.warnings.length > 0) {
+		if (validationResults.warnings && validationResults.warnings.length > 0) {
 			this.showValidationWarnings(validationResults.warnings);
 		}
 		
@@ -193,26 +198,6 @@ export class ExportConfigModal extends Modal {
 		}
 	}
 	
-	private validateAllSections(): { isValid: boolean; errors: string[]; warnings: string[] } {
-		const errors: string[] = [];
-		const warnings: string[] = [];
-		
-		this.sections.forEach(section => {
-			if (section.validate) {
-				const result = section.validate();
-				errors.push(...result.errors);
-				if (result.warnings) {
-					warnings.push(...result.warnings);
-				}
-			}
-		});
-		
-		return {
-			isValid: errors.length === 0,
-			errors,
-			warnings
-		};
-	}
 	
 	private showValidationErrors(errors: string[]): void {
 		this.renderer.showValidationErrors(errors);
