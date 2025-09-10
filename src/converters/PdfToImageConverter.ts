@@ -5,6 +5,7 @@
 
 import * as fs from 'fs/promises';
 import * as path from 'path';
+import { PdfProcessor } from './pdf/PdfProcessor';
 
 export interface PdfConversionOptions {
 	/** Quality/scale factor for the rendered image (default: 2.0 for HiDPI) */
@@ -91,16 +92,15 @@ export class PdfToImageConverter {
 				quality: options.quality || 90
 			};
 
-			// Ensure the PDF file exists
-			try {
-				await fs.access(pdfPath);
-			} catch (error) {
+			// Validate PDF file exists and is valid
+			const pdfValidation = await PdfProcessor.validatePdfFile(pdfPath);
+			if (!pdfValidation.success) {
 				return {
 					imagePath: '',
 					originalDimensions: { width: 0, height: 0 },
 					imageDimensions: { width: 0, height: 0 },
 					success: false,
-					error: `PDF file not found: ${pdfPath}`
+					error: pdfValidation.error
 				};
 			}
 
@@ -393,15 +393,7 @@ export class PdfToImageConverter {
 	 * Check if a file is a valid PDF
 	 */
 	public async isValidPdf(filePath: string): Promise<boolean> {
-		try {
-			const buffer = await fs.readFile(filePath);
-			
-			// Check PDF signature
-			const signature = buffer.subarray(0, 4).toString();
-			return signature === '%PDF';
-		} catch (error) {
-			return false;
-		}
+		return await PdfProcessor.isValidPdf(filePath);
 	}
 
 	/**
@@ -413,33 +405,6 @@ export class PdfToImageConverter {
 		success: boolean;
 		error?: string;
 	}> {
-		try {
-			// pdf-to-img doesn't provide metadata directly
-			// We'll use a basic approach with the PDF signature check
-			const isValid = await this.isValidPdf(filePath);
-			if (!isValid) {
-				return {
-					pageCount: 0,
-					dimensions: { width: 0, height: 0 },
-					success: false,
-					error: 'Invalid PDF file'
-				};
-			}
-
-			// For now, return basic info since pdf-to-img focuses on conversion
-			// In a real implementation, you might want to use pdf-parse or similar for metadata
-			return {
-				pageCount: 1, // We only handle first page anyway
-				dimensions: { width: 612, height: 792 }, // Standard letter size estimate
-				success: true
-			};
-		} catch (error) {
-			return {
-				pageCount: 0,
-				dimensions: { width: 0, height: 0 },
-				success: false,
-				error: error.message
-			};
-		}
+		return await PdfProcessor.getPdfInfo(filePath);
 	}
 }

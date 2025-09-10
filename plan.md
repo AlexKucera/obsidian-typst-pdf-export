@@ -205,9 +205,9 @@ The main.ts file is the plugin entry point and most critical to get right.
 
 **CHECKPOINT: Test PDF generation with various settings**
 
-## PHASE 4: Refactor ExportConfigModal.ts - IN PROGRESS
+## PHASE 4: Refactor ExportConfigModal.ts - DONE
 
-### Step 4.1: Create ModalRenderer.ts - IN PROGRESS
+### Step 4.1: Create ModalRenderer.ts - DONE
 **Location:** `src/ui/modal/ModalRenderer.ts` (~150 lines)
 **Extract:**
 - `createHeader()` method
@@ -217,7 +217,7 @@ The main.ts file is the plugin entry point and most critical to get right.
 
 **STOP** → Verify build → Test modal displays correctly
 
-### Step 4.2: Create ModalValidator.ts
+### Step 4.2: Create ModalValidator.ts - DONE
 **Location:** `src/ui/modal/ModalValidator.ts` (~100 lines)
 **Extract:**
 - `validateAllSections()` method
@@ -227,7 +227,7 @@ The main.ts file is the plugin entry point and most critical to get right.
 
 **STOP** → Verify build → Test validation works
 
-### Step 4.3: Update ExportConfigModal.ts
+### Step 4.3: Update ExportConfigModal.ts - DONE
 **Final size:** ~200 lines
 **Keep:**
 - Modal lifecycle methods
@@ -238,9 +238,9 @@ The main.ts file is the plugin entry point and most critical to get right.
 
 **CHECKPOINT: Test all modal interactions**
 
-## PHASE 5: Refactor PdfToImageConverter.ts
+## PHASE 5: Refactor PdfToImageConverter.ts - IN PROGRESS
 
-### Step 5.1: Create PdfProcessor.ts
+### Step 5.1: Create PdfProcessor.ts - DONE
 **Location:** `src/converters/pdf/PdfProcessor.ts` (~150 lines)
 **Extract:**
 - Core PDF processing logic
@@ -248,7 +248,7 @@ The main.ts file is the plugin entry point and most critical to get right.
 
 **STOP** → Verify build → Test PDF processing
 
-### Step 5.2: Create ImageOptimizer.ts
+### Step 5.2: Create ImageOptimizer.ts - IN PROGRESS
 **Location:** `src/converters/pdf/ImageOptimizer.ts` (~150 lines)
 **Extract:**
 - Image optimization logic
