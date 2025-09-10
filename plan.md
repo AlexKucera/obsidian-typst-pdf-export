@@ -194,7 +194,7 @@ The main.ts file is the plugin entry point and most critical to get right.
 
 **STOP** → Verify build → Test resource resolution works
 
-### Step 3.4: Update PandocTypstConverter.ts - IN PROGRESS
+### Step 3.4: Update PandocTypstConverter.ts - DONE
 **Final size:** ~200 lines
 **Keep:**
 - Main conversion method
@@ -205,9 +205,9 @@ The main.ts file is the plugin entry point and most critical to get right.
 
 **CHECKPOINT: Test PDF generation with various settings**
 
-## PHASE 4: Refactor ExportConfigModal.ts
+## PHASE 4: Refactor ExportConfigModal.ts - IN PROGRESS
 
-### Step 4.1: Create ModalRenderer.ts
+### Step 4.1: Create ModalRenderer.ts - IN PROGRESS
 **Location:** `src/ui/modal/ModalRenderer.ts` (~150 lines)
 **Extract:**
 - `createHeader()` method
