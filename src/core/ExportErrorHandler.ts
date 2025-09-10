@@ -168,4 +168,59 @@ export class ExportErrorHandler {
 	public static showCancellationNotice(): void {
 		new Notice('Export cancelled');
 	}
+
+	/**
+	 * Show settings validation error
+	 */
+	public static showValidationError(field: string, validationMessage: string): void {
+		new Notice(`Invalid ${field}: ${validationMessage}`);
+	}
+
+	/**
+	 * Show template loading error
+	 */
+	public static showTemplateError(error: Error | string): void {
+		const errorMessage = error instanceof Error ? error.message : String(error);
+		new Notice(`Failed to load available templates: ${errorMessage}`);
+	}
+
+	/**
+	 * Show font caching error
+	 */
+	public static showFontError(error: Error | string, showFallback: boolean = true): void {
+		const errorMessage = error instanceof Error ? error.message : String(error);
+		new Notice(`Font caching failed: ${errorMessage}. Using fallback fonts.`, 5000);
+		
+		if (showFallback) {
+			new Notice('Font list may be incomplete. Check debug mode for details.', 3000);
+		}
+	}
+
+	/**
+	 * Show export success notice
+	 */
+	public static showExportSuccess(outputPath: string): void {
+		new Notice(`PDF exported successfully to ${outputPath}`);
+	}
+
+	/**
+	 * Show file not found warning
+	 */
+	public static showFileNotFoundWarning(context: string): void {
+		new Notice(`Please open a ${context} file to export`);
+	}
+
+	/**
+	 * Show no files warning
+	 */
+	public static showNoFilesWarning(context: string = 'files'): void {
+		new Notice(`No ${context} to export`);
+	}
+
+	/**
+	 * Show settings reset confirmation
+	 */
+	public static showSettingsReset(): void {
+		new Notice('Settings reset to defaults');
+	}
 }
