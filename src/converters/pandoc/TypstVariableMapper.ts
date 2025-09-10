@@ -145,7 +145,7 @@ export class TypstVariableMapper {
 	/**
 	 * Map typography settings to Typst variables
 	 */
-	private mapTypographyVariables(settings: obsidianTypstPDFExportSettings, existingVars: Record<string, any>): TypstVariable[] {
+	private mapTypographyVariables(settings: obsidianTypstPDFExportSettings, existingVars: Record<string, string | number | boolean>): TypstVariable[] {
 		const variables: TypstVariable[] = [];
 
 		if (!settings.typography) {
@@ -191,7 +191,7 @@ export class TypstVariableMapper {
 	/**
 	 * Map page setup settings to Typst variables
 	 */
-	private mapPageSetupVariables(settings: obsidianTypstPDFExportSettings, existingVars: Record<string, any>): TypstVariable[] {
+	private mapPageSetupVariables(settings: obsidianTypstPDFExportSettings, existingVars: Record<string, string | number | boolean>): TypstVariable[] {
 		const variables: TypstVariable[] = [];
 
 		if (!settings.pageSetup) {
@@ -226,7 +226,7 @@ export class TypstVariableMapper {
 	/**
 	 * Map margin settings to Typst variables
 	 */
-	private mapMarginVariables(margins: {top: number; right: number; bottom: number; left: number;}, existingVars: Record<string, any>): TypstVariable[] {
+	private mapMarginVariables(margins: {top: number; right: number; bottom: number; left: number;}, existingVars: Record<string, string | number | boolean>): TypstVariable[] {
 		const variables: TypstVariable[] = [];
 
 		if (!existingVars.marginTop && !existingVars.margin_top && margins.top !== undefined) {

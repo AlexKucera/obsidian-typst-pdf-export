@@ -137,7 +137,7 @@ export class PdfCliExecutor {
 			return {
 				success: false,
 				error: `PDF CLI conversion failed: ${errorMessage}`,
-				stderr: (cliError as any)?.stderr || ''
+				stderr: (cliError as { stderr?: string })?.stderr || ''
 			};
 		}
 	}

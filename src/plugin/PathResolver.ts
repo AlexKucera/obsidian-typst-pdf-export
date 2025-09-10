@@ -57,7 +57,7 @@ export class PathResolver {
 			throw new Error(`Invalid output folder path: ${outputFolder}. Path contains invalid characters or traversal attempts.`);
 		}
 		
-		const vaultPath = (this.plugin.app.vault.adapter as any).basePath;
+		const vaultPath = (this.plugin.app.vault.adapter as { basePath: string }).basePath;
 		const outputDir = path.join(vaultPath, outputFolder);
 		
 		// Create output directory if it doesn't exist

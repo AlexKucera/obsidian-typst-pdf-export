@@ -23,7 +23,7 @@ export interface PreprocessingResult {
 	/** Extracted metadata including tags and frontmatter */
 	metadata: {
 		tags: string[];
-		frontmatter?: Record<string, any>;
+		frontmatter?: Record<string, unknown>;
 		title?: string;
 		pdfEmbeds?: Array<{
 			originalPath: string;
