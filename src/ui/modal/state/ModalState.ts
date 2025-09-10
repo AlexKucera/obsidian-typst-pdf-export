@@ -8,7 +8,7 @@ import { ExportFormat, obsidianTypstPDFExportSettings } from '../../../core/sett
 
 export class ModalState implements IModalState {
 	settings: ExportConfigModalSettings;
-	templateVariables: Record<string, any>;
+	templateVariables: Record<string, string | number | boolean>;
 	
 	private changeListeners: Set<() => void> = new Set();
 	private static readonly STORAGE_KEY = 'typst-export-modal-state';
@@ -64,7 +64,7 @@ export class ModalState implements IModalState {
 	/**
 	 * Update template variables
 	 */
-	updateTemplateVariables(updates: Record<string, any>): void {
+	updateTemplateVariables(updates: Record<string, string | number | boolean>): void {
 		this.templateVariables = {
 			...this.templateVariables,
 			...updates
@@ -198,7 +198,7 @@ export class ModalState implements IModalState {
 	/**
 	 * Load state from localStorage
 	 */
-	private loadFromStorage(): { settings: Partial<ExportConfigModalSettings>, templateVariables: Record<string, any> } | null {
+	private loadFromStorage(): { settings: Partial<ExportConfigModalSettings>, templateVariables: Record<string, string | number | boolean> } | null {
 		try {
 			const saved = localStorage.getItem(ModalState.STORAGE_KEY);
 			if (saved) {

@@ -213,7 +213,7 @@ export class FrontmatterProcessor {
 	/**
 	 * Format frontmatter as a readable display block
 	 */
-	private formatFrontmatterForDisplay(frontmatter: Record<string, any>): string {
+	private formatFrontmatterForDisplay(frontmatter: Record<string, unknown>): string {
 	if (!frontmatter || Object.keys(frontmatter).length === 0) {
 		return '';
 	}
