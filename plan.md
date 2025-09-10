@@ -101,7 +101,7 @@ The main.ts file is the plugin entry point and most critical to get right.
 
 **CHECKPOINT: Complete test of all Phase 1 functionality** - DONE
 
-## PHASE 2: Refactor MarkdownPreprocessor.ts - IN PROGRESS
+## PHASE 2: Refactor MarkdownPreprocessor.ts - DONE
 
 ### Step 2.1: Create FrontmatterProcessor.ts - DONE
 **Location:** `src/converters/preprocessors/FrontmatterProcessor.ts` (~200 lines)
@@ -165,9 +165,9 @@ The main.ts file is the plugin entry point and most critical to get right.
 
 **CHECKPOINT: Test various note types with different content**
 
-## PHASE 3: Refactor PandocTypstConverter.ts
+## PHASE 3: Refactor PandocTypstConverter.ts - IN PROGRESS
 
-### Step 3.1: Create PandocCommandBuilder.ts
+### Step 3.1: Create PandocCommandBuilder.ts - DONE
 **Location:** `src/converters/pandoc/PandocCommandBuilder.ts` (~200 lines)
 **Extract:**
 - Command building logic
@@ -176,7 +176,7 @@ The main.ts file is the plugin entry point and most critical to get right.
 
 **STOP** → Verify build → Test Pandoc command generation
 
-### Step 3.2: Create TypstVariableMapper.ts
+### Step 3.2: Create TypstVariableMapper.ts - DONE
 **Location:** `src/converters/pandoc/TypstVariableMapper.ts` (~200 lines)
 **Extract:**
 - Variable mapping logic
@@ -185,7 +185,7 @@ The main.ts file is the plugin entry point and most critical to get right.
 
 **STOP** → Verify build → Test variable application in templates
 
-### Step 3.3: Create ResourcePathResolver.ts
+### Step 3.3: Create ResourcePathResolver.ts - IN PROGRESS
 **Location:** `src/converters/pandoc/ResourcePathResolver.ts` (~150 lines)
 **Extract:**
 - `resolveResourcePaths()` method

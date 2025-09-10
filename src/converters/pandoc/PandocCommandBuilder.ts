@@ -6,12 +6,12 @@
 import * as path from 'path';
 import { promises as fsPromises } from 'fs';
 import { spawnSync } from 'child_process';
-import { mapToTypstPaperSize } from '../../utils/paperSizeMapper';
 import { PandocOptions } from '../converterTypes';
-import type { obsidianTypstPDFExportSettings } from '../../core/settings';
+import { TypstVariableMapper } from './TypstVariableMapper';
 
 export class PandocCommandBuilder {
 	private plugin: any;
+	private variableMapper: TypstVariableMapper;
 	
 	// Cache for directory scanning optimization
 	private resourcePathCache: string[] = [];
@@ -21,6 +21,7 @@ export class PandocCommandBuilder {
 
 	constructor(plugin: any) {
 		this.plugin = plugin;
+		this.variableMapper = new TypstVariableMapper(plugin);
 	}
 
 	/**
@@ -54,11 +55,8 @@ export class PandocCommandBuilder {
 		// Handle template configuration
 		await this.addTemplateConfiguration(args, pandocOptions);
 
-		// Add variables from the ExportConfig (these take priority)
-		this.addExportConfigVariables(args, pandocOptions);
-
-		// Add fallback variables from plugin settings
-		this.addPluginSettingsVariables(args, pandocOptions);
+		// Add all variables using the variable mapper
+		this.addTypstVariables(args, pandocOptions);
 
 		// Add Typst engine options
 		this.addTypstEngineOptions(args, pandocOptions);
@@ -202,127 +200,15 @@ export class PandocCommandBuilder {
 	}
 
 	/**
-	 * Add variables from ExportConfig (these take priority)
+	 * Add all Typst variables using the variable mapper
 	 */
-	private addExportConfigVariables(args: string[], pandocOptions: PandocOptions): void {
-		if (!pandocOptions.variables) {
-			return;
-		}
-
-		for (const [key, value] of Object.entries(pandocOptions.variables)) {
-			if (value !== null && value !== undefined && value.toString().trim() !== '') {
-				// Handle special variable name mappings for Typst compatibility
-				let variableName = key;
-				let processedValue = value;
-				
-				switch (key) {
-					case 'bodyFont':
-						variableName = 'font';
-						break;
-					case 'headingFont':
-						variableName = 'heading_font';
-						break;
-					case 'monospaceFont':
-						variableName = 'monospace_font';
-						break;
-					case 'bodyFontSize':
-						variableName = 'fontsize';
-						processedValue = value + 'pt';
-						break;
-					case 'pageSize':
-						variableName = 'paper';
-						// Convert to Typst-compatible paper size
-						processedValue = mapToTypstPaperSize(value.toString());
-						break;
-					case 'marginTop':
-						variableName = 'margin_top';
-						processedValue = value + 'cm';
-						break;
-					case 'marginBottom':
-						variableName = 'margin_bottom';
-						processedValue = value + 'cm';
-						break;
-					case 'marginLeft':
-						variableName = 'margin_left';
-						processedValue = value + 'cm';
-						break;
-					case 'marginRight':
-						variableName = 'margin_right';
-						processedValue = value + 'cm';
-						break;
-					// Keep other variables as-is (orientation, flipped, width, etc.)
-				}
-				
-				args.push('-V', `${variableName}=${processedValue}`);
-			}
-		}
-	}
-
-	/**
-	 * Add fallback typography and page setup from plugin settings
-	 */
-	private addPluginSettingsVariables(args: string[], pandocOptions: PandocOptions): void {
-		if (!this.plugin || !this.plugin.settings) {
-			return;
-		}
-
-		const settings: obsidianTypstPDFExportSettings = this.plugin.settings;
-		const existingVars = pandocOptions.variables || {};
+	private addTypstVariables(args: string[], pandocOptions: PandocOptions): void {
+		// Map all variables (ExportConfig + plugin settings fallbacks) using the variable mapper
+		const typstVariables = this.variableMapper.mapAllVariablesToTypst(pandocOptions);
 		
-		// Add typography variables only if not already present in variables
-		if (settings.typography) {
-			if (settings.typography.fonts) {
-				// Only add if not already in variables from ExportConfig
-				if (!existingVars.bodyFont && !existingVars.font && settings.typography.fonts.body) {
-					args.push('-V', `font=${settings.typography.fonts.body}`);
-				}
-				if (!existingVars.headingFont && !existingVars.heading_font && settings.typography.fonts.heading) {
-					args.push('-V', `heading_font=${settings.typography.fonts.heading}`);
-				}
-				if (!existingVars.monospaceFont && !existingVars.monospace_font && settings.typography.fonts.monospace) {
-					args.push('-V', `monospace_font=${settings.typography.fonts.monospace}`);
-				}
-			}
-			
-			if (settings.typography.fontSizes) {
-				if (!existingVars.bodyFontSize && !existingVars.fontsize && settings.typography.fontSizes.body) {
-					args.push('-V', `fontsize=${settings.typography.fontSizes.body}pt`);
-				}
-			}
-		}
-		
-		// Add page setup variables only if not already present
-		if (settings.pageSetup) {
-			if (!existingVars.pageSize && !existingVars.paper && settings.pageSetup.size) {
-				const typstPaperSize = mapToTypstPaperSize(settings.pageSetup.size);
-				args.push('-V', `paper=${typstPaperSize}`);
-			}
-			if (!existingVars.orientation && settings.pageSetup.orientation) {
-				args.push('-V', `orientation=${settings.pageSetup.orientation}`);
-			}
-			
-			// Add margin fallbacks only if not already specified
-			if (settings.pageSetup.margins) {
-				const margins = settings.pageSetup.margins;
-				if (!existingVars.marginTop && !existingVars.margin_top && margins.top !== undefined) {
-					args.push('-V', `margin_top=${margins.top}cm`);
-				}
-				if (!existingVars.marginRight && !existingVars.margin_right && margins.right !== undefined) {
-					args.push('-V', `margin_right=${margins.right}cm`);
-				}
-				if (!existingVars.marginBottom && !existingVars.margin_bottom && margins.bottom !== undefined) {
-					args.push('-V', `margin_bottom=${margins.bottom}cm`);
-				}
-				if (!existingVars.marginLeft && !existingVars.margin_left && margins.left !== undefined) {
-					args.push('-V', `margin_left=${margins.left}cm`);
-				}
-			}
-		}
-		
-		// Add export format variable - only use settings default if not already provided
-		if (!existingVars.export_format && settings.exportDefaults && settings.exportDefaults.format) {
-			args.push('-V', `export_format=${settings.exportDefaults.format}`);
-		}
+		// Convert to pandoc arguments and add to args
+		const variableArgs = this.variableMapper.convertVariablesToPandocArgs(typstVariables);
+		args.push(...variableArgs);
 	}
 
 	/**
