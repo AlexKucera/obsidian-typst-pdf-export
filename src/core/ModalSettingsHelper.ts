@@ -52,7 +52,7 @@ export class ModalSettingsHelper {
 	/**
 	 * Build template variables object from plugin settings
 	 */
-	private static buildTemplateVariables(settings: obsidianTypstPDFExportSettings): Record<string, string | number | boolean> {
+	private static buildTemplateVariables(settings: obsidianTypstPDFExportSettings): Record<string, string | number | boolean | undefined> {
 		const baseVariables = {
 			pageSize: settings.pageSetup.size,
 			orientation: settings.pageSetup.orientation,

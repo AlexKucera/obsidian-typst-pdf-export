@@ -31,7 +31,7 @@ export class TypographySection implements ModalSection {
 			.setName('Body font')
 			.setDesc('Primary font for document text')
 			.addDropdown(dropdown => {
-				const currentFont = state.templateVariables.bodyFont || 'Times New Roman';
+				const currentFont = String(state.templateVariables.bodyFont || 'Times New Roman');
 				
 				// Add all available fonts
 				availableFonts.forEach(font => {
@@ -56,7 +56,7 @@ export class TypographySection implements ModalSection {
 			.setName('Heading font')
 			.setDesc('Font for headings and titles')
 			.addDropdown(dropdown => {
-				const currentFont = state.templateVariables.headingFont || 'Times New Roman';
+				const currentFont = String(state.templateVariables.headingFont || 'Times New Roman');
 				
 				// Add all available fonts
 				availableFonts.forEach(font => {
@@ -81,7 +81,7 @@ export class TypographySection implements ModalSection {
 			.setName('Monospace font')
 			.setDesc('Font for code blocks and inline code')
 			.addDropdown(dropdown => {
-				const currentFont = state.templateVariables.monospaceFont || 'Courier New';
+				const currentFont = String(state.templateVariables.monospaceFont || 'Courier New');
 				
 				// Add all available fonts
 				availableFonts.forEach(font => {
@@ -111,7 +111,7 @@ export class TypographySection implements ModalSection {
 			.setDesc('Base font size for document text (in points)')
 			.addSlider(slider => slider
 				.setLimits(8, 16, 0.5)
-				.setValue(state.templateVariables.bodyFontSize || 11)
+				.setValue(Number(state.templateVariables.bodyFontSize || 11))
 				.setDynamicTooltip()
 				.onChange(value => {
 					state.updateTemplateVariables({ bodyFontSize: value });
@@ -179,7 +179,7 @@ export class TypographySection implements ModalSection {
 			: state.templateVariables.headingFont;
 		
 		dropdown
-			.setValue(currentValue || 'Concourse OT')
+			.setValue(String(currentValue || 'Concourse OT'))
 			.onChange((value: string) => {
 				if (fontType === 'body') {
 					state.updateTemplateVariables({ bodyFont: value });
@@ -199,7 +199,7 @@ export class TypographySection implements ModalSection {
 			.addOption('DejaVu Sans Mono', 'DejaVu Sans Mono')
 			.addOption('Liberation Mono', 'Liberation Mono')
 			.addOption('Ubuntu Mono', 'Ubuntu Mono')
-			.setValue(state.templateVariables.monospaceFont || 'Source Code Pro')
+			.setValue(String(state.templateVariables.monospaceFont || 'Source Code Pro'))
 			.onChange((value: string) => {
 				state.updateTemplateVariables({ monospaceFont: value });
 			});

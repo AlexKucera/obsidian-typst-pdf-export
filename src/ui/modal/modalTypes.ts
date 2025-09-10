@@ -13,7 +13,7 @@ export interface ExportConfig {
 	/** Override output folder */
 	outputFolder?: string;
 	/** Template variables for this export */
-	templateVariables?: Record<string, string | number | boolean>;
+	templateVariables?: Record<string, string | number | boolean | undefined>;
 	/** Open PDF after export */
 	openAfterExport?: boolean;
 	/** Preserve folder structure when exporting */
@@ -59,9 +59,9 @@ export interface ValidationResult {
 
 export interface ModalState {
 	settings: ExportConfigModalSettings;
-	templateVariables: Record<string, string | number | boolean>;
+	templateVariables: Record<string, string | number | boolean | undefined>;
 	updateSettings(updates: Partial<ExportConfigModalSettings>): void;
-	updateTemplateVariables(updates: Record<string, string | number | boolean>): void;
+	updateTemplateVariables(updates: Record<string, string | number | boolean | undefined>): void;
 	buildExportConfig(): ExportConfig;
 	notifyChange(): void;
 	setProgress(percent: number, operation: string): void;

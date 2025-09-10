@@ -83,7 +83,7 @@ export class BinaryLocator {
 			// Strategy 2: Assuming we're running from vault root
 			path.join(configDir, 'plugins', pluginDirName),
 			// Strategy 3: From vault base path if plugin is available
-			...(plugin ? [path.join((plugin.app.vault.adapter as { basePath: string }).basePath, plugin.manifest.dir!)] : [])
+			...(plugin ? [path.join((plugin.app.vault.adapter as unknown as { basePath: string }).basePath, plugin.manifest.dir!)] : [])
 		];
 	}
 
