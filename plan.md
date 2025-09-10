@@ -185,7 +185,7 @@ The main.ts file is the plugin entry point and most critical to get right.
 
 **STOP** → Verify build → Test variable application in templates
 
-### Step 3.3: Create ResourcePathResolver.ts - IN PROGRESS
+### Step 3.3: Create ResourcePathResolver.ts - DONE
 **Location:** `src/converters/pandoc/ResourcePathResolver.ts` (~150 lines)
 **Extract:**
 - `resolveResourcePaths()` method
@@ -194,7 +194,7 @@ The main.ts file is the plugin entry point and most critical to get right.
 
 **STOP** → Verify build → Test resource resolution works
 
-### Step 3.4: Update PandocTypstConverter.ts
+### Step 3.4: Update PandocTypstConverter.ts - IN PROGRESS
 **Final size:** ~200 lines
 **Keep:**
 - Main conversion method
