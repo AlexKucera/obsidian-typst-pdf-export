@@ -8,6 +8,7 @@ import { WikilinkProcessor, WikilinkConfig, WikilinkProcessorConfig } from './pr
 import { EmbedProcessor, EmbedProcessorConfig } from './preprocessors/EmbedProcessor';
 import { CalloutProcessor } from './preprocessors/CalloutProcessor';
 import { MetadataExtractor } from './preprocessors/MetadataExtractor';
+import { HorizontalRuleProcessor } from './preprocessors/HorizontalRuleProcessor';
 
 export interface PreprocessorOptions {
 	/** Preserve existing frontmatter */
@@ -75,6 +76,7 @@ export class MarkdownPreprocessor {
 	private options: PreprocessorOptions;
 	private wikilinkConfig: WikilinkConfig;
 	private noteTitle?: string;
+	private horizontalRuleProcessor: HorizontalRuleProcessor;
 	private frontmatterProcessor: FrontmatterProcessor;
 	private wikilinkProcessor: WikilinkProcessor;
 	private embedProcessor: EmbedProcessor;
@@ -85,6 +87,8 @@ export class MarkdownPreprocessor {
 		this.options = config.options;
 		this.wikilinkConfig = config.wikilinkConfig;
 		this.noteTitle = config.noteTitle;
+		
+		this.horizontalRuleProcessor = new HorizontalRuleProcessor();
 		
 		const frontmatterConfig: FrontmatterProcessorConfig = {
 			noteTitle: this.noteTitle,
@@ -123,22 +127,25 @@ export class MarkdownPreprocessor {
 		};
 		
 		try {
-			// Step 1: Extract and process frontmatter first (always process for metadata extraction)
+			// Step 1: Process horizontal rules to avoid YAML delimiter conflicts
+			result.content = this.horizontalRuleProcessor.process(result.content);
+			
+			// Step 2: Extract and process frontmatter (always process for metadata extraction)
 			result.content = this.frontmatterProcessor.processFrontmatter(result.content, result);
 			
-			// Step 2: Convert email blocks to Typst format
+			// Step 3: Convert email blocks to Typst format
 			result.content = this.calloutProcessor.processEmailBlocks(result.content, result);
 			
-			// Step 3: Filter out unnecessary links (Open: links and Mail.app links)
+			// Step 4: Filter out unnecessary links (Open: links and Mail.app links)
 			result.content = this.calloutProcessor.filterUnnecessaryLinks(result.content, result);
 			
-			// Step 4: Convert embeds FIRST (before wikilinks to avoid .md extension being added)
+			// Step 5: Convert embeds FIRST (before wikilinks to avoid .md extension being added)
 			result.content = this.embedProcessor.processEmbeds(result.content, result);
 			
-			// Step 5: Convert wikilinks (after embeds are processed)
+			// Step 6: Convert wikilinks (after embeds are processed)
 			result.content = this.wikilinkProcessor.processWikilinks(result.content, result);
 			
-			// Step 6: Convert callouts
+			// Step 7: Convert callouts
 			result.content = this.calloutProcessor.processCallouts(result.content, result);
 			
 			// Extract title from content if not available from frontmatter

@@ -27,188 +27,220 @@ export class FrontmatterProcessor {
 	 * Process frontmatter using the gray-matter library approach
 	 */
 	public processFrontmatter(content: string, result: PreprocessingResult): string {
-		try {
-			// Use gray-matter for robust frontmatter parsing
-			const matter = require('gray-matter');
-			const parsed = matter(content);
-			
-			if (parsed.data && Object.keys(parsed.data).length > 0) {
-				// Replace frontmatter title with filename if noteTitle is provided
-				if (this.noteTitle) {
-					const frontmatterCopy = { ...parsed.data };
-					frontmatterCopy.title = this.noteTitle;
-					result.metadata.frontmatter = frontmatterCopy;
-				} else {
-					result.metadata.frontmatter = parsed.data;
-				}
-				
-				// Extract tags from frontmatter if they exist
-				if (parsed.data.tags) {
-					let frontmatterTags: string[] = [];
-					
-					if (Array.isArray(parsed.data.tags)) {
-						// Handle array of tags
-						frontmatterTags = parsed.data.tags
-							.map((tag: unknown) => typeof tag === 'string' ? tag : String(tag))
-							.filter((tag: string) => tag.trim() !== '');
-					} else if (typeof parsed.data.tags === 'string') {
-						// Handle comma-separated string or single tag
-						frontmatterTags = parsed.data.tags
-							.split(/[,\s]+/)
-							.map((tag: string) => tag.trim())
-							.filter((tag: string) => tag !== '');
-					}
-					
-					// Merge with existing tags (avoid duplicates)
-					for (const tag of frontmatterTags) {
-						if (!result.metadata.tags.includes(tag)) {
-							result.metadata.tags.push(tag);
-						}
-					}
-				}
-				
-				// Extract title - use noteTitle if available, otherwise frontmatter title
-				if (this.noteTitle) {
-					result.metadata.title = this.noteTitle;
-				} else if (parsed.data.title && typeof parsed.data.title === 'string') {
-					result.metadata.title = parsed.data.title.trim();
-				}
-				
-				// Handle frontmatter preservation and display options
-				const finalFrontmatter = this.noteTitle ? 
-					{ ...parsed.data, title: this.noteTitle } : 
-					parsed.data;
-				
-				if (this.preserveFrontmatter) {
-					// Keep the frontmatter in the content, but reconstruct it with the modified title
-					const yaml = require('js-yaml');
-					const newFrontmatter = yaml.dump(finalFrontmatter);
-					let processedContent = `---\n${newFrontmatter}---\n${parsed.content}`;
-					
-					// Add printed frontmatter if requested
-					if (this.printFrontmatter) {
-						const frontmatterDisplay = this.formatFrontmatterForDisplay(finalFrontmatter);
-						processedContent = `---\n${newFrontmatter}---\n\n${frontmatterDisplay}\n\n${parsed.content}`;
-					}
-					
-					return processedContent;
-				} else {
-					// Return content without frontmatter, but add title as frontmatter for Pandoc
-					let processedContent: string;
-					if (this.noteTitle) {
-						const yaml = require('js-yaml');
-						const titleFrontmatter = yaml.dump({ title: this.noteTitle });
-						processedContent = `---\n${titleFrontmatter}---\n${parsed.content}`;
-					} else {
-						processedContent = parsed.content;
-					}
-					
-					// Add printed frontmatter if requested
-					if (this.printFrontmatter) {
-						const frontmatterDisplay = this.formatFrontmatterForDisplay(finalFrontmatter);
-						// Insert after the title frontmatter but before content
-						const lines = processedContent.split('\n');
-						if (lines[0] === '---' && lines.findIndex(line => line === '---') > 0) {
-							const endIndex = lines.findIndex((line, i) => i > 0 && line === '---');
-							lines.splice(endIndex + 1, 0, '', frontmatterDisplay, '');
-							processedContent = lines.join('\n');
-						} else {
-							processedContent = `${frontmatterDisplay}\n\n${processedContent}`;
-						}
-					}
-					
-					return processedContent;
-				}
+	try {
+		// Check if content actually has frontmatter before trying to parse
+		if (!this.FRONTMATTER_PATTERN.test(content)) {
+			// No frontmatter found - add title frontmatter if we have a noteTitle
+			if (this.noteTitle) {
+				const yaml = require('js-yaml');
+				const titleFrontmatter = yaml.dump({ title: this.noteTitle });
+				result.metadata.title = this.noteTitle;
+				result.metadata.frontmatter = { title: this.noteTitle };
+				return `---\n${titleFrontmatter}---\n${content}`;
 			} else {
-				// No frontmatter found - add title frontmatter if we have a noteTitle
+				return content;
+			}
+		}
+
+		// Use gray-matter for robust frontmatter parsing
+		const matter = require('gray-matter');
+		
+		// Add debugging to see what's being parsed
+		console.log('FrontmatterProcessor: Attempting to parse content with frontmatter pattern detected');
+		console.log('First 200 chars:', content.substring(0, 200));
+		
+		const parsed = matter(content);
+		
+		if (parsed.data && Object.keys(parsed.data).length > 0) {
+			// Replace frontmatter title with filename if noteTitle is provided
+			if (this.noteTitle) {
+				const frontmatterCopy = { ...parsed.data };
+				frontmatterCopy.title = this.noteTitle;
+				result.metadata.frontmatter = frontmatterCopy;
+			} else {
+				result.metadata.frontmatter = parsed.data;
+			}
+			
+			// Extract tags from frontmatter if they exist
+			if (parsed.data.tags) {
+				let frontmatterTags: string[] = [];
+				
+				if (Array.isArray(parsed.data.tags)) {
+					// Handle array of tags
+					frontmatterTags = parsed.data.tags
+						.map((tag: unknown) => typeof tag === 'string' ? tag : String(tag))
+						.filter((tag: string) => tag.trim() !== '');
+				} else if (typeof parsed.data.tags === 'string') {
+					// Handle comma-separated string or single tag
+					frontmatterTags = parsed.data.tags
+						.split(/[,\s]+/)
+						.map((tag: string) => tag.trim())
+						.filter((tag: string) => tag !== '');
+				}
+				
+				// Merge with existing tags (avoid duplicates)
+				for (const tag of frontmatterTags) {
+					if (!result.metadata.tags.includes(tag)) {
+						result.metadata.tags.push(tag);
+					}
+				}
+			}
+			
+			// Extract title - use noteTitle if available, otherwise frontmatter title
+			if (this.noteTitle) {
+				result.metadata.title = this.noteTitle;
+			} else if (parsed.data.title && typeof parsed.data.title === 'string') {
+				result.metadata.title = parsed.data.title.trim();
+			}
+			
+			// Handle frontmatter preservation and display options
+			const finalFrontmatter = this.noteTitle ? 
+				{ ...parsed.data, title: this.noteTitle } : 
+				parsed.data;
+			
+			if (this.preserveFrontmatter) {
+				// Keep the frontmatter in the content, but reconstruct it with the modified title
+				const yaml = require('js-yaml');
+				const newFrontmatter = yaml.dump(finalFrontmatter);
+				let processedContent = `---\n${newFrontmatter}---\n${parsed.content}`;
+				
+				// Add printed frontmatter if requested
+				if (this.printFrontmatter) {
+					const frontmatterDisplay = this.formatFrontmatterForDisplay(finalFrontmatter);
+					processedContent = `---\n${newFrontmatter}---\n\n${frontmatterDisplay}\n\n${parsed.content}`;
+				}
+				
+				return processedContent;
+			} else {
+				// Return content without frontmatter, but add title as frontmatter for Pandoc
+				let processedContent: string;
 				if (this.noteTitle) {
 					const yaml = require('js-yaml');
 					const titleFrontmatter = yaml.dump({ title: this.noteTitle });
-					return `---\n${titleFrontmatter}---\n${content}`;
+					processedContent = `---\n${titleFrontmatter}---\n${parsed.content}`;
 				} else {
-					return content;
+					processedContent = parsed.content;
 				}
-			}
-		} catch (error: unknown) {
-			const errorMessage = error instanceof Error ? error.message : String(error);
-			result.warnings.push(`Failed to parse frontmatter with gray-matter: ${errorMessage}`);
-			
-			// Fallback to simple regex-based parsing
-			const frontmatterMatch = content.match(this.FRONTMATTER_PATTERN);
-			
-			if (frontmatterMatch) {
-				try {
-					const yamlContent = frontmatterMatch[1];
-					const frontmatter: Record<string, unknown> = {};
-					
-					const lines = yamlContent.split('\n');
-					for (const line of lines) {
-						const colonIndex = line.indexOf(':');
-						if (colonIndex > 0) {
-							const key = line.substring(0, colonIndex).trim();
-							const value = line.substring(colonIndex + 1).trim();
-							const cleanValue = value.replace(/^["']|["']$/g, '');
-							frontmatter[key] = cleanValue;
-						}
-					}
-					
-					// Replace title with noteTitle if provided
-					if (this.noteTitle) {
-						frontmatter.title = this.noteTitle;
-					}
-					
-					result.metadata.frontmatter = frontmatter;
-					
-					if (this.preserveFrontmatter) {
-						// Reconstruct frontmatter with modified title
-						if (this.noteTitle) {
-							const yaml = require('js-yaml');
-							const newFrontmatter = yaml.dump(frontmatter);
-							let processedContent = content.replace(this.FRONTMATTER_PATTERN, `---\n${newFrontmatter}---\n`);
-							
-							// Add printed frontmatter if requested
-							if (this.printFrontmatter) {
-								const frontmatterDisplay = this.formatFrontmatterForDisplay(frontmatter);
-								processedContent = processedContent.replace(
-									this.FRONTMATTER_PATTERN, 
-									`---\n${newFrontmatter}---\n\n${frontmatterDisplay}\n\n`
-								);
-							}
-							
-							return processedContent;
-						} else {
-							return content;
-						}
+				
+				// Add printed frontmatter if requested
+				if (this.printFrontmatter) {
+					const frontmatterDisplay = this.formatFrontmatterForDisplay(finalFrontmatter);
+					// Insert after the title frontmatter but before content
+					const lines = processedContent.split('\n');
+					if (lines[0] === '---' && lines.findIndex(line => line === '---') > 0) {
+						const endIndex = lines.findIndex((line, i) => i > 0 && line === '---');
+						lines.splice(endIndex + 1, 0, '', frontmatterDisplay, '');
+						processedContent = lines.join('\n');
 					} else {
-						// Add title as frontmatter for Pandoc even when not preserving original
-						if (this.noteTitle) {
-							const yaml = require('js-yaml');
-							const titleFrontmatter = yaml.dump({ title: this.noteTitle });
-							let processedContent = content.replace(this.FRONTMATTER_PATTERN, `---\n${titleFrontmatter}---\n`);
-							
-							// Add printed frontmatter if requested
-							if (this.printFrontmatter) {
-								const frontmatterDisplay = this.formatFrontmatterForDisplay(frontmatter);
-								processedContent = processedContent.replace(
-									this.FRONTMATTER_PATTERN,
-									`---\n${titleFrontmatter}---\n\n${frontmatterDisplay}\n\n`
-								);
-							}
-							
-							return processedContent;
-						} else {
-							return content.replace(this.FRONTMATTER_PATTERN, '');
-						}
+						processedContent = `${frontmatterDisplay}\n\n${processedContent}`;
 					}
-				} catch (fallbackError: unknown) {
-					const fallbackErrorMessage = fallbackError instanceof Error ? fallbackError.message : String(fallbackError);
-					result.warnings.push(`Fallback frontmatter parsing also failed: ${fallbackErrorMessage}`);
 				}
+				
+				return processedContent;
 			}
-			
-			return content;
+		} else {
+			// No frontmatter found - add title frontmatter if we have a noteTitle
+			if (this.noteTitle) {
+				const yaml = require('js-yaml');
+				const titleFrontmatter = yaml.dump({ title: this.noteTitle });
+				result.metadata.title = this.noteTitle;
+				result.metadata.frontmatter = { title: this.noteTitle };
+				return `---\n${titleFrontmatter}---\n${content}`;
+			} else {
+				return content;
+			}
 		}
+	} catch (error: unknown) {
+		const errorMessage = error instanceof Error ? error.message : String(error);
+		console.log('FrontmatterProcessor: gray-matter failed with error:', errorMessage);
+		console.log('Content being parsed (first 500 chars):', content.substring(0, 500));
+		result.warnings.push(`Failed to parse frontmatter with gray-matter: ${errorMessage}`);
+		
+		// Fallback to simple regex-based parsing
+		const frontmatterMatch = content.match(this.FRONTMATTER_PATTERN);
+		
+		if (frontmatterMatch) {
+			try {
+				const yamlContent = frontmatterMatch[1];
+				const frontmatter: Record<string, unknown> = {};
+				
+				const lines = yamlContent.split('\n');
+				for (const line of lines) {
+					const colonIndex = line.indexOf(':');
+					if (colonIndex > 0) {
+						const key = line.substring(0, colonIndex).trim();
+						const value = line.substring(colonIndex + 1).trim();
+						const cleanValue = value.replace(/^["']|["']$/g, '');
+						frontmatter[key] = cleanValue;
+					}
+				}
+				
+				// Replace title with noteTitle if provided
+				if (this.noteTitle) {
+					frontmatter.title = this.noteTitle;
+				}
+				
+				result.metadata.frontmatter = frontmatter;
+				
+				if (this.preserveFrontmatter) {
+					// Reconstruct frontmatter with modified title
+					if (this.noteTitle) {
+						const yaml = require('js-yaml');
+						const newFrontmatter = yaml.dump(frontmatter);
+						let processedContent = content.replace(this.FRONTMATTER_PATTERN, `---\n${newFrontmatter}---\n`);
+						
+						// Add printed frontmatter if requested
+						if (this.printFrontmatter) {
+							const frontmatterDisplay = this.formatFrontmatterForDisplay(frontmatter);
+							processedContent = processedContent.replace(
+								this.FRONTMATTER_PATTERN, 
+								`---\n${newFrontmatter}---\n\n${frontmatterDisplay}\n\n`
+							);
+						}
+						
+						return processedContent;
+					} else {
+						return content;
+					}
+				} else {
+					// Add title as frontmatter for Pandoc even when not preserving original
+					if (this.noteTitle) {
+						const yaml = require('js-yaml');
+						const titleFrontmatter = yaml.dump({ title: this.noteTitle });
+						let processedContent = content.replace(this.FRONTMATTER_PATTERN, `---\n${titleFrontmatter}---\n`);
+						
+						// Add printed frontmatter if requested
+						if (this.printFrontmatter) {
+							const frontmatterDisplay = this.formatFrontmatterForDisplay(frontmatter);
+							processedContent = processedContent.replace(
+								this.FRONTMATTER_PATTERN,
+								`---\n${titleFrontmatter}---\n\n${frontmatterDisplay}\n\n`
+							);
+						}
+						
+						return processedContent;
+					} else {
+						return content.replace(this.FRONTMATTER_PATTERN, '');
+					}
+				}
+			} catch (fallbackError: unknown) {
+				const fallbackErrorMessage = fallbackError instanceof Error ? fallbackError.message : String(fallbackError);
+				result.warnings.push(`Fallback frontmatter parsing also failed: ${fallbackErrorMessage}`);
+			}
+		} else {
+			// No frontmatter pattern found, but gray-matter failed - treat as file without frontmatter
+			if (this.noteTitle) {
+				const yaml = require('js-yaml');
+				const titleFrontmatter = yaml.dump({ title: this.noteTitle });
+				result.metadata.title = this.noteTitle;
+				result.metadata.frontmatter = { title: this.noteTitle };
+				return `---\n${titleFrontmatter}---\n${content}`;
+			}
+		}
+		
+		return content;
 	}
+}
 
 	/**
 	 * Format frontmatter as a readable display block
