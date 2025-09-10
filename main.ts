@@ -17,6 +17,7 @@ import {
 
 import { obsidianTypstPDFExportSettings, DEFAULT_SETTINGS } from './src/core/settings';
 import { DependencyChecker } from './src/core/DependencyChecker';
+import type { PreprocessingResult } from './src/converters/MarkdownPreprocessor';
 import { ExportErrorHandler } from './src/core/ExportErrorHandler';
 import { PandocTypstConverter } from './src/converters/PandocTypstConverter';
 import { TemplateManager } from './src/templates/TemplateManager';
@@ -194,21 +195,21 @@ export class obsidianTypstPDFExport extends Plugin {
 	/**
 	 * Process PDF embeds (delegated to EmbedProcessor)
 	 */
-	async processPdfEmbeds(processedResult: any, vaultBasePath: string, tempDir: string, currentFile?: TFile, embedPdfFiles: boolean = true): Promise<void> {
+	async processPdfEmbeds(processedResult: PreprocessingResult, vaultBasePath: string, tempDir: string, currentFile?: TFile, embedPdfFiles: boolean = true): Promise<void> {
 		return this.embedProcessor.processPdfEmbeds(processedResult, vaultBasePath, tempDir, currentFile, embedPdfFiles);
 	}
 	
 	/**
 	 * Process image embeds (delegated to EmbedProcessor)
 	 */
-	async processImageEmbeds(processedResult: any, vaultBasePath: string, tempDir: string, currentFile?: TFile): Promise<void> {
+	async processImageEmbeds(processedResult: PreprocessingResult, vaultBasePath: string, tempDir: string, currentFile?: TFile): Promise<void> {
 		return this.embedProcessor.processImageEmbeds(processedResult, vaultBasePath, tempDir, currentFile);
 	}
 	
 	/**
 	 * Process file embeds (delegated to EmbedProcessor)
 	 */
-	async processFileEmbeds(processedResult: any, vaultBasePath: string, tempDir: string, currentFile?: TFile, embedAllFiles: boolean = true): Promise<void> {
+	async processFileEmbeds(processedResult: PreprocessingResult, vaultBasePath: string, tempDir: string, currentFile?: TFile, embedAllFiles: boolean = true): Promise<void> {
 		return this.embedProcessor.processFileEmbeds(processedResult, vaultBasePath, tempDir, currentFile, embedAllFiles);
 	}
 	

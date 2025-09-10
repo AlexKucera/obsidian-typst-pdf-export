@@ -68,7 +68,7 @@ export class ObsidianTypstPDFExportSettingTab extends PluginSettingTab {
 				.setValue(this.plugin.settings.pandocPath)
 				.onChange(async (value) => {
 					if (!SecurityUtils.validateExecutablePath(value)) {
-						new Notice(`Invalid Pandoc path: ${SecurityUtils.getExecutablePathValidationError(value)}`);
+						ExportErrorHandler.showValidationError('Pandoc path', SecurityUtils.getExecutablePathValidationError(value));
 						return;
 					}
 					this.plugin.settings.pandocPath = value;
@@ -83,7 +83,7 @@ export class ObsidianTypstPDFExportSettingTab extends PluginSettingTab {
 				.setValue(this.plugin.settings.typstPath)
 				.onChange(async (value) => {
 					if (!SecurityUtils.validateExecutablePath(value)) {
-						new Notice(`Invalid Typst path: ${SecurityUtils.getExecutablePathValidationError(value)}`);
+						ExportErrorHandler.showValidationError('Typst path', SecurityUtils.getExecutablePathValidationError(value));
 						return;
 					}
 					this.plugin.settings.typstPath = value;
@@ -98,7 +98,7 @@ export class ObsidianTypstPDFExportSettingTab extends PluginSettingTab {
 				.setValue(this.plugin.settings.executablePaths.imagemagickPath)
 				.onChange(async (value) => {
 					if (!SecurityUtils.validateExecutablePath(value)) {
-						new Notice(`Invalid ImageMagick path: ${SecurityUtils.getExecutablePathValidationError(value)}`);
+						ExportErrorHandler.showValidationError('ImageMagick path', SecurityUtils.getExecutablePathValidationError(value));
 						return;
 					}
 					this.plugin.settings.executablePaths.imagemagickPath = value;
@@ -120,7 +120,7 @@ export class ObsidianTypstPDFExportSettingTab extends PluginSettingTab {
 					// Validate each path
 					for (const pathItem of paths) {
 						if (!SecurityUtils.validateExecutablePath(pathItem)) {
-							new Notice(`Invalid system path: ${SecurityUtils.getExecutablePathValidationError(pathItem)}`);
+							ExportErrorHandler.showValidationError('system path', SecurityUtils.getExecutablePathValidationError(pathItem));
 							return;
 						}
 					}
@@ -184,7 +184,7 @@ export class ObsidianTypstPDFExportSettingTab extends PluginSettingTab {
 					.onChange(async (value) => {
 						const normalizedValue = normalizePath(value);
 						if (!SecurityUtils.validateOutputPath(normalizedValue)) {
-							new Notice(`Invalid output folder: ${SecurityUtils.getPathValidationError(normalizedValue)}`);
+							ExportErrorHandler.showValidationError('output folder', SecurityUtils.getPathValidationError(normalizedValue));
 							return;
 						}
 						this.plugin.settings.outputFolder = normalizedValue;

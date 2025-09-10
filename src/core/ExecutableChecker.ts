@@ -48,13 +48,11 @@ export class ExecutableChecker {
 	 * Try to find an executable using which command
 	 */
 	private static async findExecutableWithWhich(executableName: string, additionalPaths: string[] = []): Promise<string | null> {
-		console.log(`[ExecutableChecker] findExecutableWithWhich: searching for "${executableName}"`);
 		const { spawn } = require('child_process');
 		
 		try {
 			const stdout = await new Promise<string>((resolve, reject) => {
 				const env = this.getAugmentedEnv(additionalPaths);
-				console.log(`[ExecutableChecker] findExecutableWithWhich: using PATH="${env.PATH}"`);
 				
 				const whichProcess = spawn('which', [executableName], {
 					stdio: ['pipe', 'pipe', 'pipe'],
@@ -73,7 +71,6 @@ export class ExecutableChecker {
 				});
 				
 				whichProcess.on('close', (code: number | null) => {
-					console.log(`[ExecutableChecker] which ${executableName} exited with code ${code}, stdout: "${output.trim()}", stderr: "${error.trim()}"`);
 					if (code === 0) {
 						resolve(output);
 					} else {
@@ -82,16 +79,13 @@ export class ExecutableChecker {
 				});
 				
 				whichProcess.on('error', (err: Error) => {
-					console.log(`[ExecutableChecker] which ${executableName} spawn error:`, err.message);
 					reject(new Error(`Failed to spawn which process: ${err.message}`));
 				});
 			});
 			
 			const foundPath = stdout.trim();
-			console.log(`[ExecutableChecker] findExecutableWithWhich result: "${foundPath}"`);
 			return foundPath || null;
 		} catch (error) {
-			console.log(`[ExecutableChecker] findExecutableWithWhich caught error:`, error.message);
 			return null;
 		}
 	}
@@ -100,27 +94,21 @@ export class ExecutableChecker {
 	 * Resolve executable path - async version
 	 */
 	public static async resolveExecutablePath(userPath: string | undefined, defaultName: string, additionalPaths: string[] = []): Promise<string> {
-		console.log(`[ExecutableChecker] ASYNC Resolving path for ${defaultName}: userPath="${userPath}"`);
-		
 		// If user provided a full path (contains /), use it as-is
 		if (userPath && userPath.trim() !== '' && userPath.includes('/')) {
-			console.log(`[ExecutableChecker] ASYNC Using user-provided full path: ${userPath}`);
 			return userPath;
 		}
 		
 		// If user provided just an executable name or empty path, resolve it
 		const searchName = (userPath && userPath.trim() !== '') ? userPath.trim() : defaultName;
-		console.log(`[ExecutableChecker] ASYNC Searching for: ${searchName}`);
 		
 		// Try to find the executable using which command
 		const foundPath = await this.findExecutableWithWhich(searchName, additionalPaths);
 		if (foundPath) {
-			console.log(`[ExecutableChecker] ASYNC Found via which: ${foundPath}`);
 			return foundPath;
 		}
 		
 		// Fall back to the search name (will be found via PATH if available)
-		console.log(`[ExecutableChecker] ASYNC Falling back to search name: ${searchName}`);
 		return searchName;
 	}
 
@@ -128,17 +116,13 @@ export class ExecutableChecker {
 	 * Resolve executable path - sync version
 	 */
 	public static resolveExecutablePathSync(userPath: string | undefined, defaultName: string, additionalPaths: string[] = []): string {
-		console.log(`[ExecutableChecker] SYNC Resolving path for ${defaultName}: userPath="${userPath}"`);
-		
 		// If user provided a full path (contains /), use it as-is
 		if (userPath && userPath.trim() !== '' && userPath.includes('/')) {
-			console.log(`[ExecutableChecker] SYNC Using user-provided full path: ${userPath}`);
 			return userPath;
 		}
 		
 		// If user provided just an executable name or empty path, resolve it
 		const searchName = (userPath && userPath.trim() !== '') ? userPath.trim() : defaultName;
-		console.log(`[ExecutableChecker] SYNC Searching for: ${searchName}`);
 		
 		// Try to find the executable using which command synchronously
 		const { spawnSync } = require('child_process');
@@ -151,7 +135,6 @@ export class ExecutableChecker {
 			if (result.status === 0 && result.stdout) {
 				const foundPath = result.stdout.trim();
 				if (foundPath) {
-					console.log(`[ExecutableChecker] SYNC Found via which: ${foundPath}`);
 					return foundPath;
 				}
 			}
@@ -160,7 +143,6 @@ export class ExecutableChecker {
 		}
 		
 		// Fall back to the search name (will be found via PATH if available)
-		console.log(`[ExecutableChecker] SYNC Falling back to search name: ${searchName}`);
 		return searchName;
 	}
 

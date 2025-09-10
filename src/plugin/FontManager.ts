@@ -3,8 +3,8 @@
  * Handles font discovery, caching, and retrieval for the plugin
  */
 
-import { Notice } from 'obsidian';
 import type { obsidianTypstPDFExport } from '../../main';
+import { ExportErrorHandler } from '../core/ExportErrorHandler';
 import { FALLBACK_FONTS } from '../core/constants';
 import * as path from 'path';
 
@@ -74,12 +74,7 @@ export class FontManager {
 			console.error('Failed to cache fonts from typst:', error);
 			
 			// Notify user of font caching failure (only if debug mode is enabled or if it's a critical error)
-			if (this.plugin.settings.behavior.debugMode) {
-				new Notice(`Font caching failed: ${error.message}. Using fallback fonts.`, 5000);
-			} else {
-				// For non-debug mode, show a more gentle notice
-				new Notice('Font list may be incomplete. Check debug mode for details.', 3000);
-			}
+			ExportErrorHandler.showFontError(error, !this.plugin.settings.behavior.debugMode);
 			
 			// Create fallback cache file
 			const fallbackFonts = FALLBACK_FONTS;

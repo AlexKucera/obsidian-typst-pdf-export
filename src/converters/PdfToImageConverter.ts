@@ -9,6 +9,7 @@ import { PdfProcessor } from './pdf/PdfProcessor';
 import { ImageOptimizer } from './pdf/ImageOptimizer';
 import { PdfCliExecutor } from './pdf/PdfCliExecutor';
 import { FileDiscovery } from './pdf/FileDiscovery';
+import type { obsidianTypstPDFExport } from '../../main';
 
 export interface PdfConversionOptions {
 	/** Quality/scale factor for the rendered image (default: 2.0 for HiDPI) */
@@ -44,14 +45,14 @@ export interface PdfConversionResult {
 
 export class PdfToImageConverter {
 	private static instance: PdfToImageConverter;
-	private plugin: any; // Plugin instance for accessing settings
+	private plugin: obsidianTypstPDFExport | undefined;
 
-	private constructor(plugin?: any) {
+	private constructor(plugin?: obsidianTypstPDFExport) {
 		this.plugin = plugin;
 	}
 
 
-	public static getInstance(plugin?: any): PdfToImageConverter {
+	public static getInstance(plugin?: obsidianTypstPDFExport): PdfToImageConverter {
 		if (!PdfToImageConverter.instance) {
 			PdfToImageConverter.instance = new PdfToImageConverter(plugin);
 		} else if (plugin && !PdfToImageConverter.instance.plugin) {
@@ -162,13 +163,14 @@ export class PdfToImageConverter {
 				success: true
 			};
 
-		} catch (error: any) {
+		} catch (error: unknown) {
+			const errorMessage = error instanceof Error ? error.message : String(error);
 			return {
 				imagePath: '',
 				originalDimensions: { width: 0, height: 0 },
 				imageDimensions: { width: 0, height: 0 },
 				success: false,
-				error: `PDF conversion failed: ${error.message}`
+				error: `PDF conversion failed: ${errorMessage}`
 			};
 		}
 	}

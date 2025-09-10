@@ -6,6 +6,7 @@
 import { mapToTypstPaperSize } from '../../utils/paperSizeMapper';
 import { PandocOptions } from '../converterTypes';
 import type { obsidianTypstPDFExportSettings } from '../../core/settings';
+import type { obsidianTypstPDFExport } from '../../../main';
 
 export interface TypstVariable {
 	name: string;
@@ -13,9 +14,9 @@ export interface TypstVariable {
 }
 
 export class TypstVariableMapper {
-	private plugin: any;
+	private plugin: obsidianTypstPDFExport;
 
-	constructor(plugin: any) {
+	constructor(plugin: obsidianTypstPDFExport) {
 		this.plugin = plugin;
 	}
 
@@ -225,7 +226,7 @@ export class TypstVariableMapper {
 	/**
 	 * Map margin settings to Typst variables
 	 */
-	private mapMarginVariables(margins: any, existingVars: Record<string, any>): TypstVariable[] {
+	private mapMarginVariables(margins: {top: number; right: number; bottom: number; left: number;}, existingVars: Record<string, any>): TypstVariable[] {
 		const variables: TypstVariable[] = [];
 
 		if (!existingVars.marginTop && !existingVars.margin_top && margins.top !== undefined) {

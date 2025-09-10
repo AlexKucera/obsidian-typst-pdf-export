@@ -3,7 +3,7 @@
  * Handles template selection, format options, and output settings
  */
 
-import { Setting, App, normalizePath } from 'obsidian';
+import { Setting, App, normalizePath, DropdownComponent } from 'obsidian';
 import { ModalSection, ModalState, ValidationResult } from '../modalTypes';
 import { ExportFormat } from '../../../core/settings';
 import { FolderSuggest } from '../../components/FolderSuggest';
@@ -11,7 +11,7 @@ import { SecurityUtils } from '../../../core/SecurityUtils';
 
 export class GeneralSection implements ModalSection {
 	private container: HTMLElement | null = null;
-	private templateDropdown: any = null;
+	private templateDropdown: DropdownComponent | null = null;
 	private outputFolderInput: HTMLInputElement | null = null;
 	private app: App;
 	

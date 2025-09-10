@@ -2,8 +2,8 @@
  * Type definitions for the Export Configuration Modal
  */
 
-import { TFile } from 'obsidian';
-import { ExportFormat } from '../../core/settings';
+import { TFile, App } from 'obsidian';
+import { ExportFormat, obsidianTypstPDFExportSettings } from '../../core/settings';
 
 export interface ExportConfig {
 	/** Override default template */
@@ -46,7 +46,7 @@ export interface ExportConfigModalSettings extends ExportConfig {
 }
 
 export interface ModalSection {
-	render(containerEl: HTMLElement, state: ModalState, app?: any): void;
+	render(containerEl: HTMLElement, state: ModalState, app?: App): void;
 	validate?(): ValidationResult;
 	getId(): string;
 }
@@ -65,6 +65,6 @@ export interface ModalState {
 	buildExportConfig(): ExportConfig;
 	notifyChange(): void;
 	setProgress(percent: number, operation: string): void;
-	reset(pluginDefaults: any): void;
+	reset(pluginDefaults: obsidianTypstPDFExportSettings): void;
 	onChange(listener: () => void): void;
 }

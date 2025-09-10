@@ -3,6 +3,8 @@
  * Handles PATH augmentation and environment variable setup for external tools.
  */
 
+import type { obsidianTypstPDFExportSettings } from '../../core/settings';
+
 export interface EnvironmentSetupOptions {
 	/** Additional paths to include in PATH */
 	additionalPaths?: string[];
@@ -19,28 +21,45 @@ export class EnvironmentUtils {
 	 * @returns Augmented environment with extended PATH
 	 */
 	public static getAugmentedEnvironment(
-		settings?: any,
+		settings?: obsidianTypstPDFExportSettings,
 		options: EnvironmentSetupOptions = {}
 	): NodeJS.ProcessEnv {
-		// Set environment variables to ensure node can be found
-		// Use configured additional paths or fall back to defaults
-		const additionalPaths = options.additionalPaths || 
-			settings?.executablePaths?.additionalPaths || 
-			['/opt/homebrew/bin', '/usr/local/bin', '/usr/bin'];
+		// Common tool paths where CLI tools might be installed
+		const commonToolPaths = [
+			'/opt/homebrew/bin',        // Homebrew on Apple Silicon
+			'/usr/local/bin',           // Homebrew on Intel Mac, standard Unix tools
+			'/usr/bin',                 // System binaries
+			'/bin',                     // Core system binaries
+			'/usr/local/texlive/bin',   // TeX Live installation
+			'/Library/TeX/texbin',      // MacTeX installation
+			...(options.additionalPaths || [])
+		];
+
+		// Get base environment
+		const baseEnv = options.baseEnvironment || process.env;
 		
-		// Ensure Node.js paths are included for pdf2img execution
-		const nodePaths = this.getNodePaths();
-		
-		const env = {
-			...(options.baseEnvironment || process.env),
-			PATH: this.mergePathVariables([
-				process.env.PATH,
-				...nodePaths,
-				...additionalPaths
-			])
+		// Build augmented PATH
+		const existingPath = baseEnv.PATH || '';
+		const augmentedPath = [
+			...commonToolPaths,
+			existingPath
+		].filter(Boolean).join(':');
+
+		// Create augmented environment
+		const augmentedEnv = {
+			...baseEnv,
+			PATH: augmentedPath,
+			// Ensure locale is set for proper tool operation
+			LC_ALL: baseEnv.LC_ALL || 'en_US.UTF-8',
+			LANG: baseEnv.LANG || 'en_US.UTF-8'
 		};
 
-		return env;
+		// Add any custom environment variables from settings if available
+		if (settings?.customEnvironmentVariables) {
+			Object.assign(augmentedEnv, settings.customEnvironmentVariables);
+		}
+
+		return augmentedEnv;
 	}
 
 	/**
@@ -73,13 +92,14 @@ export class EnvironmentUtils {
 	 * @param timeout Command timeout in milliseconds
 	 * @returns Environment configuration object
 	 */
-	public static createCliEnvironment(settings?: any, timeout?: number) {
+	public static createCliEnvironment(settings?: obsidianTypstPDFExportSettings, timeout?: number) {
 		const env = this.getAugmentedEnvironment(settings);
 		
 		return {
 			env,
-			timeout: timeout || 30000, // 30 second default timeout
-			stdio: ['pipe', 'pipe', 'pipe'] as const
+			timeout: timeout || 60000, // Default 60 second timeout
+			stdio: ['pipe', 'pipe', 'pipe'] as const,
+			shell: false // Use direct process spawning for better control
 		};
 	}
 }

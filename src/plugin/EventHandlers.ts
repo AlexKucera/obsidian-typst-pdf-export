@@ -3,8 +3,9 @@
  * Handles registration of all plugin event handlers and menu items
  */
 
-import { Menu, Editor, MarkdownView, TFile, TAbstractFile, Notice } from 'obsidian';
+import { Menu, Editor, MarkdownView, TFile, TAbstractFile } from 'obsidian';
 import type { obsidianTypstPDFExport } from '../../main';
+import { ExportErrorHandler } from '../core/ExportErrorHandler';
 
 export class EventHandlers {
 	constructor(private plugin: obsidianTypstPDFExport) {}
@@ -79,7 +80,7 @@ export class EventHandlers {
 		const activeView = this.plugin.app.workspace.getActiveViewOfType(MarkdownView);
 		
 		if (!activeView || !activeView.file) {
-			new Notice('Please open a markdown file to export');
+			ExportErrorHandler.showFileNotFoundWarning('markdown');
 			return;
 		}
 		

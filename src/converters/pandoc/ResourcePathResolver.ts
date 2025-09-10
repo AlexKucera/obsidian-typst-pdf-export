@@ -83,7 +83,7 @@ export class ResourcePathResolver {
 	 * @param now Current timestamp
 	 * @returns Array of resource paths found during scan
 	 */
-	private async scanForResourcePaths(vaultBasePath: string, fs: any, now: number): Promise<string[]> {
+	private async scanForResourcePaths(vaultBasePath: string, fs: typeof import('fs'), now: number): Promise<string[]> {
 		const foundResourcePaths: string[] = [];
 		
 		try {

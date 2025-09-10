@@ -3,7 +3,7 @@
  */
 export interface TemplateVariable {
     type: 'string' | 'number' | 'boolean';
-    defaultValue: any;
+    defaultValue: string | number | boolean;
     description?: string;
     required: boolean;
 }

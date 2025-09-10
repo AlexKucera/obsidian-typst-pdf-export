@@ -4,6 +4,7 @@
  */
 
 import * as path from 'path';
+import type { obsidianTypstPDFExport } from '../../../main';
 
 export interface BinaryLocation {
 	/** Full path to the binary */
@@ -21,7 +22,7 @@ export class BinaryLocator {
 	 * @param plugin The plugin instance for accessing manifest and settings
 	 * @returns Binary location info
 	 */
-	public static async findPdf2ImgBinary(plugin?: any): Promise<BinaryLocation> {
+	public static async findPdf2ImgBinary(plugin?: obsidianTypstPDFExport): Promise<BinaryLocation> {
 		try {
 			// Get the plugin directory - need to handle Obsidian's environment
 			// In Obsidian, __dirname points to electron.asar, so we need to find the actual plugin path
@@ -60,11 +61,12 @@ export class BinaryLocator {
 				exists: true
 			};
 
-		} catch (error: any) {
+		} catch (error: unknown) {
+			const errorMessage = error instanceof Error ? error.message : String(error);
 			return {
 				binaryPath: '',
 				exists: false,
-				error: `Failed to locate pdf2img binary: ${error.message}`
+				error: `Failed to locate pdf2img binary: ${errorMessage}`
 			};
 		}
 	}
@@ -76,7 +78,7 @@ export class BinaryLocator {
 	 * @param configDir Obsidian config directory (.obsidian)
 	 * @returns Array of possible plugin directory paths
 	 */
-	private static getPossiblePluginDirs(plugin: any, pluginDirName: string, configDir: string): string[] {
+	private static getPossiblePluginDirs(plugin: obsidianTypstPDFExport | undefined, pluginDirName: string, configDir: string): string[] {
 		return [
 			// Strategy 1: From process.cwd() if it's in the vault
 			path.join(process.cwd(), configDir, 'plugins', pluginDirName),

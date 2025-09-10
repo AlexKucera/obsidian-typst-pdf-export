@@ -97,12 +97,13 @@ export class FileDiscovery {
 				};
 			}
 
-		} catch (listError: any) {
+		} catch (listError: unknown) {
 			console.error(`Failed to list output directory:`, listError);
+			const errorMessage = listError instanceof Error ? listError.message : String(listError);
 			return {
 				filePath: '',
 				found: false,
-				error: `Failed to search output directory: ${listError.message}`
+				error: `Failed to search output directory: ${errorMessage}`
 			};
 		}
 	}

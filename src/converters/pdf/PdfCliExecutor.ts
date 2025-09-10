@@ -6,6 +6,7 @@
 import * as path from 'path';
 import { BinaryLocator } from './BinaryLocator';
 import { EnvironmentUtils } from './EnvironmentUtils';
+import type { obsidianTypstPDFExport } from '../../../main';
 
 export interface PdfCliOptions {
 	/** Scale factor for the rendered image */
@@ -38,7 +39,7 @@ export class PdfCliExecutor {
 	public static async executePdf2Img(
 		pdfPath: string,
 		options: PdfCliOptions,
-		plugin?: any
+		plugin?: obsidianTypstPDFExport
 	): Promise<PdfCliResult> {
 		try {
 			// Find the pdf2img binary
@@ -66,10 +67,11 @@ export class PdfCliExecutor {
 			// Execute the command
 			return await this.executeCommand(cliCommand, plugin);
 
-		} catch (error: any) {
+		} catch (error: unknown) {
+			const errorMessage = error instanceof Error ? error.message : String(error);
 			return {
 				success: false,
-				error: `PDF CLI execution failed: ${error.message}`
+				error: `PDF CLI execution failed: ${errorMessage}`
 			};
 		}
 	}
@@ -106,7 +108,7 @@ export class PdfCliExecutor {
 	 */
 	private static async executeCommand(
 		command: string,
-		plugin?: any
+		plugin?: obsidianTypstPDFExport
 	): Promise<PdfCliResult> {
 		try {
 			const { exec } = require('child_process');
@@ -129,12 +131,13 @@ export class PdfCliExecutor {
 				stderr: result.stderr
 			};
 
-		} catch (cliError: any) {
-			console.error(`PDF conversion error: ${cliError.message}`);
+		} catch (cliError: unknown) {
+			const errorMessage = cliError instanceof Error ? cliError.message : String(cliError);
+			console.error(`PDF conversion error: ${errorMessage}`);
 			return {
 				success: false,
-				error: `PDF CLI conversion failed: ${cliError.message}`,
-				stderr: cliError.stderr
+				error: `PDF CLI conversion failed: ${errorMessage}`,
+				stderr: (cliError as any)?.stderr || ''
 			};
 		}
 	}
@@ -144,7 +147,7 @@ export class PdfCliExecutor {
 	 * @param plugin Plugin instance for accessing settings
 	 * @returns Validation result
 	 */
-	public static async validatePdf2ImgAvailable(plugin?: any): Promise<{
+	public static async validatePdf2ImgAvailable(plugin?: obsidianTypstPDFExport): Promise<{
 		available: boolean;
 		error?: string;
 	}> {
@@ -154,10 +157,11 @@ export class PdfCliExecutor {
 				available: binaryLocation.exists,
 				error: binaryLocation.error
 			};
-		} catch (error: any) {
+		} catch (error: unknown) {
+			const errorMessage = error instanceof Error ? error.message : String(error);
 			return {
 				available: false,
-				error: `Failed to validate pdf2img: ${error.message}`
+				error: `Failed to validate pdf2img: ${errorMessage}`
 			};
 		}
 	}

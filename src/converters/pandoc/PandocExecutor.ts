@@ -1,6 +1,7 @@
 import { spawn, ChildProcess } from 'child_process';
 import { ConversionResult, ProgressCallback, PandocOptions } from '../converterTypes';
 import { PathResolver } from '../../plugin/PathResolver';
+import type { obsidianTypstPDFExport } from '../../../main';
 
 /**
  * Handles pandoc process execution, monitoring, and error parsing.
@@ -9,7 +10,7 @@ import { PathResolver } from '../../plugin/PathResolver';
 export class PandocExecutor {
 	private pathResolver: PathResolver;
 
-	constructor(plugin: any) {
+	constructor(plugin: obsidianTypstPDFExport) {
 		this.pathResolver = new PathResolver(plugin);
 	}
 

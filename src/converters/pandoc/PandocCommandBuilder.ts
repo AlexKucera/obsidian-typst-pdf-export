@@ -8,14 +8,15 @@ import { PandocOptions } from '../converterTypes';
 import { TypstVariableMapper } from './TypstVariableMapper';
 import { ResourcePathResolver } from './ResourcePathResolver';
 import { PathResolver } from '../../plugin/PathResolver';
+import type { obsidianTypstPDFExport } from '../../../main';
 
 export class PandocCommandBuilder {
-	private plugin: any;
+	private plugin: obsidianTypstPDFExport;
 	private variableMapper: TypstVariableMapper;
 	private resourcePathResolver: ResourcePathResolver;
 	private pathResolver: PathResolver;
 
-	constructor(plugin: any) {
+	constructor(plugin: obsidianTypstPDFExport) {
 		this.plugin = plugin;
 		this.variableMapper = new TypstVariableMapper(plugin);
 		this.resourcePathResolver = new ResourcePathResolver();

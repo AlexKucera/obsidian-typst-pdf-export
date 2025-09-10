@@ -2,7 +2,6 @@
  * Dependency checking utilities for Obsidian Typst PDF Export plugin
  */
 
-import { Notice } from 'obsidian';
 import { DEPENDENCY_CONSTANTS } from './constants';
 import { ExportErrorHandler } from './ExportErrorHandler';
 import { ExecutableChecker, DependencyInfo } from './ExecutableChecker';
@@ -32,16 +31,12 @@ export class DependencyChecker {
 		imagemagickPath?: string,
 		additionalPaths: string[] = []
 	): Promise<DependencyCheckResult> {
-		console.log(`[DependencyChecker] checkAllDependencies called with:`, { pandocPath, typstPath, imagemagickPath, additionalPaths });
-		
 		// Resolve actual executable paths, handling empty settings
 		const [pandocExec, typstExec, imagemagickExec] = await Promise.all([
 			ExecutableChecker.resolveExecutablePath(pandocPath, DEPENDENCY_CONSTANTS.DEFAULT_EXECUTABLES.pandoc, additionalPaths),
 			ExecutableChecker.resolveExecutablePath(typstPath, DEPENDENCY_CONSTANTS.DEFAULT_EXECUTABLES.typst, additionalPaths),
 			ExecutableChecker.resolveExecutablePath(imagemagickPath, DEPENDENCY_CONSTANTS.DEFAULT_EXECUTABLES.imagemagick, additionalPaths)
 		]);
-		
-		console.log(`[DependencyChecker] Resolved paths:`, { pandocExec, typstExec, imagemagickExec });
 
 		const [pandocInfo, typstInfo, imagemagickInfo] = await Promise.all([
 			ExecutableChecker.checkDependency('Pandoc', pandocExec, '--version', /pandoc\s+([\d.]+)/),
@@ -71,14 +66,10 @@ export class DependencyChecker {
 		imagemagickPath?: string,
 		additionalPaths: string[] = []
 	): string[] {
-		console.log(`[DependencyChecker] checkDependenciesSync called with:`, { pandocPath, typstPath, imagemagickPath, additionalPaths });
-		
 		// Resolve actual executable paths, handling empty settings
 		const pandocExec = ExecutableChecker.resolveExecutablePathSync(pandocPath, DEPENDENCY_CONSTANTS.DEFAULT_EXECUTABLES.pandoc, additionalPaths);
 		const typstExec = ExecutableChecker.resolveExecutablePathSync(typstPath, DEPENDENCY_CONSTANTS.DEFAULT_EXECUTABLES.typst, additionalPaths);
 		const imagemagickExec = ExecutableChecker.resolveExecutablePathSync(imagemagickPath, DEPENDENCY_CONSTANTS.DEFAULT_EXECUTABLES.imagemagick, additionalPaths);
-		
-		console.log(`[DependencyChecker] Resolved paths SYNC:`, { pandocExec, typstExec, imagemagickExec });
 
 		const missingDeps: string[] = [];
 
@@ -122,7 +113,7 @@ ${dependencyResult.allAvailable
 			? 'All dependencies found!' 
 			: `Missing dependencies: ${dependencyResult.missingDependencies.join(', ')}. Please install them and check the paths in settings.`}`;
 		
-		new Notice(message, 12000); // Show for 12 seconds (longer due to more content)
+		ExportErrorHandler.showProgressNotice(message, 12000); // Show for 12 seconds (longer due to more content)
 	}
 
 	/**
@@ -145,7 +136,7 @@ ${dependencyResult.allAvailable
 			
 			// Only show notice if dependencies are missing
 			if (missingDeps.length > 0) {
-				new Notice(
+				ExportErrorHandler.showProgressNotice(
 					`Typst PDF Export: Missing dependencies: ${missingDeps.join(', ')}. ` +
 					`Run "Check Dependencies" command for details.`,
 					8000

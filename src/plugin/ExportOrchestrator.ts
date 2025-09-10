@@ -63,7 +63,7 @@ export class ExportOrchestrator {
 	async showExportModal(view: MarkdownView): Promise<void> {
 		const file = view.file;
 		if (!file) {
-			new Notice('No active file to export');
+			ExportErrorHandler.showFileNotFoundWarning('markdown');
 			return;
 		}
 		
@@ -98,7 +98,7 @@ export class ExportOrchestrator {
 	 */
 	async showExportModalForFiles(files: TFile[]): Promise<void> {
 		if (files.length === 0) {
-			new Notice('No files to export');
+			ExportErrorHandler.showNoFilesWarning();
 			return;
 		}
 
@@ -229,14 +229,14 @@ export class ExportOrchestrator {
 			progressNotice.hide();
 			
 			if (result.success) {
-				new Notice(`PDF exported successfully to ${result.outputPath}`);
+				ExportErrorHandler.showExportSuccess(result.outputPath!);
 				
 				// Open PDF if configured
 				if (this.plugin.settings.behavior.openAfterExport) {
 					this.plugin.openPDF(result.outputPath!);
 				}
 			} else {
-				new Notice(`Export failed: ${result.error}`);
+				ExportErrorHandler.handleSingleExportError(result.error!);
 			}
 		} catch (error) {
 			ExportErrorHandler.handleSingleExportError(error);
@@ -273,7 +273,7 @@ export class ExportOrchestrator {
 		exportFunction: (file: TFile) => Promise<void>
 	): Promise<void> {
 		if (files.length === 0) {
-			new Notice('No files to export');
+			ExportErrorHandler.showNoFilesWarning();
 			return;
 		}
 

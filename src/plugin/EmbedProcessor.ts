@@ -5,6 +5,7 @@
 
 import { TFile } from 'obsidian';
 import type { obsidianTypstPDFExport } from '../../main';
+import type { PreprocessingResult } from '../converters/MarkdownPreprocessor';
 import { ExportErrorHandler } from '../core/ExportErrorHandler';
 import * as path from 'path';
 import * as fs from 'fs';
@@ -15,7 +16,7 @@ export class EmbedProcessor {
 	/**
 	 * Process PDF embeds - convert PDF pages to images for inclusion
 	 */
-	async processPdfEmbeds(processedResult: any, vaultBasePath: string, tempDir: string, currentFile?: TFile, embedPdfFiles: boolean = true): Promise<void> {
+	async processPdfEmbeds(processedResult: PreprocessingResult, vaultBasePath: string, tempDir: string, currentFile?: TFile, embedPdfFiles: boolean = true): Promise<void> {
 		const { PdfToImageConverter } = await import('../converters/PdfToImageConverter');
 		const converter = PdfToImageConverter.getInstance(this.plugin);
 		
@@ -102,7 +103,7 @@ export class EmbedProcessor {
 	/**
 	 * Process image embeds - ensure images are accessible for Typst
 	 */
-	async processImageEmbeds(processedResult: any, vaultBasePath: string, tempDir: string, currentFile?: TFile): Promise<void> {
+	async processImageEmbeds(processedResult: PreprocessingResult, vaultBasePath: string, tempDir: string, currentFile?: TFile): Promise<void> {
 		let updatedContent = processedResult.content;
 		
 		for (const imageEmbed of processedResult.metadata.imageEmbeds) {
@@ -154,8 +155,6 @@ export class EmbedProcessor {
 					
 					const convertedImagePath = path.join(vaultTempImagesDir, pngFileName);
 					
-					console.log(`Export: Converting WebP to PNG: ${originalImageName} -> ${pngFileName}`);
-					
 					const { exec } = require('child_process');
 					const util = require('util');
 					const execAsync = util.promisify(exec);
@@ -175,7 +174,6 @@ export class EmbedProcessor {
 						
 						// Use resolved ImageMagick path to convert WebP to PNG
 						await execAsync(`"${imagemagickPath}" "${fullImagePath}" "${convertedImagePath}"`);
-						console.log(`Export: Successfully converted WebP to PNG: ${pngFileName}`);
 						finalImagePath = convertedImagePath;
 					} catch (convertError) {
 						console.error(`Export: Failed to convert WebP image: ${convertError.message}`);
@@ -231,7 +229,7 @@ export class EmbedProcessor {
 	/**
 	 * Process file embeds - Convert to attachments using Typst's pdf.embed
 	 */
-	async processFileEmbeds(processedResult: any, vaultBasePath: string, tempDir: string, currentFile?: TFile, embedAllFiles: boolean = true): Promise<void> {
+	async processFileEmbeds(processedResult: PreprocessingResult, vaultBasePath: string, tempDir: string, currentFile?: TFile, embedAllFiles: boolean = true): Promise<void> {
 		let updatedContent = processedResult.content;
 		
 		for (const fileEmbed of processedResult.metadata.fileEmbeds) {

@@ -3,8 +3,8 @@
  * Handles plugin loading, unloading, initialization, and cleanup
  */
 
-import { Notice } from 'obsidian';
 import type { obsidianTypstPDFExport } from '../../main';
+import { ExportErrorHandler } from '../core/ExportErrorHandler';
 import { PandocTypstConverter } from '../converters/PandocTypstConverter';
 import { TemplateManager } from '../templates/TemplateManager';
 import { EmbeddedTemplateManager } from '../templates/embeddedTemplates';
@@ -31,11 +31,11 @@ export class PluginLifecycle {
 			const extractionResult = this.plugin.embeddedTemplateManager.extractAllMissingTemplates();
 			if (extractionResult.failed.length > 0) {
 				console.warn(`Failed to extract ${extractionResult.failed.length} templates:`, extractionResult.failed);
-				new Notice(`Warning: Failed to extract some templates. Plugin may not work correctly.`);
+				ExportErrorHandler.showTemplateError(`Failed to extract some templates. Plugin may not work correctly.`);
 			}
 		} catch (error) {
 			console.error('Error during template extraction:', error);
-			new Notice(`Error extracting templates: ${error.message}`);
+			ExportErrorHandler.showTemplateError(error);
 		}
 		
 		// Initialize components with executable paths from settings

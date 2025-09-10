@@ -3,7 +3,8 @@
  * Refactored modular version that uses section components
  */
 
-import { Modal, App, Notice } from 'obsidian';
+import { Modal, App } from 'obsidian';
+import { ExportErrorHandler } from '../../core/ExportErrorHandler';
 import { obsidianTypstPDFExport } from '../../../main';
 import { ExportConfig, ExportConfigModalSettings, ModalSection } from './modalTypes';
 import { ModalState } from './state/ModalState';
@@ -101,7 +102,7 @@ export class ExportConfigModal extends Modal {
 			}
 		} catch (error) {
 			console.error('Failed to load templates:', error);
-			new Notice(`Failed to load available templates: ${error.message}`);
+			ExportErrorHandler.showTemplateError(error);
 		}
 	}
 	
@@ -139,7 +140,7 @@ export class ExportConfigModal extends Modal {
 		// Reload templates to update the dropdown
 		this.loadAvailableTemplates();
 		
-		new Notice('Settings reset to defaults');
+		ExportErrorHandler.showSettingsReset();
 	}
 	
 	private async handleSubmit(): Promise<void> {

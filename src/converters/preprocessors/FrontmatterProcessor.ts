@@ -49,7 +49,7 @@ export class FrontmatterProcessor {
 					if (Array.isArray(parsed.data.tags)) {
 						// Handle array of tags
 						frontmatterTags = parsed.data.tags
-							.map((tag: any) => typeof tag === 'string' ? tag : String(tag))
+							.map((tag: unknown) => typeof tag === 'string' ? tag : String(tag))
 							.filter((tag: string) => tag.trim() !== '');
 					} else if (typeof parsed.data.tags === 'string') {
 						// Handle comma-separated string or single tag
@@ -129,8 +129,9 @@ export class FrontmatterProcessor {
 					return content;
 				}
 			}
-		} catch (error: any) {
-			result.warnings.push(`Failed to parse frontmatter with gray-matter: ${error.message}`);
+		} catch (error: unknown) {
+			const errorMessage = error instanceof Error ? error.message : String(error);
+			result.warnings.push(`Failed to parse frontmatter with gray-matter: ${errorMessage}`);
 			
 			// Fallback to simple regex-based parsing
 			const frontmatterMatch = content.match(this.FRONTMATTER_PATTERN);
@@ -138,7 +139,7 @@ export class FrontmatterProcessor {
 			if (frontmatterMatch) {
 				try {
 					const yamlContent = frontmatterMatch[1];
-					const frontmatter: Record<string, any> = {};
+					const frontmatter: Record<string, unknown> = {};
 					
 					const lines = yamlContent.split('\n');
 					for (const line of lines) {
@@ -199,8 +200,9 @@ export class FrontmatterProcessor {
 							return content.replace(this.FRONTMATTER_PATTERN, '');
 						}
 					}
-				} catch (fallbackError: any) {
-					result.warnings.push(`Fallback frontmatter parsing also failed: ${fallbackError.message}`);
+				} catch (fallbackError: unknown) {
+					const fallbackErrorMessage = fallbackError instanceof Error ? fallbackError.message : String(fallbackError);
+					result.warnings.push(`Fallback frontmatter parsing also failed: ${fallbackErrorMessage}`);
 				}
 			}
 			

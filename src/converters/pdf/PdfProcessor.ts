@@ -60,12 +60,13 @@ export class PdfProcessor {
 				dimensions: { width: 612, height: 792 }, // Standard letter size estimate
 				success: true
 			};
-		} catch (error: any) {
+		} catch (error: unknown) {
+			const errorMessage = error instanceof Error ? error.message : String(error);
 			return {
 				pageCount: 0,
 				dimensions: { width: 0, height: 0 },
 				success: false,
-				error: error.message
+				error: errorMessage
 			};
 		}
 	}
@@ -82,7 +83,7 @@ export class PdfProcessor {
 		try {
 			await fs.access(filePath);
 			return { success: true };
-		} catch (error: any) {
+		} catch (error: unknown) {
 			return {
 				success: false,
 				error: `PDF file not found: ${filePath}`

@@ -10,19 +10,18 @@ import * as os from 'os';
 import { mapToTypstPaperSize } from '../utils/paperSizeMapper';
 import { PandocOptions, TypstSettings, ConversionResult, ProgressCallback } from './converterTypes';
 import type { obsidianTypstPDFExportSettings } from '../core/settings';
+import type { obsidianTypstPDFExport } from '../../main';
 import { TempDirectoryManager } from '../core/TempDirectoryManager';
 
 import { PandocCommandBuilder } from './pandoc/PandocCommandBuilder';
 import { PandocExecutor } from './pandoc/PandocExecutor';
-import { PdfEmbedProcessor } from './pdf/PdfEmbedProcessor';
 
 export class PandocTypstConverter {
 	private tempDir: string | null = null;
 	private cleanupHandlers: (() => void)[] = [];
-	private plugin: any; // Will be properly typed when we refactor the main plugin class
+	private plugin: obsidianTypstPDFExport;
 	private commandBuilder: PandocCommandBuilder;
 	private pandocExecutor: PandocExecutor;
-	private pdfEmbedProcessor: PdfEmbedProcessor;
 
 	/**
 	 * Create a new PandocTypstConverter instance
@@ -31,14 +30,13 @@ export class PandocTypstConverter {
 	 * @param typstSettings Settings specific to Typst engine
 	 */
 	constructor(
-		plugin: any,
+		plugin: obsidianTypstPDFExport,
 		private pandocOptions: PandocOptions = {},
 		private typstSettings: TypstSettings = {}
 	) {
 		this.plugin = plugin;
 		this.commandBuilder = new PandocCommandBuilder(plugin);
 		this.pandocExecutor = new PandocExecutor(plugin);
-		this.pdfEmbedProcessor = new PdfEmbedProcessor(plugin);
 		// Set up cleanup handlers for process termination
 		this.setupCleanup();
 	}

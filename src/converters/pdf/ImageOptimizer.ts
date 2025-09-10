@@ -89,10 +89,11 @@ export class ImageOptimizer {
 			});
 			
 			return { success: true };
-		} catch (error: any) {
+		} catch (error: unknown) {
+			const errorMessage = error instanceof Error ? error.message : String(error);
 			return {
 				success: false,
-				error: `JPEG conversion failed: ${error.message}`
+				error: `JPEG conversion failed: ${errorMessage}`
 			};
 		}
 	}
@@ -163,12 +164,13 @@ export class ImageOptimizer {
 					error: 'Could not parse dimensions from ImageMagick output'
 				};
 			}
-		} catch (error: any) {
+		} catch (error: unknown) {
+			const errorMessage = error instanceof Error ? error.message : String(error);
 			console.warn('ImageMagick not available for image metadata, using fallback dimensions');
 			return {
 				dimensions: fallbackDimensions,
 				success: false,
-				error: `Failed to get image dimensions: ${error.message}`
+				error: `Failed to get image dimensions: ${errorMessage}`
 			};
 		}
 	}
@@ -234,12 +236,13 @@ export class ImageOptimizer {
 				success: true
 			};
 
-		} catch (error: any) {
+		} catch (error: unknown) {
+			const errorMessage = error instanceof Error ? error.message : String(error);
 			return {
 				imagePath: '',
 				dimensions: { width: 0, height: 0 },
 				success: false,
-				error: `Image optimization failed: ${error.message}`
+				error: `Image optimization failed: ${errorMessage}`
 			};
 		}
 	}
