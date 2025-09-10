@@ -85,10 +85,6 @@ export class ExportConfigModal extends Modal {
 		this.loadAvailableTemplates();
 	}
 	
-	
-	
-	
-	
 	private async loadAvailableTemplates(): Promise<void> {
 		try {
 			const templateManager = new TemplateManager(this.plugin);
@@ -151,13 +147,13 @@ export class ExportConfigModal extends Modal {
 		const validationResults = this.validator.validateAllSections(Array.from(this.sections.values()));
 		
 		if (!validationResults.isValid) {
-			this.showValidationErrors(validationResults.errors);
+			this.renderer.showValidationErrors(validationResults.errors);
 			return;
 		}
 		
 		// Show any warnings
 		if (validationResults.warnings && validationResults.warnings.length > 0) {
-			this.showValidationWarnings(validationResults.warnings);
+			this.renderer.showValidationWarnings(validationResults.warnings);
 		}
 		
 		// Build export configuration
@@ -199,22 +195,9 @@ export class ExportConfigModal extends Modal {
 	}
 	
 	
-	private showValidationErrors(errors: string[]): void {
-		this.renderer.showValidationErrors(errors);
-	}
-	
-	private showValidationWarnings(warnings: string[]): void {
-		this.renderer.showValidationWarnings(warnings);
-	}
-	
 	
 	updateProgress(message: string, percent: number): void {
 		this.renderer.updateProgress(message, percent);
-	}
-	
-	private getOutputFilename(): string {
-		const noteName = this.state.settings.noteTitle || 'document';
-		return `${noteName}.pdf`;
 	}
 	
 	
