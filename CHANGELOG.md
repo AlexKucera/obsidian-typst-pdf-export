@@ -5,6 +5,23 @@ All notable changes to the Obsidian Typst PDF Export plugin will be documented i
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.2.1] - 2025-01-10
+
+### Fixed
+- **Horizontal Rule Processing**: Resolved YAML parsing conflicts when documents contain horizontal rules (`---`)
+  - Added HorizontalRuleProcessor to transform horizontal rules to asterisks (`***`) before Pandoc processing
+  - Preserved YAML frontmatter by detecting and skipping frontmatter sections during transformation
+  - Added horizontalrule definition to all Typst templates for Pandoc compatibility
+- **TypeScript Build Errors**: Fixed 23 TypeScript errors in 8 files
+  - Resolved DataAdapter casting issues with proper type assertions
+  - Fixed template variable type issues by adding undefined to union types
+  - Ensured type safety while maintaining full functionality
+
+### Changed
+- **Code Quality**: Replaced explicit any types for Obsidian plugin review compliance
+  - Improved type safety throughout the codebase
+  - Enhanced code maintainability with proper type assertions
+
 ## [1.2.0] - 2025-01-10
 
 ### Changed
