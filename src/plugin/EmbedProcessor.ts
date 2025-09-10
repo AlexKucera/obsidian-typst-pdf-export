@@ -22,7 +22,7 @@ export class EmbedProcessor {
 		
 		let updatedContent = processedResult.content;
 		
-		for (const pdfEmbed of processedResult.metadata.pdfEmbeds) {
+		for (const pdfEmbed of processedResult.metadata?.pdfEmbeds || []) {
 			try {
 				// Resolve PDF path using helper method
 				const fullPdfPath = await this.resolvePdfPath(pdfEmbed.sanitizedPath, vaultBasePath, currentFile);
@@ -106,7 +106,7 @@ export class EmbedProcessor {
 	async processImageEmbeds(processedResult: PreprocessingResult, vaultBasePath: string, tempDir: string, currentFile?: TFile): Promise<void> {
 		let updatedContent = processedResult.content;
 		
-		for (const imageEmbed of processedResult.metadata.imageEmbeds) {
+		for (const imageEmbed of processedResult.metadata?.imageEmbeds || []) {
 			try {
 				// Decode the URL-encoded sanitized path back to normal characters
 				const decodedPath = decodeURIComponent(imageEmbed.sanitizedPath);
@@ -232,7 +232,7 @@ export class EmbedProcessor {
 	async processFileEmbeds(processedResult: PreprocessingResult, vaultBasePath: string, tempDir: string, currentFile?: TFile, embedAllFiles: boolean = true): Promise<void> {
 		let updatedContent = processedResult.content;
 		
-		for (const fileEmbed of processedResult.metadata.fileEmbeds) {
+		for (const fileEmbed of processedResult.metadata?.fileEmbeds || []) {
 			try {
 				// Resolve file path using helper method (similar to PDF processing)
 				const fullFilePath = await this.resolveFilePath(fileEmbed.sanitizedPath, vaultBasePath, currentFile);

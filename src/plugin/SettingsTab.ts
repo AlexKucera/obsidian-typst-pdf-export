@@ -13,6 +13,7 @@ import {
 import type { obsidianTypstPDFExport } from '../../main';
 import { ExportFormat } from '../core/settings';
 import { SecurityUtils } from '../core/SecurityUtils';
+import { ExportErrorHandler } from '../core/ExportErrorHandler';
 import { FolderSuggest } from '../ui/components/FolderSuggest';
 import { SUPPORTED_PAPER_SIZES } from '../utils/paperSizeMapper';
 
