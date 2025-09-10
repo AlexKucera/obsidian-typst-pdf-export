@@ -125,7 +125,7 @@ jobs:
 
             ## Installation
 
-            ### Automatic Installation (Community Plugins)
+            ### Automatic Installation (Community Plugins) - Plugin still waiting for approval
             Search for "Typst PDF Export" in Obsidian's Community Plugins tab.
 
             ### Manual Installation
@@ -138,7 +138,7 @@ jobs:
             ### Requirements
             - [Pandoc](https://pandoc.org/installing.html)
             - [Typst](https://typst.app/docs/installation/)
-            - ImageMagick (optional, for enhanced image processing)
+            - [ImageMagick](https://imagemagick.org) (for enhanced image processing)
 
             ## Files in this release
             - `main.js` - Plugin code with embedded templates

@@ -48,7 +48,7 @@ Typst offers several advantages over standard PDF export:
 
 ## Installation
 
-### Method 1: Community Plugin Store (Recommended)
+### Method 1: Community Plugin Store (Recommended) - Still waiting on plugin approval
 
 1. Open **Settings** → **Community Plugins**
 2. **Disable Safe Mode** if needed
