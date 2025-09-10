@@ -4,24 +4,22 @@
  */
 
 import * as path from 'path';
-import { promises as fsPromises } from 'fs';
-import { spawnSync } from 'child_process';
 import { PandocOptions } from '../converterTypes';
 import { TypstVariableMapper } from './TypstVariableMapper';
+import { ResourcePathResolver } from './ResourcePathResolver';
+import { PathResolver } from '../../plugin/PathResolver';
 
 export class PandocCommandBuilder {
 	private plugin: any;
 	private variableMapper: TypstVariableMapper;
-	
-	// Cache for directory scanning optimization
-	private resourcePathCache: string[] = [];
-	private resourcePathCacheTimestamp: number = 0;
-	private resourcePathCacheVaultPath: string = '';
-	private readonly CACHE_EXPIRY_MS = 5 * 60 * 1000; // 5 minutes
+	private resourcePathResolver: ResourcePathResolver;
+	private pathResolver: PathResolver;
 
 	constructor(plugin: any) {
 		this.plugin = plugin;
 		this.variableMapper = new TypstVariableMapper(plugin);
+		this.resourcePathResolver = new ResourcePathResolver();
+		this.pathResolver = new PathResolver(plugin);
 	}
 
 	/**
@@ -40,7 +38,7 @@ export class PandocCommandBuilder {
 		args.push('--from', 'markdown-smart');
 
 		// Set PDF engine to Typst (use configured path if available)
-		const typstPath = this.resolveExecutablePath(pandocOptions.typstPath, 'typst');
+		const typstPath = this.pathResolver.resolveExecutablePath(pandocOptions.typstPath, 'typst');
 		args.push(`--pdf-engine=${typstPath}`);
 
 		// Enable standalone mode (required for PDF output)
@@ -80,90 +78,15 @@ export class PandocCommandBuilder {
 			return;
 		}
 
-		const fs = require('fs');
+		// Get all resource paths from the resolver
+		const resourcePaths = await this.resourcePathResolver.getResourcePaths(pandocOptions.vaultBasePath);
 		
-		// Add vault root as primary resource path
-		args.push('--resource-path', pandocOptions.vaultBasePath);
-		
-		// Add common attachment directories as additional resource paths
-		const commonAttachmentPaths = [
-			path.join(pandocOptions.vaultBasePath, 'attachments'),
-			path.join(pandocOptions.vaultBasePath, 'assets'),
-			path.join(pandocOptions.vaultBasePath, 'files'),
-			path.join(pandocOptions.vaultBasePath, 'images'),
-			path.join(pandocOptions.vaultBasePath, '.attachments')
-		];
-		
-		// Check if these directories exist and add them
-		for (const attachPath of commonAttachmentPaths) {
-			if (fs.existsSync(attachPath)) {
-				args.push('--resource-path', attachPath);
-			}
-		}
-		
-		// Also scan for note-specific attachment folders (Obsidian often creates these)
-		// Use cache to avoid scanning entire vault on every export
-		const now = Date.now();
-		const cacheIsValid = this.resourcePathCacheVaultPath === pandocOptions.vaultBasePath &&
-			(now - this.resourcePathCacheTimestamp) < this.CACHE_EXPIRY_MS &&
-			this.resourcePathCache.length > 0;
-			
-		if (cacheIsValid) {
-			// Use cached resource paths
-			for (const cachedPath of this.resourcePathCache) {
-				args.push('--resource-path', cachedPath);
-			}
-		} else {
-			// Cache is invalid or expired, perform fresh scan
-			await this.scanAndCacheResourcePaths(args, pandocOptions, fs, now);
+		// Add each path to the pandoc arguments
+		for (const resourcePath of resourcePaths) {
+			args.push('--resource-path', resourcePath);
 		}
 	}
 
-	/**
-	 * Scan vault for additional resource paths and cache results
-	 */
-	private async scanAndCacheResourcePaths(args: string[], pandocOptions: PandocOptions, fs: any, now: number): Promise<void> {
-		const foundResourcePaths: string[] = [];
-		
-		try {
-			const vaultContents = fs.readdirSync(pandocOptions.vaultBasePath);
-			for (const item of vaultContents) {
-				const itemPath = path.join(pandocOptions.vaultBasePath!, item);
-				
-				let stat;
-				try {
-					stat = await fsPromises.stat(itemPath);
-				} catch (error) {
-					// File might have been deleted between readdirSync and statSync
-					console.warn(`Export: Unable to stat ${itemPath}:`, (error as Error).message);
-					continue;
-				}
-				
-				if (stat.isDirectory() && !item.startsWith('.') && !item.startsWith('_')) {
-					// Check if this directory contains images
-					try {
-						const dirContents = fs.readdirSync(itemPath);
-						const hasImages = dirContents.some((file: string) => 
-							/\.(png|jpg|jpeg|gif|svg|webp|bmp|ico|tiff)$/i.test(file)
-						);
-						if (hasImages) {
-							foundResourcePaths.push(itemPath);
-							args.push('--resource-path', itemPath);
-						}
-					} catch (e) {
-						// Ignore directories we can't read
-					}
-				}
-			}
-			
-			// Update cache with fresh results
-			this.resourcePathCache = foundResourcePaths;
-			this.resourcePathCacheTimestamp = now;
-			this.resourcePathCacheVaultPath = pandocOptions.vaultBasePath!;
-		} catch (e) {
-			console.warn('Could not scan vault for attachment directories:', e);
-		}
-	}
 
 	/**
 	 * Add template configuration to pandoc arguments
@@ -251,38 +174,4 @@ export class PandocCommandBuilder {
 		});
 	}
 
-	/**
-	 * Resolve an executable path, handling empty settings by falling back to system search
-	 */
-	resolveExecutablePath(userPath: string | undefined, defaultName: string): string {
-		// If user provided a path and it's not empty, use it
-		if (userPath && userPath.trim() !== '') {
-			return userPath;
-		}
-		
-		// Try to find the executable using which command
-		try {
-			const augmentedEnv = {
-				...process.env,
-				PATH: `/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:${process.env.PATH || ''}`
-			};
-			
-			const result = spawnSync('which', [defaultName], {
-				encoding: 'utf8',
-				env: augmentedEnv
-			});
-			
-			if (result.status === 0 && result.stdout) {
-				const foundPath = result.stdout.trim();
-				if (foundPath) {
-					return foundPath;
-				}
-			}
-		} catch {
-			// Ignore errors from which command
-		}
-		
-		// Fall back to the default name (will be found via PATH if available)
-		return defaultName;
-	}
 }

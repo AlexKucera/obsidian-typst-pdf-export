@@ -14,12 +14,14 @@ import type { obsidianTypstPDFExportSettings } from '../core/settings';
 import { TempDirectoryManager } from '../core/TempDirectoryManager';
 
 import { PandocCommandBuilder } from './pandoc/PandocCommandBuilder';
+import { PathResolver } from '../plugin/PathResolver';
 
 export class PandocTypstConverter {
 	private tempDir: string | null = null;
 	private cleanupHandlers: (() => void)[] = [];
 	private plugin: any; // Will be properly typed when we refactor the main plugin class
 	private commandBuilder: PandocCommandBuilder;
+	private pathResolver: PathResolver;
 
 	/**
 	 * Create a new PandocTypstConverter instance
@@ -34,6 +36,7 @@ export class PandocTypstConverter {
 	) {
 		this.plugin = plugin;
 		this.commandBuilder = new PandocCommandBuilder(plugin);
+		this.pathResolver = new PathResolver(plugin);
 		// Set up cleanup handlers for process termination
 		this.setupCleanup();
 	}
@@ -272,7 +275,7 @@ export class PandocTypstConverter {
 	 */
 	private async executePandoc(args: string[], progressCallback?: ProgressCallback): Promise<ConversionResult> {
 		return new Promise((resolve) => {
-			const pandocPath = this.commandBuilder.resolveExecutablePath(this.pandocOptions.pandocPath, 'pandoc');
+			const pandocPath = this.pathResolver.resolveExecutablePath(this.pandocOptions.pandocPath, 'pandoc');
 			const timeout = this.pandocOptions.timeout || 60000;
 
 			// Log the exact command being executed for debugging
