@@ -5,6 +5,25 @@ All notable changes to the Obsidian Typst PDF Export plugin will be documented i
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.2.0] - 2025-01-10
+
+### Changed
+- **Major Refactoring**: Complete modularization of codebase for improved maintainability
+  - Restructured main.ts into focused modules (PluginLifecycle, CommandRegistry, EventHandlers, ExportOrchestrator, FontManager, PathResolver, etc.)
+  - Modularized MarkdownPreprocessor into specialized processors (FrontmatterProcessor, WikilinkProcessor, EmbedProcessor, CalloutProcessor, MetadataExtractor)
+  - Split PandocTypstConverter into PandocCommandBuilder, TypstVariableMapper, and ResourcePathResolver
+  - Separated ExportConfigModal into ModalRenderer and ModalValidator components
+  - Extracted PDF processing utilities (ImageOptimizer, PdfProcessor) from PdfToImageConverter
+  - Improved TypeScript type safety throughout the codebase
+  - Enhanced separation of concerns with ExecutableChecker extraction from DependencyChecker
+
+### Fixed
+- Used Obsidian API for more robust file path resolution
+- Simplified file type classification to properly handle DOCX embedding
+
+### Removed
+- Unused metadata extraction code (tags/wordCount) for cleaner processing pipeline
+
 ## [1.1.0]
 
 ### Added
