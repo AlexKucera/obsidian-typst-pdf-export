@@ -26,15 +26,13 @@ export class BinaryLocator {
 		try {
 			// Get the plugin directory - need to handle Obsidian's environment
 			// In Obsidian, __dirname points to electron.asar, so we need to find the actual plugin path
-			let pluginDir: string;
-			
 			// Try multiple strategies to find the plugin directory
 			const pluginDirName = plugin?.manifest?.dir || 'typst-pdf-export';
 			const configDir = plugin?.app.vault.configDir || '.obsidian';
 			const possiblePluginDirs = this.getPossiblePluginDirs(plugin, pluginDirName, configDir);
 			
 			// Find the first directory that exists and has node_modules
-			pluginDir = possiblePluginDirs.find(dir => {
+			const pluginDir = possiblePluginDirs.find(dir => {
 				try {
 					const nodeModulesPath = path.join(dir, 'node_modules');
 					return require('fs').existsSync(nodeModulesPath);

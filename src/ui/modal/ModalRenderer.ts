@@ -121,7 +121,7 @@ export class ModalRenderer {
 		this.progressBar = progressBarContainer.createDiv('export-progress-bar');
 		
 		// Progress percentage
-		const progressPercent = this.progressContainer.createEl('div', {
+		const _progressPercent = this.progressContainer.createEl('div', {
 			cls: 'export-progress-percent',
 			text: '0%'
 		});

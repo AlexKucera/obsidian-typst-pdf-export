@@ -3,13 +3,10 @@
  * Handles the conversion of Markdown to PDF using Pandoc with Typst engine
  */
 
-import * as fs from 'fs';
 import { promises as fsPromises } from 'fs';
 import * as path from 'path';
 import * as os from 'os';
-import { mapToTypstPaperSize } from '../utils/paperSizeMapper';
 import { PandocOptions, TypstSettings, ConversionResult, ProgressCallback } from './converterTypes';
-import type { obsidianTypstPDFExportSettings } from '../core/settings';
 import type { obsidianTypstPDFExport } from '../../main';
 import { TempDirectoryManager } from '../core/TempDirectoryManager';
 

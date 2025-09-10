@@ -128,16 +128,16 @@ export class GeneralSection implements ModalSection {
 	// Filter out universal-wrapper.pandoc.typ and clear/repopulate dropdown
 	const filteredTemplates = templates.filter(template => template !== 'universal-wrapper.pandoc.typ');
 	
-	this.templateDropdown.selectEl.empty();
+	this.templateDropdown?.selectEl.empty();
 	filteredTemplates.forEach(template => {
-		this.templateDropdown.addOption(template, this.getTemplateDisplayName(template));
+		this.templateDropdown?.addOption(template, this.getTemplateDisplayName(template));
 	});
 	
 	// Restore selection if still available
 	if (filteredTemplates.includes(currentValue)) {
-		this.templateDropdown.setValue(currentValue);
+		this.templateDropdown?.setValue(currentValue);
 	} else if (filteredTemplates.length > 0) {
-		this.templateDropdown.setValue(filteredTemplates[0]);
+		this.templateDropdown?.setValue(filteredTemplates[0]);
 	}
 }
 	

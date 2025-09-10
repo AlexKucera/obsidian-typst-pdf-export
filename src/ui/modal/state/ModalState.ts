@@ -142,30 +142,30 @@ export class ModalState implements IModalState {
 		// Reset to plugin defaults, not hardcoded defaults
 		this.settings = {
 			...this.settings,
-			template: pluginDefaults.template,
-			format: pluginDefaults.format,
+			template: pluginDefaults.exportDefaults.template,
+			format: pluginDefaults.exportDefaults.format,
 			outputFolder: pluginDefaults.outputFolder || 'exports',
 			templateVariables: {},
 			progressPercent: 0,
 			currentOperation: '',
 			isExporting: false,
 			canCancel: false,
-			openAfterExport: pluginDefaults.openAfterExport || false,
-			preserveFolderStructure: pluginDefaults.preserveFolderStructure || false
+			openAfterExport: pluginDefaults.behavior.openAfterExport || false,
+			preserveFolderStructure: pluginDefaults.behavior.preserveFolderStructure || false
 		};
 		
 		this.templateVariables = {
-			pageSize: pluginDefaults.pageSize,
-			orientation: pluginDefaults.orientation,
-			flipped: pluginDefaults.orientation === 'landscape',
-			marginTop: pluginDefaults.marginTop,
-			marginBottom: pluginDefaults.marginBottom,
-			marginLeft: pluginDefaults.marginLeft,
-			marginRight: pluginDefaults.marginRight,
-			bodyFont: pluginDefaults.bodyFont,
-			headingFont: pluginDefaults.headingFont,
-			monospaceFont: pluginDefaults.monospaceFont,
-			bodyFontSize: pluginDefaults.bodyFontSize
+			pageSize: pluginDefaults.exportDefaults.pageSize,
+			orientation: pluginDefaults.exportDefaults.orientation,
+			flipped: pluginDefaults.exportDefaults.orientation === 'landscape',
+			marginTop: pluginDefaults.exportDefaults.marginTop,
+			marginBottom: pluginDefaults.exportDefaults.marginBottom,
+			marginLeft: pluginDefaults.exportDefaults.marginLeft,
+			marginRight: pluginDefaults.exportDefaults.marginRight,
+			bodyFont: pluginDefaults.exportDefaults.bodyFont,
+			headingFont: pluginDefaults.exportDefaults.headingFont,
+			monospaceFont: pluginDefaults.exportDefaults.monospaceFont,
+			bodyFontSize: pluginDefaults.exportDefaults.bodyFontSize
 		};
 		
 		this.settings.templateVariables = this.templateVariables;

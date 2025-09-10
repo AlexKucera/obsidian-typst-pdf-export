@@ -29,7 +29,7 @@ export class PdfProcessor {
 			// Check PDF signature - all valid PDFs must start with %PDF
 			const signature = buffer.subarray(0, 4).toString();
 			return signature === '%PDF';
-		} catch (error) {
+		} catch {
 			return false;
 		}
 	}
@@ -83,7 +83,7 @@ export class PdfProcessor {
 		try {
 			await fs.access(filePath);
 			return { success: true };
-		} catch (error: unknown) {
+		} catch {
 			return {
 				success: false,
 				error: `PDF file not found: ${filePath}`

@@ -81,7 +81,7 @@ export class PluginLifecycle {
 		try {
 			const vaultPath = (this.plugin.app.vault.adapter as any).basePath;
 			const cleanupManager = TempDirectoryManager.create(vaultPath, this.plugin.app.vault.configDir);
-			const result = cleanupManager.cleanupAllTempDirs();
+			const _result = cleanupManager.cleanupAllTempDirs();
 			
 			if (this.plugin.settings.behavior.debugMode) {
 				// Debug logging was here but empty in original

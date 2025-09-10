@@ -4,8 +4,10 @@
 	"description": "Exports a note or collection of notes to a pretty Typst PDF.",
 	"main": "main.js",
 	"scripts": {
-		"dev": "node esbuild.config.mjs",
-		"build": "tsc -noEmit -skipLibCheck && node esbuild.config.mjs production",
+		"typecheck": "tsc --noEmit",
+		"lint": "eslint src/ main.ts",
+		"dev": "npm run typecheck && node esbuild.config.mjs",
+		"build": "npm run typecheck && npm run lint && node esbuild.config.mjs production",
 		"package": "node scripts/package-plugin.js",
 		"version": "node version-bump.mjs && git add manifest.json versions.json"
 	},
@@ -30,7 +32,8 @@
 		"globals": "^16.3.0",
 		"obsidian": "latest",
 		"tslib": "2.4.0",
-		"typescript": "4.7.4"
+		"typescript": "^5.9.2",
+		"typescript-eslint": "^8.43.0"
 	},
 	"dependencies": {
 		"gray-matter": "^4.0.3",

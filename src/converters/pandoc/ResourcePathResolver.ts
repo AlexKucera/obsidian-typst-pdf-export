@@ -110,7 +110,7 @@ export class ResourcePathResolver {
 						if (hasImages) {
 							foundResourcePaths.push(itemPath);
 						}
-					} catch (e) {
+					} catch {
 						// Ignore directories we can't read
 					}
 				}

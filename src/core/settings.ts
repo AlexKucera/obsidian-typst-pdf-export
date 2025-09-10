@@ -25,6 +25,9 @@ export interface obsidianTypstPDFExportSettings {
 		additionalPaths: string[];
 	};
 	
+	/** Custom environment variables for subprocess execution */
+	customEnvironmentVariables: { [key: string]: string };
+	
 	/** Export defaults */
 	exportDefaults: {
 		/** Default template to use for exports */
@@ -108,6 +111,8 @@ export const DEFAULT_SETTINGS: obsidianTypstPDFExportSettings = {
 		additionalPaths: ['/opt/homebrew/bin', '/usr/local/bin', '/usr/bin']
 	},
 	
+	customEnvironmentVariables: {},
+	
 	exportDefaults: {
 		template: 'default',
 		format: ExportFormat.Standard,
@@ -156,4 +161,4 @@ export const DEFAULT_SETTINGS: obsidianTypstPDFExportSettings = {
 		embedAllFiles: true,
 		printFrontmatter: false
 	}
-};;;;
+};

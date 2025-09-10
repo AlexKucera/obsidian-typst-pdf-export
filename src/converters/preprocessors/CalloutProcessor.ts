@@ -324,7 +324,7 @@ export class CalloutProcessor {
 		if (!text) return '';
 		
 		// First, clean up problematic Unicode characters
-		let cleaned = text
+		const cleaned = text
 			// Replace various Unicode spaces with regular spaces
 			.replace(/[\u00A0\u1680\u2000-\u200B\u202F\u205F\u3000\uFEFF]/g, ' ')
 			// Replace Unicode line separators with regular newlines
