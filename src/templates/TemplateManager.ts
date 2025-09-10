@@ -15,7 +15,7 @@ export class TemplateManager {
 		this.plugin = plugin;
 		// Templates are stored in the plugin directory
 		this.templatesPath = path.join(
-			(this.plugin.app.vault.adapter as { basePath: string }).basePath,
+			(this.plugin.app.vault.adapter as unknown as { basePath: string }).basePath,
 			this.plugin.manifest.dir!,
 			'templates'
 		);

@@ -94,42 +94,42 @@ export class PandocTypstConverter {
 	 * Convert markdown content to PDF
 	 */
 	async convertMarkdownToPDF(
-		content: string,
-		outputPath: string,
-		options: Partial<PandocOptions> = {},
-		progressCallback?: ProgressCallback
-	): Promise<ConversionResult> {
+	content: string,
+	outputPath: string,
+	options: Partial<PandocOptions> = {},
+	progressCallback?: ProgressCallback
+): Promise<ConversionResult> {
+	try {
+		progressCallback?.('Preparing markdown content...', 10);
+		
+		// Create temporary markdown file
+		await this.ensureTempDirectory();
+		const tempInputPath = path.join(this.tempDir!, `temp-${Date.now()}.md`);
+		
+		await fsPromises.writeFile(tempInputPath, content, 'utf-8');
+		
+		// Merge options
+		this.pandocOptions = { ...this.pandocOptions, ...options };
+		
+		// Convert using the file-based method
+		const result = await this.convertToPDF(tempInputPath, outputPath, progressCallback);
+		
+		// Cleanup temp file
 		try {
-			progressCallback?.('Preparing markdown content...', 10);
-			
-			// Create temporary markdown file
-			await this.ensureTempDirectory();
-			const tempInputPath = path.join(this.tempDir!, `temp-${Date.now()}.md`);
-			
-			await fsPromises.writeFile(tempInputPath, content, 'utf-8');
-			
-			// Merge options
-			this.pandocOptions = { ...this.pandocOptions, ...options };
-			
-			// Convert using the file-based method
-			const result = await this.convertToPDF(tempInputPath, outputPath, progressCallback);
-			
-			// Cleanup temp file
-			try {
-				await fsPromises.unlink(tempInputPath);
-			} catch (error) {
-				console.warn('Failed to cleanup temp file:', error);
-			}
-			
-			return result;
+			await fsPromises.unlink(tempInputPath);
 		} catch (error) {
-			const errorMessage = error instanceof Error ? error.message : String(error);
-			return {
-				success: false,
-				error: `Conversion failed: ${errorMessage}`
-			};
+			console.warn('Failed to cleanup temp file:', error);
 		}
+		
+		return result;
+	} catch (error) {
+		const errorMessage = error instanceof Error ? error.message : String(error);
+		return {
+			success: false,
+			error: `Conversion failed: ${errorMessage}`
+		};
 	}
+}
 
 	/**
 	 * Set up cleanup handlers for temporary files

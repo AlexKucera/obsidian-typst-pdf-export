@@ -132,7 +132,7 @@ export class ExportOrchestrator {
 	 * Export a file with specific configuration
 	 */
 	async exportFileWithConfig(file: TFile, config: ExportConfig): Promise<void> {
-		const vaultPath = (this.plugin.app.vault.adapter as { basePath: string }).basePath;
+		const vaultPath = (this.plugin.app.vault.adapter as unknown as { basePath: string }).basePath;
 		const pluginDir = path.join(vaultPath, this.plugin.manifest.dir!);
 		
 		// Create controller for this export (allows cancellation)

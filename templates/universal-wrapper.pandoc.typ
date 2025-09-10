@@ -1,7 +1,7 @@
 // Universal Pandoc wrapper for all Typst templates
 // This wrapper handles Pandoc's variable substitution and passes them to the actual Typst template
 
-#import "$template_path$": conf, email-block
+#import "$template_path$": conf, email-block, horizontalrule
 
 #show: doc => conf(
   $if(title)$title: [$title$],$else$title: none,$endif$

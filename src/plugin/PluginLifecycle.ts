@@ -22,7 +22,7 @@ export class PluginLifecycle {
 		await this.plugin.loadSettings();
 		
 		// Initialize embedded template manager
-		const vaultPath = (this.plugin.app.vault.adapter as { basePath: string }).basePath;
+		const vaultPath = (this.plugin.app.vault.adapter as unknown as { basePath: string }).basePath;
 		const pluginDir = path.join(vaultPath, this.plugin.manifest.dir!);
 		this.plugin.embeddedTemplateManager = new EmbeddedTemplateManager(pluginDir);
 		
@@ -66,7 +66,7 @@ export class PluginLifecycle {
 		
 		// Clean up temp directories on plugin unload
 		try {
-			const vaultPath = (this.plugin.app.vault.adapter as { basePath: string }).basePath;
+			const vaultPath = (this.plugin.app.vault.adapter as unknown as { basePath: string }).basePath;
 			const cleanupManager = TempDirectoryManager.create(vaultPath, this.plugin.app.vault.configDir);
 			cleanupManager.cleanupAllTempDirs();
 		} catch (error) {
@@ -79,7 +79,7 @@ export class PluginLifecycle {
 	 */
 	private cleanupStartupTempDirectories(): void {
 		try {
-			const vaultPath = (this.plugin.app.vault.adapter as { basePath: string }).basePath;
+			const vaultPath = (this.plugin.app.vault.adapter as unknown as { basePath: string }).basePath;
 			const cleanupManager = TempDirectoryManager.create(vaultPath, this.plugin.app.vault.configDir);
 			const _result = cleanupManager.cleanupAllTempDirs();
 			

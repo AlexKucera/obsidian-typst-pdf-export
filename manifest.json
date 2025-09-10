@@ -1,7 +1,7 @@
 {
 	"id": "typst-pdf-export",
 	"name": "Typst PDF Export",
-	"version": "1.2.0",
+	"version": "1.2.1",
 	"minAppVersion": "1.9.12",
 	"description": "Exports a note or collection of notes to a pretty Typst PDF.",
 	"author": "Alexander Kucera",

@@ -1,3 +1,6 @@
+// Horizontal rule definition for Pandoc compatibility
+#let horizontalrule = pad(y: 11pt, (line(stroke: 2pt + gray, length: 75%)))
+
 // Email block styling function
 #let email-block(from: none, to: none, subject: none, date: none, body) = {
   block(

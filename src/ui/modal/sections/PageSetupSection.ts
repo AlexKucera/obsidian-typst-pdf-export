@@ -33,7 +33,7 @@ export class PageSetupSection implements ModalSection {
 				});
 				
 				dropdown
-					.setValue(state.templateVariables.pageSize || 'a4')
+					.setValue(String(state.templateVariables.pageSize || 'a4'))
 					.onChange(value => {
 						state.updateTemplateVariables({ pageSize: value });
 					});
@@ -50,7 +50,7 @@ export class PageSetupSection implements ModalSection {
 				dropdown
 					.addOption('portrait', 'Portrait')
 					.addOption('landscape', 'Landscape')
-					.setValue(state.templateVariables.orientation || 'portrait')
+					.setValue(String(state.templateVariables.orientation || 'portrait'))
 					.onChange(value => {
 						const isLandscape = value === 'landscape';
 						state.updateTemplateVariables({ 
@@ -90,7 +90,7 @@ export class PageSetupSection implements ModalSection {
 				.addText(text => {
 					const input = text
 						.setPlaceholder(marginDefaults[side as keyof typeof marginDefaults])
-						.setValue(state.templateVariables[`margin${side.charAt(0).toUpperCase() + side.slice(1)}`] || marginDefaults[side as keyof typeof marginDefaults])
+						.setValue(String(state.templateVariables[`margin${side.charAt(0).toUpperCase() + side.slice(1)}`] || marginDefaults[side as keyof typeof marginDefaults]))
 						.onChange(value => {
 							const marginKey = `margin${side.charAt(0).toUpperCase() + side.slice(1)}`;
 							state.updateTemplateVariables({ [marginKey]: value });
