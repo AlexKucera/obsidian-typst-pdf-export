@@ -161,4 +161,4 @@ export const DEFAULT_SETTINGS: obsidianTypstPDFExportSettings = {
 		embedAllFiles: true,
 		printFrontmatter: false
 	}
-};;;;
+};
