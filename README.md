@@ -310,6 +310,26 @@ The plugin follows a modular architecture with:
 - **Security Layer**: Path validation and sanitization
 - **Progress Tracking**: Real-time feedback with cancellation support
 
+## Development Philosophy
+
+This plugin was developed using [vibe coding](https://en.wikipedia.org/wiki/Vibe_coding) techniques with AI assistance, but with crucial safeguards to prevent [AI slop](https://en.wikipedia.org/wiki/AI_slop). Unlike typical vibe coding where code is generated without detailed review, this project employed strict quality control measures:
+
+### AI-Assisted Development with Human Oversight
+
+- **Controlled Generation**: While large portions of code were AI-generated, every function was reviewed and validated
+- **Slop Prevention Tools**: Used specialized tools like `slopwatch` and `vibe-check` to catch and prevent low-quality patterns
+- **Systematic Review**: All AI suggestions were filtered through domain expertise and architectural consistency checks
+- **Test-Driven Validation**: Comprehensive testing ensured generated code met production standards
+
+### Quality Control Measures
+
+- **Pattern Enforcement**: AI was guided by strict architectural patterns and coding standards
+- **Memory Management**: Used persistent context tools to maintain consistency across development sessions
+- **Iterative Refinement**: Code went through multiple review-refactor cycles to eliminate "code smell"
+- **Human Decision Making**: Critical design decisions and architecture remained under human control
+
+This approach allowed rapid development while maintaining the code quality expected of a production Obsidian plugin. The result is clean, maintainable code that leverages AI's productivity benefits without sacrificing quality or introducing the technical debt typically associated with pure vibe coding.
+
 ## Contributing
 
 Contributions are welcome.
