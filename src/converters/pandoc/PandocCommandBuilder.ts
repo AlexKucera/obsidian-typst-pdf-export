@@ -60,8 +60,8 @@ export class PandocCommandBuilder {
 		// Add Typst engine options
 		this.addTypstEngineOptions(args, pandocOptions);
 
-		// Generate intermediate Typst file if requested
-		await this.addIntermediateTypstOutput(args, pandocOptions);
+		// Add enhanced Typst diagnostics for better error reporting
+		this.addTypstDiagnostics(args, pandocOptions);
 
 		// Set working directory for relative paths
 		if (pandocOptions.vaultBasePath) {
@@ -147,32 +147,11 @@ export class PandocCommandBuilder {
 	}
 
 	/**
-	 * Generate intermediate Typst file if requested
+	 * Add enhanced Typst diagnostics for better error reporting
 	 */
-	private async addIntermediateTypstOutput(args: string[], pandocOptions: PandocOptions): Promise<void> {
-		if (!pandocOptions.generateIntermediateTypst || !pandocOptions.tempDir) {
-			return;
-		}
-
-		const typstPath = path.join(pandocOptions.tempDir, 'intermediate.typ');
-		args.push('--output', typstPath);
-		
-		// Also create a copy to keep for debugging
-		const debugTypstPath = path.join(pandocOptions.tempDir, 'debug.typ');
-		// Store cleanup handler in pandocOptions to be handled by the caller
-		if (!pandocOptions.cleanupHandlers) {
-			pandocOptions.cleanupHandlers = [];
-		}
-		pandocOptions.cleanupHandlers.push(() => {
-			try {
-				const fs = require('fs');
-				if (fs.existsSync(typstPath)) {
-					fs.copyFileSync(typstPath, debugTypstPath);
-				}
-			} catch (e) {
-				console.warn('Could not create debug Typst file:', e);
-			}
-		});
+	private addTypstDiagnostics(args: string[], pandocOptions: PandocOptions): void {
+		// Add Typst diagnostic options for better error reporting
+		args.push('--pdf-engine-opt', '--diagnostic-format=short');
 	}
 
 }
