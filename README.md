@@ -36,6 +36,19 @@ Export Obsidian notes to PDF using the Typst typesetting system. Supports custom
 - **📐 Professional Layout**: Paper sizes, margins, typography controls, and more
 - **📧 Email Block Support**: Supports the YAML Email Block format introduced by the [Email Block plugin](https://github.com/joleaf/obsidian-email-block-plugin)
 
+## Why This Plugin?
+
+This plugin was born from frustration with Obsidian's native PDF export, which simply renders notes using the current Obsidian theme. While functional, this approach lacks the professional typesetting quality needed for serious documents. 
+
+The immediate catalyst came from a practical need: my wife required single-page PDFs – documents where the page grows to accommodate all content without pagination breaks. This format is ideal for digital preservation and viewing, keeping everything in one continuous, scrollable document. The native export couldn't provide this. By leveraging Typst's powerful typesetting engine, this plugin delivers:
+
+- **Professional Quality**: Properly typeset documents that look publication-ready, not just screenshots of notes
+- **Flexible Page Sizing**: Create single-page PDFs that expand to fit all content – perfect for digital preservation and continuous reading
+- **True Separation of Concerns**: Content and styling are properly separated, following best practices in document preparation
+- **Consistent Output**: Documents that look good by default, without requiring theme tweaking
+
+This transforms Obsidian from a note-taking tool into a complete document preparation system, bridging the gap between quick notes and professional output.
+
 ## Why Typst?
 
 Typst offers several advantages over standard PDF export:
