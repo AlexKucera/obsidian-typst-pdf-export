@@ -149,7 +149,7 @@
     width: 100%,
     below: 1em,
     above: 1.2em,
-    fill: rgb("#2563eb"),
+    fill: rgb("#0d9488"),
     inset: (x: 12pt, y: 8pt),
     radius: 6pt,
   )[
@@ -162,9 +162,9 @@
     below: 0.6em,
     above: 1em,
     inset: (bottom: 3pt),
-    stroke: (bottom: 2pt + rgb("#2563eb")),
+    stroke: (bottom: 2pt + rgb("#0d9488")),
   )[
-    #set text(font: heading-font, size: heading-fontsize * 0.85, weight: "semibold", fill: rgb("#1e40af"))
+    #set text(font: heading-font, size: heading-fontsize * 0.85, weight: "semibold", fill: rgb("#0f766e"))
     #it.body
   ]
 
@@ -190,7 +190,7 @@
   if title != none and title != "" [
     #block(
       width: 100%,
-      fill: gradient.linear(rgb("#1e40af"), rgb("#3b82f6"), angle: 45deg),
+      fill: gradient.linear(rgb("#0f766e"), rgb("#14b8a6"), angle: 45deg),
       inset: 16pt,
       radius: (top: 8pt),
     )[
@@ -204,7 +204,7 @@
             #v(0.3em)
             #for author in authors [
               #if author.name != none and author.name != "" [
-                #text(14pt, fill: rgb("#dbeafe"))[#author.name]
+                #text(14pt, fill: rgb("#ccfbf1"))[#author.name]
               ]
             ]
           ]
@@ -212,7 +212,7 @@
         // Contact info sidebar
         align(right + top)[
           #if date != none [
-            #text(11pt, fill: rgb("#dbeafe"), style: "italic")[#date]
+            #text(11pt, fill: rgb("#ccfbf1"), style: "italic")[#date]
           ]
         ]
       )
@@ -233,7 +233,7 @@
           if authors != () and authors != none [
             #for author in authors [
               #if author.name != none and author.name != "" [
-                #text(14pt, weight: "semibold", fill: rgb("#1e40af"))[#author.name]
+                #text(14pt, weight: "semibold", fill: rgb("#0f766e"))[#author.name]
               ]
             ]
           ] else [],

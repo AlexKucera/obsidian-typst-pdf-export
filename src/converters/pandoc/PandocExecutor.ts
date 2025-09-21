@@ -30,10 +30,6 @@ export class PandocExecutor {
 			const pandocPath = this.pathResolver.resolveExecutablePath(pandocOptions.pandocPath, 'pandoc');
 			const timeout = pandocOptions.timeout || 60000;
 
-			// Log the exact command being executed for debugging
-
-			progressCallback?.('Starting Pandoc process...', 40);
-
 			// Determine working directory - use vault base path if available, fallback to plugin directory
 			let workingDir: string;
 			
