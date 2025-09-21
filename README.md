@@ -2,7 +2,7 @@
 
 [![GitHub release (latest by date)](https://img.shields.io/github/v/release/AlexKucera/obsidian-typst-pdf-export?color=blue)](https://github.com/AlexKucera/obsidian-typst-pdf-export/releases)
 [![License: MIT](https://img.shields.io/github/license/AlexKucera/obsidian-typst-pdf-export?color=yellow)](https://opensource.org/licenses/MIT)
-[![Obsidian Downloads](https://img.shields.io/github/downloads/AlexKucera/obsidian-typst-pdf-export/total?color=green)](https://obsidian.md/plugins?id=obsidian-typst-pdf-export)
+[![Downloads](https://img.shields.io/github/downloads/AlexKucera/obsidian-typst-pdf-export/total?color=green)](https://github.com/AlexKucera/obsidian-typst-pdf-export/releases)
 ![](https://img.shields.io/badge/desktop_only-red?label=obsidian&labelColor=purple)
 
 
