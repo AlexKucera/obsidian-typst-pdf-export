@@ -6,11 +6,15 @@
 import { TFile } from 'obsidian';
 import type { obsidianTypstPDFExport } from '../../main';
 import { SecurityUtils } from '../core/SecurityUtils';
+import { PathUtils } from '../core/PathUtils';
 import * as path from 'path';
-import * as fs from 'fs';
 
 export class PathResolver {
-	constructor(private plugin: obsidianTypstPDFExport) {}
+	private readonly pathUtils: PathUtils;
+
+	constructor(private plugin: obsidianTypstPDFExport) {
+		this.pathUtils = new PathUtils(plugin.app);
+	}
 	
 	/**
 	 * Resolve an executable path, handling empty settings by falling back to system search
@@ -56,46 +60,28 @@ export class PathResolver {
 		if (!SecurityUtils.validateOutputPath(outputFolder)) {
 			throw new Error(`Invalid output folder path: ${outputFolder}. Path contains invalid characters or traversal attempts.`);
 		}
-		
-		const vaultPath = (this.plugin.app.vault.adapter as unknown as { basePath: string }).basePath;
-		const outputDir = path.join(vaultPath, outputFolder);
-		
+
+		const vaultPath = this.pathUtils.getVaultPath();
+		const outputDir = this.pathUtils.joinPath(vaultPath, outputFolder);
+
 		// Create output directory if it doesn't exist
-		try {
-			await fs.promises.access(outputDir);
-		} catch {
-			// Directory doesn't exist, create it
-			try {
-				await fs.promises.mkdir(outputDir, { recursive: true });
-			} catch (error) {
-				throw new Error(`Failed to create output directory ${outputDir}: ${error.message}`);
-			}
-		}
-		
+		await this.pathUtils.ensureDir(outputDir);
+
 		// Preserve folder structure if configured
 		let relativePath = '';
 		if (this.plugin.settings.behavior.preserveFolderStructure) {
 			const folderPath = path.dirname(file.path);
 			if (folderPath !== '.') {
 				relativePath = folderPath;
-				const fullOutputDir = path.join(outputDir, relativePath);
-				try {
-					await fs.promises.access(fullOutputDir);
-				} catch {
-					// Directory doesn't exist, create it
-					try {
-						await fs.promises.mkdir(fullOutputDir, { recursive: true });
-					} catch (error) {
-						throw new Error(`Failed to create nested output directory ${fullOutputDir}: ${error.message}`);
-					}
-				}
+				const fullOutputDir = this.pathUtils.joinPath(outputDir, relativePath);
+				await this.pathUtils.ensureDir(fullOutputDir);
 			}
 		}
-		
+
 		// Generate output filename (just use the note name without timestamp)
 		const baseName = file.basename;
 		const outputFileName = `${baseName}.pdf`;
-		
-		return path.join(outputDir, relativePath, outputFileName);
+
+		return this.pathUtils.joinPath(outputDir, relativePath, outputFileName);
 	}
 }

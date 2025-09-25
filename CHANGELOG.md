@@ -5,6 +5,53 @@ All notable changes to the Obsidian Typst PDF Export plugin will be documented i
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.3.1] - 2025-01-25
+
+### Added
+- **Windows Compatibility**: Comprehensive Windows executable detection with platform-specific extensions (.cmd, .bat, .ps1, .exe)
+- **Dynamic Image Format Support**: FileDiscovery now supports multiple image formats (.png, .jpg, .jpeg, .webp, .gif, .bmp, .tiff)
+- **Enhanced Pattern Matching**: Five-strategy file discovery system for robust PDF-to-image conversion output detection
+- **Cross-Platform Font Discovery**: Platform-specific PATH building for improved Typst executable and font detection
+- **Improved Plugin Isolation**: TempDirectoryManager now uses proper plugin namespacing to prevent conflicts
+
+### Fixed
+- **Cross-Platform Binary Discovery**: BinaryLocator now includes comprehensive fallback paths for different installation methods
+- **Vault-Relative Path Consistency**: Fixed all vault.adapter operations to use proper vault-relative paths instead of absolute paths
+- **Resource Path Resolution**: Removed extra quotes from Pandoc arguments that could break spawn commands on Windows
+- **Font Cache Corruption Recovery**: Enhanced error handling with automatic cache regeneration and validation
+- **Template Path Resolution**: Fixed resource path handling in PandocCommandBuilder for better cross-platform compatibility
+
+### Changed
+- **Enhanced Error Recovery**: Improved fallback mechanisms and graceful degradation throughout font and file discovery systems
+- **Platform Detection**: Added platform awareness to caching systems for better cross-platform consistency
+- **Code Quality**: Improved type safety, error handling, and validation across all affected modules
+- **Performance**: Optimized file discovery with progressive pattern matching strategies
+
+### Security
+- **Path Validation**: Enhanced path sanitization and validation for all file system operations
+- **Process Spawning**: Improved security in font discovery and binary execution with proper argument handling
+
+## [1.3.0] - 2024-12-25
+
+### Added
+- PathUtils helper class for centralized path operations and safe Obsidian API usage
+- Improved Typst error reporting in Pandoc conversion with enhanced diagnostic output
+- New Typst templates for varied document styles (modern, article, report)
+- Enhanced README with plugin motivation, development philosophy, and updated badges
+
+### Fixed
+- **Critical**: Embedded file path resolution issue that caused "File not found" errors for PDFs, images, and documents
+- Proper vault.adapter integration replacing unsafe type casts throughout codebase
+- Path handling reliability with comprehensive migration from Node.js fs/path to Obsidian APIs
+- File existence checks now handle both vault-relative and absolute filesystem paths
+
+### Changed
+- **Major Refactoring**: Complete migration from Node.js fs/path to Obsidian vault.adapter APIs
+- Centralized path utilities replacing unsafe `(app.vault.adapter as unknown as { basePath: string }).basePath` patterns
+- Improved file system operations security and cross-platform compatibility
+- Enhanced error handling and path validation across all modules
+- Updated all 16 core files with consistent, safe path handling practices
+
 ## [1.2.1] - 2025-01-10
 
 ### Fixed

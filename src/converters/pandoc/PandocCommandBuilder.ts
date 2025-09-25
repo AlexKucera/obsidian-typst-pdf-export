@@ -9,6 +9,7 @@ import { TypstVariableMapper } from './TypstVariableMapper';
 import { ResourcePathResolver } from './ResourcePathResolver';
 import { PathResolver } from '../../plugin/PathResolver';
 import type { obsidianTypstPDFExport } from '../../../main';
+import { PathUtils } from '../../core/PathUtils';
 
 export class PandocCommandBuilder {
 	private plugin: obsidianTypstPDFExport;
@@ -19,7 +20,7 @@ export class PandocCommandBuilder {
 	constructor(plugin: obsidianTypstPDFExport) {
 		this.plugin = plugin;
 		this.variableMapper = new TypstVariableMapper(plugin);
-		this.resourcePathResolver = new ResourcePathResolver();
+		this.resourcePathResolver = new ResourcePathResolver(plugin);
 		this.pathResolver = new PathResolver(plugin);
 	}
 
@@ -95,21 +96,21 @@ export class PandocCommandBuilder {
 	private async addTemplateConfiguration(args: string[], pandocOptions: PandocOptions): Promise<void> {
 		// Use universal wrapper with --template and pass actual template as template_path variable
 		if (pandocOptions.template) {
-			const fs = require('fs');
+			const pathUtils = new PathUtils(this.plugin.app);
 			const absolutePluginDir = pandocOptions.pluginDir || '';
-			const wrapperPath = path.resolve(absolutePluginDir, 'templates', 'universal-wrapper.pandoc.typ');
-			
+			const wrapperPath = pathUtils.joinPath(absolutePluginDir, 'templates', 'universal-wrapper.pandoc.typ');
+
 			// Verify wrapper exists
-			if (!fs.existsSync(wrapperPath)) {
+			if (!(await pathUtils.fileExists(wrapperPath))) {
 				throw new Error(`Universal wrapper template not found at: ${wrapperPath}`);
 			}
-			
+
 			args.push('--template', wrapperPath);
-			
+
 			// Add plugin templates directory as a resource path so Typst can find template files
-			const templatesDir = path.resolve(absolutePluginDir, 'templates');
-			// Quote the path to handle spaces and special characters
-			args.push('--resource-path', `"${templatesDir}"`);
+			const templatesDir = pathUtils.joinPath(absolutePluginDir, 'templates');
+			// Path quoting handled automatically by spawn
+			args.push('--resource-path', templatesDir);
 			
 			// Pass the actual template path as a variable
 			// Use relative path from vault root for Typst import

@@ -9,10 +9,14 @@ import { PandocTypstConverter } from '../converters/PandocTypstConverter';
 import { TemplateManager } from '../templates/TemplateManager';
 import { EmbeddedTemplateManager } from '../templates/embeddedTemplates';
 import { TempDirectoryManager } from '../core/TempDirectoryManager';
-import * as path from 'path';
+import { PathUtils } from '../core/PathUtils';
 
 export class PluginLifecycle {
-	constructor(private plugin: obsidianTypstPDFExport) {}
+	private readonly pathUtils: PathUtils;
+
+	constructor(private plugin: obsidianTypstPDFExport) {
+		this.pathUtils = new PathUtils(plugin.app);
+	}
 
 	/**
 	 * Initialize the plugin during onload
@@ -22,13 +26,13 @@ export class PluginLifecycle {
 		await this.plugin.loadSettings();
 		
 		// Initialize embedded template manager
-		const vaultPath = (this.plugin.app.vault.adapter as unknown as { basePath: string }).basePath;
-		const pluginDir = path.join(vaultPath, this.plugin.manifest.dir!);
-		this.plugin.embeddedTemplateManager = new EmbeddedTemplateManager(pluginDir);
-		
+		const vaultPath = this.pathUtils.getVaultPath();
+		const pluginDir = this.pathUtils.joinPath(vaultPath, this.pathUtils.getPluginDir(this.plugin.manifest));
+		this.plugin.embeddedTemplateManager = new EmbeddedTemplateManager(pluginDir, this.plugin.app);
+
 		// Extract any missing templates from embedded data
 		try {
-			const extractionResult = this.plugin.embeddedTemplateManager.extractAllMissingTemplates();
+			const extractionResult = await this.plugin.embeddedTemplateManager.extractAllMissingTemplates();
 			if (extractionResult.failed.length > 0) {
 				console.warn(`Failed to extract ${extractionResult.failed.length} templates:`, extractionResult.failed);
 				ExportErrorHandler.showTemplateError(`Failed to extract some templates. Plugin may not work correctly.`);
@@ -64,31 +68,36 @@ export class PluginLifecycle {
 			this.plugin.currentExportController.abort();
 		}
 		
-		// Clean up temp directories on plugin unload
-		try {
-			const vaultPath = (this.plugin.app.vault.adapter as unknown as { basePath: string }).basePath;
-			const cleanupManager = TempDirectoryManager.create(vaultPath, this.plugin.app.vault.configDir);
-			cleanupManager.cleanupAllTempDirs();
-		} catch (error) {
-			console.warn('Export: Failed to clean up temp directories during unload:', error);
-		}
+		// Clean up temp directories on plugin unload (fire-and-forget async)
+		(async () => {
+			try {
+				const vaultPath = this.pathUtils.getVaultPath();
+				const cleanupManager = TempDirectoryManager.create(vaultPath, this.plugin.app.vault.configDir, undefined, this.plugin.app);
+				await cleanupManager.cleanupAllTempDirs();
+			} catch (error) {
+				console.warn('Export: Failed to clean up temp directories during unload:', error);
+			}
+		})();
 	}
 
 	/**
 	 * Clean up leftover temp directories from previous sessions
 	 */
 	private cleanupStartupTempDirectories(): void {
-		try {
-			const vaultPath = (this.plugin.app.vault.adapter as unknown as { basePath: string }).basePath;
-			const cleanupManager = TempDirectoryManager.create(vaultPath, this.plugin.app.vault.configDir);
-			const _result = cleanupManager.cleanupAllTempDirs();
-			
-			if (this.plugin.settings.behavior.debugMode) {
-				// Debug logging was here but empty in original
+		// Clean up temp directories (fire-and-forget async)
+		(async () => {
+			try {
+				const vaultPath = this.pathUtils.getVaultPath();
+				const cleanupManager = TempDirectoryManager.create(vaultPath, this.plugin.app.vault.configDir, undefined, this.plugin.app);
+				const _result = await cleanupManager.cleanupAllTempDirs();
+
+				if (this.plugin.settings.behavior.debugMode) {
+					// Debug logging was here but empty in original
+				}
+			} catch (error) {
+				console.warn('Export: Startup temp directory cleanup failed (non-critical):', error);
+				// Don't throw - this shouldn't prevent plugin from loading
 			}
-		} catch (error) {
-			console.warn('Export: Startup temp directory cleanup failed (non-critical):', error);
-			// Don't throw - this shouldn't prevent plugin from loading
-		}
+		})();
 	}
 }

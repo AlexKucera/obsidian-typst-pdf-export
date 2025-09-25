@@ -4,19 +4,21 @@
  */
 
 import { obsidianTypstPDFExport } from '../../main';
+import { PathUtils } from '../core/PathUtils';
 import * as path from 'path';
-import * as fs from 'fs';
 
 export class TemplateManager {
 	private plugin: obsidianTypstPDFExport;
 	private templatesPath: string;
-	
+	private pathUtils: PathUtils;
+
 	constructor(plugin: obsidianTypstPDFExport) {
 		this.plugin = plugin;
+		this.pathUtils = new PathUtils(plugin.app);
 		// Templates are stored in the plugin directory
-		this.templatesPath = path.join(
-			(this.plugin.app.vault.adapter as unknown as { basePath: string }).basePath,
-			this.plugin.manifest.dir!,
+		this.templatesPath = this.pathUtils.joinPath(
+			this.pathUtils.getVaultPath(),
+			this.pathUtils.getPluginDir(this.plugin.manifest),
 			'templates'
 		);
 	}
@@ -27,24 +29,36 @@ export class TemplateManager {
 	async getAvailableTemplates(): Promise<string[]> {
 		try {
 			// Check if templates directory exists
-			if (!fs.existsSync(this.templatesPath)) {
+			const exists = await this.pathUtils.fileExists(this.templatesPath);
+			if (!exists) {
 				console.warn('Templates directory does not exist:', this.templatesPath);
 				return ['default.typ'];
 			}
-			
-			// Read directory contents
-			const files = fs.readdirSync(this.templatesPath);
-			
+
+			// Read directory contents - convert absolute path to vault-relative
+			const vaultBasePath = this.pathUtils.getVaultPath();
+			let vaultRelativePath = this.templatesPath;
+
+			// Convert absolute path to vault-relative path
+			if (this.templatesPath.startsWith(vaultBasePath)) {
+				vaultRelativePath = this.templatesPath.substring(vaultBasePath.length);
+				// Remove leading separators
+				vaultRelativePath = vaultRelativePath.replace(/^[/\\]+/, '');
+			}
+
+			const list = await this.plugin.app.vault.adapter.list(vaultRelativePath);
+			const files = list.files.map(filePath => path.basename(filePath));
+
 			// Filter for .typ and .pandoc.typ files
 			const templates = files.filter(file => {
 				return file.endsWith('.typ') || file.endsWith('.pandoc.typ');
 			});
-			
+
 			// Always include default if not present
 			if (!templates.includes('default.typ')) {
 				templates.unshift('default.typ');
 			}
-			
+
 			return templates;
 		} catch (error) {
 			console.error('Error loading templates:', error);
@@ -56,7 +70,7 @@ export class TemplateManager {
 	 * Get the full path to a template file
 	 */
 	getTemplatePath(templateName: string): string {
-		return path.join(this.templatesPath, templateName);
+		return this.pathUtils.joinPath(this.templatesPath, templateName);
 	}
 	
 	/**
@@ -64,11 +78,7 @@ export class TemplateManager {
 	 */
 	async templateExists(templateName: string): Promise<boolean> {
 		const templatePath = this.getTemplatePath(templateName);
-		try {
-			return fs.existsSync(templatePath);
-		} catch {
-			return false;
-		}
+		return await this.pathUtils.fileExists(templatePath);
 	}
 	
 	/**
@@ -77,8 +87,9 @@ export class TemplateManager {
 	async loadTemplate(templateName: string): Promise<string | null> {
 		const templatePath = this.getTemplatePath(templateName);
 		try {
-			if (fs.existsSync(templatePath)) {
-				return fs.readFileSync(templatePath, 'utf-8');
+			const exists = await this.pathUtils.fileExists(templatePath);
+			if (exists) {
+				return await this.plugin.app.vault.adapter.read(templatePath);
 			}
 		} catch (error) {
 			console.error('Error loading template:', error);

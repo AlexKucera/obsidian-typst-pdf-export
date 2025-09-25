@@ -1,8 +1,9 @@
-/**
- * Manages temporary directories for export operations
- */
+// ABOUTME: Manages temporary directories for export operations
+// ABOUTME: Uses normalizePath for cross-platform path operations
 
 import { PLUGIN_DIRS } from './constants';
+import { normalizePath } from 'obsidian';
+import type { App } from 'obsidian';
 
 export interface TempDirectoryOptions {
 	/** Base path for the vault */
@@ -11,26 +12,28 @@ export interface TempDirectoryOptions {
 	configDir: string;
 	/** Plugin directory name (defaults to 'typst-pdf-export') */
 	pluginName?: string;
+	/** App instance for vault.adapter operations */
+	app: App;
 }
 
 export class TempDirectoryManager {
-	private readonly fs = require('fs');
-	private readonly path = require('path');
 	private readonly vaultPath: string;
 	private readonly configDir: string;
 	private readonly pluginName: string;
+	private readonly app: App;
 
 	constructor(options: TempDirectoryOptions) {
 		this.vaultPath = options.vaultPath;
 		this.configDir = options.configDir;
 		this.pluginName = options.pluginName || 'typst-pdf-export';
+		this.app = options.app;
 	}
 
 	/**
 	 * Get the plugin directory path
 	 */
 	private getPluginDir(): string {
-		return this.path.join(this.vaultPath, this.configDir, 'plugins', this.pluginName);
+		return normalizePath([this.vaultPath, this.configDir, 'plugins', this.pluginName].join('/'));
 	}
 
 	/**
@@ -38,59 +41,60 @@ export class TempDirectoryManager {
 	 */
 	public getTempDir(type: 'images' | 'pandoc'): string {
 		const dirName = type === 'images' ? PLUGIN_DIRS.TEMP_IMAGES : PLUGIN_DIRS.TEMP_PANDOC;
-		return this.path.join(this.getPluginDir(), dirName);
+		return normalizePath([this.getPluginDir(), dirName].join('/'));
 	}
 
 	/**
 	 * Ensure a temp directory exists, creating it if necessary
 	 */
-	public ensureTempDir(type: 'images' | 'pandoc'): string {
+	public async ensureTempDir(type: 'images' | 'pandoc'): Promise<string> {
 		const tempDir = this.getTempDir(type);
-		
-		if (!this.fs.existsSync(tempDir)) {
-			this.fs.mkdirSync(tempDir, { recursive: true });
+
+		const exists = await this.app.vault.adapter.exists(tempDir);
+		if (!exists) {
+			await this.app.vault.adapter.mkdir(tempDir);
 		}
-		
+
 		return tempDir;
 	}
 
 	/**
 	 * Clean up a specific temp directory
 	 */
-	public cleanupTempDir(type: 'images' | 'pandoc'): boolean {
+	public async cleanupTempDir(type: 'images' | 'pandoc'): Promise<boolean> {
 		const tempDir = this.getTempDir(type);
-		
+
 		try {
-			if (this.fs.existsSync(tempDir)) {
-				const files = this.fs.readdirSync(tempDir);
-				for (const file of files) {
-					this.fs.unlinkSync(this.path.join(tempDir, file));
+			const exists = await this.app.vault.adapter.exists(tempDir);
+			if (exists) {
+				const list = await this.app.vault.adapter.list(tempDir);
+				// Remove only files, not subdirectories (matching current pattern)
+				for (const file of list.files) {
+					await this.app.vault.adapter.remove(file);
 				}
-				return true;
 			}
+			return true;
 		} catch (error) {
 			console.warn(`Export: Failed to clean up ${type === 'images' ? 'temp-images' : 'temp-pandoc'} directory:`, error);
 			return false;
 		}
-		
-		return true;
 	}
 
 	/**
 	 * Clean up all temp directories
 	 */
-	public cleanupAllTempDirs(): { images: boolean; pandoc: boolean } {
+	public async cleanupAllTempDirs(): Promise<{ images: boolean; pandoc: boolean }> {
 		return {
-			images: this.cleanupTempDir('images'),
-			pandoc: this.cleanupTempDir('pandoc')
+			images: await this.cleanupTempDir('images'),
+			pandoc: await this.cleanupTempDir('pandoc')
 		};
 	}
 
 	/**
 	 * Static helper to create manager from vault path and configDir
 	 */
-	public static create(vaultPath: string, configDir: string, pluginName?: string): TempDirectoryManager {
-		return new TempDirectoryManager({ vaultPath, configDir, pluginName });
+	public static create(vaultPath: string, configDir: string, pluginName: string | undefined, app: App): TempDirectoryManager {
+		return new TempDirectoryManager({ vaultPath, configDir, pluginName, app });
 	}
 
 	/**
@@ -98,10 +102,12 @@ export class TempDirectoryManager {
 	 */
 	public isPluginTempDir(dirPath: string): boolean {
 		const pluginDir = this.getPluginDir();
-		const normalizedPath = this.path.resolve(dirPath);
-		const normalizedPluginDir = this.path.resolve(pluginDir);
-		
-		return normalizedPath.startsWith(normalizedPluginDir) && 
-		       (dirPath.includes(PLUGIN_DIRS.TEMP_IMAGES) || dirPath.includes(PLUGIN_DIRS.TEMP_PANDOC));
+		const normalizedDirPath = normalizePath(dirPath);
+		const normalizedPluginDir = normalizePath(pluginDir);
+		const tempImagesDir = normalizePath([normalizedPluginDir, PLUGIN_DIRS.TEMP_IMAGES].join('/'));
+		const tempPandocDir = normalizePath([normalizedPluginDir, PLUGIN_DIRS.TEMP_PANDOC].join('/'));
+
+		return normalizedDirPath.startsWith(tempImagesDir) ||
+		       normalizedDirPath.startsWith(tempPandocDir);
 	}
 }

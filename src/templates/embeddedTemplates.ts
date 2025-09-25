@@ -1,6 +1,6 @@
 import { extractTemplate, getAllTemplateNames } from 'template-embed:templates';
-import * as fs from 'fs';
-import * as path from 'path';
+import { PathUtils } from '../core/PathUtils';
+import type { App } from 'obsidian';
 
 export interface TemplateInfo {
     name: string;
@@ -14,23 +14,27 @@ export interface TemplateInfo {
 export class EmbeddedTemplateManager {
     private pluginDir: string;
     private templatesDir: string;
+    private pathUtils: PathUtils;
+    private app: App;
 
-    constructor(pluginDir: string) {
+    constructor(pluginDir: string, app: App) {
         this.pluginDir = pluginDir;
-        this.templatesDir = path.join(pluginDir, 'templates');
+        this.app = app;
+        this.pathUtils = new PathUtils(app);
+        this.templatesDir = this.pathUtils.joinPath(pluginDir, 'templates');
     }
 
     /**
      * Get information about all templates
      */
-    getTemplateInfo(): TemplateInfo[] {
+    async getTemplateInfo(): Promise<TemplateInfo[]> {
         const embeddedNames = getAllTemplateNames();
         const templateInfo: TemplateInfo[] = [];
 
         for (const name of embeddedNames) {
-            const filePath = path.join(this.templatesDir, name);
-            const exists = fs.existsSync(filePath);
-            
+            const filePath = this.pathUtils.joinPath(this.templatesDir, name);
+            const exists = await this.pathUtils.fileExists(filePath);
+
             templateInfo.push({
                 name,
                 exists,
@@ -44,26 +48,24 @@ export class EmbeddedTemplateManager {
     /**
      * Extract a single template if it doesn't exist
      */
-    extractTemplateIfNeeded(templateName: string): boolean {
-        const filePath = path.join(this.templatesDir, templateName);
-        
+    async extractTemplateIfNeeded(templateName: string): Promise<boolean> {
+        const filePath = this.pathUtils.joinPath(this.templatesDir, templateName);
+
         // Check if template already exists
-        if (fs.existsSync(filePath)) {
+        if (await this.pathUtils.fileExists(filePath)) {
             return false; // No extraction needed
         }
 
         try {
             // Ensure templates directory exists
-            if (!fs.existsSync(this.templatesDir)) {
-                fs.mkdirSync(this.templatesDir, { recursive: true });
-            }
+            await this.pathUtils.ensureDir(this.templatesDir);
 
             // Extract template content
             const content = extractTemplate(templateName, filePath);
-            
-            // Write template to disk
-            fs.writeFileSync(filePath, content, 'utf8');
-            
+
+            // Write template to disk using vault.adapter
+            await this.app.vault.adapter.write(filePath, content);
+
             return true; // Extraction successful
         } catch (error) {
             console.error(`Failed to extract template ${templateName}:`, error);
@@ -74,15 +76,15 @@ export class EmbeddedTemplateManager {
     /**
      * Extract all missing templates
      */
-    extractAllMissingTemplates(): { extracted: string[], failed: string[] } {
+    async extractAllMissingTemplates(): Promise<{ extracted: string[], failed: string[] }> {
         const extracted: string[] = [];
         const failed: string[] = [];
-        
-        const templateInfo = this.getTemplateInfo();
-        
+
+        const templateInfo = await this.getTemplateInfo();
+
         for (const info of templateInfo) {
             if (info.needsExtraction) {
-                const success = this.extractTemplateIfNeeded(info.name);
+                const success = await this.extractTemplateIfNeeded(info.name);
                 if (success) {
                     extracted.push(info.name);
                 } else {
@@ -97,23 +99,21 @@ export class EmbeddedTemplateManager {
     /**
      * Force extract all templates (overwrites existing ones)
      */
-    forceExtractAllTemplates(): { extracted: string[], failed: string[] } {
+    async forceExtractAllTemplates(): Promise<{ extracted: string[], failed: string[] }> {
         const extracted: string[] = [];
         const failed: string[] = [];
-        
+
         const embeddedNames = getAllTemplateNames();
-        
+
         // Ensure templates directory exists
-        if (!fs.existsSync(this.templatesDir)) {
-            fs.mkdirSync(this.templatesDir, { recursive: true });
-        }
+        await this.pathUtils.ensureDir(this.templatesDir);
 
         for (const templateName of embeddedNames) {
             try {
-                const filePath = path.join(this.templatesDir, templateName);
+                const filePath = this.pathUtils.joinPath(this.templatesDir, templateName);
                 const content = extractTemplate(templateName, filePath);
-                
-                fs.writeFileSync(filePath, content, 'utf8');
+
+                await this.app.vault.adapter.write(filePath, content);
                 extracted.push(templateName);
             } catch (error) {
                 console.error(`Failed to force extract template ${templateName}:`, error);

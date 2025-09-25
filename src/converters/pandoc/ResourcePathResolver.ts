@@ -1,15 +1,20 @@
-import * as path from 'path';
-import { promises as fsPromises } from 'fs';
+import { PathUtils } from '../../core/PathUtils';
+import type { obsidianTypstPDFExport } from '../../../main';
 
 /**
  * Handles resource path resolution and caching for Pandoc conversions.
  * Discovers and caches attachment directories to help Pandoc find embedded resources.
  */
 export class ResourcePathResolver {
+	private plugin: obsidianTypstPDFExport | undefined;
 	private resourcePathCache: string[] = [];
 	private resourcePathCacheTimestamp: number = 0;
 	private resourcePathCacheVaultPath: string = '';
 	private readonly CACHE_EXPIRY_MS = 5 * 60 * 1000; // 5 minutes
+
+	constructor(plugin?: obsidianTypstPDFExport) {
+		this.plugin = plugin;
+	}
 
 	/**
 	 * Get all resource paths for the given vault, using cache when possible
@@ -17,20 +22,20 @@ export class ResourcePathResolver {
 	 * @returns Array of resource paths for Pandoc to search
 	 */
 	async getResourcePaths(vaultBasePath: string): Promise<string[]> {
-		if (!vaultBasePath) {
+		if (!vaultBasePath || !this.plugin?.app) {
 			return [];
 		}
 
-		const fs = require('fs');
+		const pathUtils = new PathUtils(this.plugin.app);
 		const resourcePaths: string[] = [];
 
 		// Add vault root as primary resource path
 		resourcePaths.push(vaultBasePath);
 
 		// Add common attachment directories
-		const commonPaths = this.getCommonAttachmentPaths(vaultBasePath);
+		const commonPaths = this.getCommonAttachmentPaths(vaultBasePath, pathUtils);
 		for (const attachPath of commonPaths) {
-			if (fs.existsSync(attachPath)) {
+			if (await pathUtils.fileExists(attachPath)) {
 				resourcePaths.push(attachPath);
 			}
 		}
@@ -42,7 +47,7 @@ export class ResourcePathResolver {
 			resourcePaths.push(...this.resourcePathCache);
 		} else {
 			// Cache is invalid or expired, perform fresh scan
-			const scannedPaths = await this.scanForResourcePaths(vaultBasePath, fs, now);
+			const scannedPaths = await this.scanForResourcePaths(vaultBasePath, pathUtils, now);
 			resourcePaths.push(...scannedPaths);
 		}
 
@@ -52,15 +57,16 @@ export class ResourcePathResolver {
 	/**
 	 * Get common attachment directory paths that Obsidian users typically use
 	 * @param vaultBasePath The base path of the vault
+	 * @param pathUtils PathUtils instance for path operations
 	 * @returns Array of common attachment directory paths
 	 */
-	private getCommonAttachmentPaths(vaultBasePath: string): string[] {
+	private getCommonAttachmentPaths(vaultBasePath: string, pathUtils: PathUtils): string[] {
 		return [
-			path.join(vaultBasePath, 'attachments'),
-			path.join(vaultBasePath, 'assets'),
-			path.join(vaultBasePath, 'files'),
-			path.join(vaultBasePath, 'images'),
-			path.join(vaultBasePath, '.attachments')
+			pathUtils.joinPath(vaultBasePath, 'attachments'),
+			pathUtils.joinPath(vaultBasePath, 'assets'),
+			pathUtils.joinPath(vaultBasePath, 'files'),
+			pathUtils.joinPath(vaultBasePath, 'images'),
+			pathUtils.joinPath(vaultBasePath, '.attachments')
 		];
 	}
 
@@ -79,36 +85,34 @@ export class ResourcePathResolver {
 	/**
 	 * Scan the vault for directories containing images and cache the results
 	 * @param vaultBasePath The base path of the vault
-	 * @param fs File system module
+	 * @param pathUtils PathUtils instance for path operations
 	 * @param now Current timestamp
 	 * @returns Array of resource paths found during scan
 	 */
-	private async scanForResourcePaths(vaultBasePath: string, fs: typeof import('fs'), now: number): Promise<string[]> {
+	private async scanForResourcePaths(vaultBasePath: string, pathUtils: PathUtils, now: number): Promise<string[]> {
 		const foundResourcePaths: string[] = [];
-		
+
 		try {
-			const vaultContents = fs.readdirSync(vaultBasePath);
-			for (const item of vaultContents) {
-				const itemPath = path.join(vaultBasePath, item);
-				
-				let stat;
-				try {
-					stat = await fsPromises.stat(itemPath);
-				} catch (error) {
-					// File might have been deleted between readdirSync and statSync
-					console.warn(`Export: Unable to stat ${itemPath}:`, (error as Error).message);
-					continue;
-				}
-				
-				if (stat.isDirectory() && !item.startsWith('.') && !item.startsWith('_')) {
+			if (!this.plugin?.app) {
+				return foundResourcePaths;
+			}
+
+			// Use vault root (empty string) for adapter.list() to get vault-relative paths
+			const vaultContents = await this.plugin.app.vault.adapter.list('');
+			for (const item of vaultContents.folders) {
+				const itemName = item.split('/').pop() || item;
+
+				if (!itemName.startsWith('.') && !itemName.startsWith('_')) {
 					// Check if this directory contains images
 					try {
-						const dirContents = fs.readdirSync(itemPath);
-						const hasImages = dirContents.some((file: string) => 
+						const dirContents = await this.plugin.app.vault.adapter.list(item);
+						const hasImages = dirContents.files.some((file: string) =>
 							/\.(png|jpg|jpeg|gif|svg|webp|bmp|ico|tiff)$/i.test(file)
 						);
 						if (hasImages) {
-							foundResourcePaths.push(itemPath);
+							// Convert vault-relative path to absolute path for external tools
+							const absolutePath = pathUtils.joinPath(vaultBasePath, item);
+							foundResourcePaths.push(absolutePath);
 						}
 					} catch {
 						// Ignore directories we can't read

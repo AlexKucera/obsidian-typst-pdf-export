@@ -3,13 +3,13 @@
  * Converts PDF files to PNG images for preview in Typst exports
  */
 
-import * as fs from 'fs/promises';
 import * as path from 'path';
 import { PdfProcessor } from './pdf/PdfProcessor';
 import { ImageOptimizer } from './pdf/ImageOptimizer';
 import { PdfCliExecutor } from './pdf/PdfCliExecutor';
 import { FileDiscovery } from './pdf/FileDiscovery';
 import type { obsidianTypstPDFExport } from '../../main';
+import { PathUtils } from '../core/PathUtils';
 
 export interface PdfConversionOptions {
 	/** Quality/scale factor for the rendered image (default: 2.0 for HiDPI) */
@@ -93,7 +93,10 @@ export class PdfToImageConverter {
 			}
 
 			// Ensure output directory exists
-			await fs.mkdir(outputDir, { recursive: true });
+			if (this.plugin?.app) {
+				const pathUtils = new PathUtils(this.plugin.app);
+				await pathUtils.ensureDir(outputDir);
+			}
 
 			// Generate expected output file name for the first page
 			const pdfBaseName = path.basename(pdfPath, path.extname(pdfPath));
@@ -121,7 +124,7 @@ export class PdfToImageConverter {
 			}
 
 			// Find the generated image file (may have different name than expected)
-			const fileDiscovery = await FileDiscovery.findGeneratedFile(outputDir, expectedOutputFileName);
+			const fileDiscovery = await FileDiscovery.findGeneratedFile(outputDir, expectedOutputFileName, this.plugin);
 			if (!fileDiscovery.found) {
 				return {
 					imagePath: '',
@@ -140,7 +143,8 @@ export class PdfToImageConverter {
 				{
 					format: opts.format,
 					quality: opts.quality
-				}
+				},
+				this.plugin
 			);
 
 			if (!optimizationResult.success) {
