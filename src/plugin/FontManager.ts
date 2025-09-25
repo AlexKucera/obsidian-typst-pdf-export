@@ -23,9 +23,11 @@ export class FontManager {
 			// Use spawn instead of exec for security - arguments passed separately
 			const stdout = await new Promise<string>((resolve, reject) => {
 				// Build platform-specific environment with enhanced PATH
+				const pathValue = this.buildPlatformSpecificPATH();
 				const enhancedEnv = {
 					...process.env,
-					PATH: this.buildPlatformSpecificPATH()
+					PATH: pathValue,
+					Path: pathValue
 				};
 
 				const typstProcess = spawn(typstPath, ['fonts'], {
@@ -179,6 +181,15 @@ export class FontManager {
 		const currentPath = process.env.PATH || '';
 		const pathSeparator = process.platform === 'win32' ? ';' : ':';
 
+		// Helper function to expand tilde paths
+		const expandTildePath = (path: string): string => {
+			if (path.startsWith('~')) {
+				const homeDir = process.env.HOME || process.env.USERPROFILE || '';
+				return path.replace('~', homeDir);
+			}
+			return path;
+		};
+
 		// Platform-specific common installation paths
 		let additionalPaths: string[] = [];
 
@@ -222,8 +233,18 @@ export class FontManager {
 				additionalPaths = ['/usr/local/bin', '/usr/bin', '/bin'];
 		}
 
-		// Combine current PATH with additional paths, avoiding duplicates
-		const allPaths = [...additionalPaths, currentPath].filter(path => path.length > 0);
-		return allPaths.join(pathSeparator);
+		// Expand tilde paths and filter empty strings
+		const expandedPaths = additionalPaths
+			.map(expandTildePath)
+			.filter(path => path.length > 0);
+
+		// Split current PATH and combine with additional paths
+		const currentPaths = currentPath.split(pathSeparator).filter(path => path.length > 0);
+		const allPaths = [...expandedPaths, ...currentPaths];
+
+		// Remove duplicates while preserving order
+		const uniquePaths = [...new Set(allPaths)];
+
+		return uniquePaths.join(pathSeparator);
 	}
 }
