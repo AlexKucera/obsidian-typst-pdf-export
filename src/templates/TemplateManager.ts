@@ -35,8 +35,18 @@ export class TemplateManager {
 				return ['default.typ'];
 			}
 
-			// Read directory contents
-			const list = await this.plugin.app.vault.adapter.list(this.templatesPath);
+			// Read directory contents - convert absolute path to vault-relative
+			const vaultBasePath = this.pathUtils.getVaultPath();
+			let vaultRelativePath = this.templatesPath;
+
+			// Convert absolute path to vault-relative path
+			if (this.templatesPath.startsWith(vaultBasePath)) {
+				vaultRelativePath = this.templatesPath.substring(vaultBasePath.length);
+				// Remove leading separators
+				vaultRelativePath = vaultRelativePath.replace(/^[/\\]+/, '');
+			}
+
+			const list = await this.plugin.app.vault.adapter.list(vaultRelativePath);
 			const files = list.files.map(filePath => path.basename(filePath));
 
 			// Filter for .typ and .pandoc.typ files
