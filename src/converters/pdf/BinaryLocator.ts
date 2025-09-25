@@ -150,8 +150,12 @@ export class BinaryLocator {
 	private static async validateBinaryExists(binaryPath: string, plugin?: obsidianTypstPDFExport): Promise<boolean> {
 		try {
 			if (!plugin?.app) {
-				return false;
+				// This should not happen in normal plugin operation, but provide fallback
+				const fs = require('fs').promises;
+				await fs.access(binaryPath);
+				return true;
 			}
+
 			const pathUtils = new PathUtils(plugin.app);
 			return await pathUtils.fileExists(binaryPath);
 		} catch {
