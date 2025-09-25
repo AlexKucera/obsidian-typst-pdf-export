@@ -17,6 +17,8 @@ export interface FileDiscoveryResult {
 }
 
 export class FileDiscovery {
+	/** Supported image extensions for PDF conversion output */
+	private static readonly SUPPORTED_IMAGE_EXTENSIONS = ['.png', '.jpg', '.jpeg', '.webp', '.gif', '.bmp', '.tiff'];
 	/**
 	 * Find the generated image file in the output directory.
 	 * Handles cases where pdf2img sanitizes filenames differently than expected.
@@ -84,19 +86,21 @@ export class FileDiscovery {
 			const files = dirList.files.map(f => path.basename(f));
 			const pathUtils = new PathUtils(plugin.app);
 
-			// Look for any PNG files that might match
-			const pngFiles = files.filter(f => f.endsWith('.png'));
-			if (pngFiles.length === 0) {
+			// Look for any image files that might match
+			const imageFiles = files.filter(f =>
+				this.SUPPORTED_IMAGE_EXTENSIONS.some(ext => f.toLowerCase().endsWith(ext))
+			);
+			if (imageFiles.length === 0) {
 				return {
 					filePath: '',
 					found: false,
-					error: `No PNG files found in output directory: ${outputDir}`
+					error: `No image files found in output directory: ${outputDir}. Supported formats: ${this.SUPPORTED_IMAGE_EXTENSIONS.join(', ')}`
 				};
 			}
 
 			// Try to find a file that matches the pattern (with or without exact name)
 			// pdf2img might sanitize filenames differently
-			const matchingFile = this.matchFilePattern(pngFiles, expectedFileName);
+			const matchingFile = this.matchFilePattern(imageFiles, expectedFileName);
 
 			if (matchingFile) {
 				const actualOutputPath = pathUtils.joinPath(outputDir, matchingFile);
@@ -118,7 +122,7 @@ export class FileDiscovery {
 				return {
 					filePath: '',
 					found: false,
-					error: `Generated image file not found: ${expectedOutputPath}. Available files: ${pngFiles.join(', ')}`
+					error: `Generated image file not found: ${expectedOutputPath}. Available files: ${imageFiles.join(', ')}`
 				};
 			}
 
@@ -150,19 +154,21 @@ export class FileDiscovery {
 			// Debug: List what files are actually in the output directory
 			const files = await fs.readdir(outputDir);
 
-			// Look for any PNG files that might match
-			const pngFiles = files.filter((f: string) => f.endsWith('.png'));
-			if (pngFiles.length === 0) {
+			// Look for any image files that might match
+			const imageFiles = files.filter((f: string) =>
+				this.SUPPORTED_IMAGE_EXTENSIONS.some(ext => f.toLowerCase().endsWith(ext))
+			);
+			if (imageFiles.length === 0) {
 				return {
 					filePath: '',
 					found: false,
-					error: `No PNG files found in output directory: ${outputDir}`
+					error: `No image files found in output directory: ${outputDir}. Supported formats: ${this.SUPPORTED_IMAGE_EXTENSIONS.join(', ')}`
 				};
 			}
 
 			// Try to find a file that matches the pattern (with or without exact name)
 			// pdf2img might sanitize filenames differently
-			const matchingFile = this.matchFilePattern(pngFiles, expectedFileName);
+			const matchingFile = this.matchFilePattern(imageFiles, expectedFileName);
 
 			if (matchingFile) {
 				const actualOutputPath = path.join(outputDir, matchingFile);
@@ -185,7 +191,7 @@ export class FileDiscovery {
 				return {
 					filePath: '',
 					found: false,
-					error: `Generated image file not found: ${expectedOutputPath}. Available files: ${pngFiles.join(', ')}`
+					error: `Generated image file not found: ${expectedOutputPath}. Available files: ${imageFiles.join(', ')}`
 				};
 			}
 
@@ -201,31 +207,55 @@ export class FileDiscovery {
 	}
 
 	/**
-	 * Match files against expected filename patterns.
-	 * Handles filename sanitization that pdf2img might apply.
+	 * Match files against expected filename patterns using multiple strategies.
+	 * Handles filename sanitization that pdf2img might apply and supports multiple image formats.
 	 * @param files Array of available filenames
 	 * @param expectedFileName Expected filename pattern
 	 * @returns Matching filename or null if no match found
 	 */
 	private static matchFilePattern(files: string[], expectedFileName: string): string | null {
-		// Try exact match first
+		const expectedBase = path.basename(expectedFileName, path.extname(expectedFileName));
+
+		// Strategy 1: Exact match
 		const exactMatch = files.find(f => f === expectedFileName);
 		if (exactMatch) {
 			return exactMatch;
 		}
 
-		// Try partial match by removing special characters
-		const simplifiedExpected = this.sanitizeFilename(expectedFileName);
-		const matchingFile = files.find(f => {
-			const simplifiedActual = this.sanitizeFilename(f);
-			return simplifiedActual === simplifiedExpected;
+		// Strategy 2: Base name match with any supported extension
+		const baseNameMatch = files.find(f => {
+			const fileBase = path.basename(f, path.extname(f));
+			return fileBase === expectedBase;
 		});
-
-		if (matchingFile) {
-			return matchingFile;
+		if (baseNameMatch) {
+			return baseNameMatch;
 		}
 
-		// Fallback to first PNG file if no pattern matches
+		// Strategy 3: Sanitized pattern match (remove special characters)
+		const simplifiedExpected = this.sanitizeFilename(expectedBase);
+		const sanitizedMatch = files.find(f => {
+			const fileBase = path.basename(f, path.extname(f));
+			const simplifiedActual = this.sanitizeFilename(fileBase);
+			return simplifiedActual === simplifiedExpected;
+		});
+		if (sanitizedMatch) {
+			return sanitizedMatch;
+		}
+
+		// Strategy 4: Fuzzy match for pdf2img output patterns (filename-1.ext, filename-page1.ext, etc.)
+		const fuzzyMatch = files.find(f => {
+			const fileBase = path.basename(f, path.extname(f));
+			// Remove common pdf2img suffixes like "-1", "-page1", etc.
+			const cleanedFileBase = fileBase.replace(/[-_](page)?\d+$/i, '');
+			const cleanedExpectedBase = expectedBase.replace(/[-_](page)?\d+$/i, '');
+			return cleanedFileBase === cleanedExpectedBase ||
+				   this.sanitizeFilename(cleanedFileBase) === this.sanitizeFilename(cleanedExpectedBase);
+		});
+		if (fuzzyMatch) {
+			return fuzzyMatch;
+		}
+
+		// Strategy 5: Fallback to first available image file if no pattern matches
 		return files.length > 0 ? files[0] : null;
 	}
 
@@ -240,10 +270,10 @@ export class FileDiscovery {
 
 	/**
 	 * Generate expected output filename for pdf2img conversion.
-	 * pdf2img uses the pattern: "filename-1.png" for first page.
+	 * pdf2img uses the pattern: "filename-1.ext" for first page.
 	 * @param pdfBaseName Base name of the PDF file (without extension)
 	 * @param pageNumber Page number (1-based)
-	 * @param format Output format ('png' or 'jpeg')
+	 * @param format Output format (defaults to 'png', supports any image format)
 	 * @returns Expected output filename
 	 */
 	public static generateExpectedFilename(
@@ -251,6 +281,15 @@ export class FileDiscovery {
 		pageNumber: number = 1,
 		format: string = 'png'
 	): string {
-		return `${pdfBaseName}-${pageNumber}.${format}`;
+		// Validate format is supported
+		const formatExtension = format.toLowerCase().startsWith('.') ? format.substring(1) : format.toLowerCase();
+		const supportedFormats = this.SUPPORTED_IMAGE_EXTENSIONS.map(ext => ext.substring(1));
+
+		if (!supportedFormats.includes(formatExtension)) {
+			console.warn(`Unsupported image format '${format}', falling back to PNG`);
+			return `${pdfBaseName}-${pageNumber}.png`;
+		}
+
+		return `${pdfBaseName}-${pageNumber}.${formatExtension}`;
 	}
 }
