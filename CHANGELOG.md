@@ -5,6 +5,27 @@ All notable changes to the Obsidian Typst PDF Export plugin will be documented i
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.3.0] - 2024-12-25
+
+### Added
+- PathUtils helper class for centralized path operations and safe Obsidian API usage
+- Improved Typst error reporting in Pandoc conversion with enhanced diagnostic output
+- New Typst templates for varied document styles (modern, article, report)
+- Enhanced README with plugin motivation, development philosophy, and updated badges
+
+### Fixed
+- **Critical**: Embedded file path resolution issue that caused "File not found" errors for PDFs, images, and documents
+- Proper vault.adapter integration replacing unsafe type casts throughout codebase
+- Path handling reliability with comprehensive migration from Node.js fs/path to Obsidian APIs
+- File existence checks now handle both vault-relative and absolute filesystem paths
+
+### Changed
+- **Major Refactoring**: Complete migration from Node.js fs/path to Obsidian vault.adapter APIs
+- Centralized path utilities replacing unsafe `(app.vault.adapter as unknown as { basePath: string }).basePath` patterns
+- Improved file system operations security and cross-platform compatibility
+- Enhanced error handling and path validation across all modules
+- Updated all 16 core files with consistent, safe path handling practices
+
 ## [1.2.1] - 2025-01-10
 
 ### Fixed
