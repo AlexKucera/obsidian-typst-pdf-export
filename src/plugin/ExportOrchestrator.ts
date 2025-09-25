@@ -140,8 +140,8 @@ export class ExportOrchestrator {
 		
 		try {
 			// Create temp directory for conversion
-			const tempManager = new TempDirectoryManager({ vaultPath: vaultPath, configDir: this.plugin.app.vault.configDir });
-			const tempDir = tempManager.ensureTempDir('pandoc');
+			const tempManager = new TempDirectoryManager({ vaultPath: vaultPath, configDir: this.plugin.app.vault.configDir, app: this.plugin.app });
+			const tempDir = await tempManager.ensureTempDir('pandoc');
 			
 			// Load file content
 			const content = await this.plugin.app.vault.read(file);
@@ -245,8 +245,8 @@ export class ExportOrchestrator {
 			
 			// Clean up temporary directories
 			try {
-				const cleanupManager = TempDirectoryManager.create(vaultPath, this.plugin.app.vault.configDir);
-				cleanupManager.cleanupAllTempDirs();
+				const cleanupManager = TempDirectoryManager.create(vaultPath, this.plugin.app.vault.configDir, undefined, this.plugin.app);
+				await cleanupManager.cleanupAllTempDirs();
 			} catch (cleanupError) {
 				console.warn('Export: Failed to clean up temporary directories:', cleanupError);
 			}

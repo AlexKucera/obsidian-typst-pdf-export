@@ -64,31 +64,36 @@ export class PluginLifecycle {
 			this.plugin.currentExportController.abort();
 		}
 		
-		// Clean up temp directories on plugin unload
-		try {
-			const vaultPath = (this.plugin.app.vault.adapter as unknown as { basePath: string }).basePath;
-			const cleanupManager = TempDirectoryManager.create(vaultPath, this.plugin.app.vault.configDir);
-			cleanupManager.cleanupAllTempDirs();
-		} catch (error) {
-			console.warn('Export: Failed to clean up temp directories during unload:', error);
-		}
+		// Clean up temp directories on plugin unload (fire-and-forget async)
+		(async () => {
+			try {
+				const vaultPath = (this.plugin.app.vault.adapter as unknown as { basePath: string }).basePath;
+				const cleanupManager = TempDirectoryManager.create(vaultPath, this.plugin.app.vault.configDir, undefined, this.plugin.app);
+				await cleanupManager.cleanupAllTempDirs();
+			} catch (error) {
+				console.warn('Export: Failed to clean up temp directories during unload:', error);
+			}
+		})();
 	}
 
 	/**
 	 * Clean up leftover temp directories from previous sessions
 	 */
 	private cleanupStartupTempDirectories(): void {
-		try {
-			const vaultPath = (this.plugin.app.vault.adapter as unknown as { basePath: string }).basePath;
-			const cleanupManager = TempDirectoryManager.create(vaultPath, this.plugin.app.vault.configDir);
-			const _result = cleanupManager.cleanupAllTempDirs();
-			
-			if (this.plugin.settings.behavior.debugMode) {
-				// Debug logging was here but empty in original
+		// Clean up temp directories (fire-and-forget async)
+		(async () => {
+			try {
+				const vaultPath = (this.plugin.app.vault.adapter as unknown as { basePath: string }).basePath;
+				const cleanupManager = TempDirectoryManager.create(vaultPath, this.plugin.app.vault.configDir, undefined, this.plugin.app);
+				const _result = await cleanupManager.cleanupAllTempDirs();
+
+				if (this.plugin.settings.behavior.debugMode) {
+					// Debug logging was here but empty in original
+				}
+			} catch (error) {
+				console.warn('Export: Startup temp directory cleanup failed (non-critical):', error);
+				// Don't throw - this shouldn't prevent plugin from loading
 			}
-		} catch (error) {
-			console.warn('Export: Startup temp directory cleanup failed (non-critical):', error);
-			// Don't throw - this shouldn't prevent plugin from loading
-		}
+		})();
 	}
 }
