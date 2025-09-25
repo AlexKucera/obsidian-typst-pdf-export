@@ -6,7 +6,7 @@
 import type { obsidianTypstPDFExport } from '../../main';
 import { ExportErrorHandler } from '../core/ExportErrorHandler';
 import { FALLBACK_FONTS } from '../core/constants';
-import * as path from 'path';
+import { PathUtils } from '../core/PathUtils';
 
 export class FontManager {
 	constructor(private plugin: obsidianTypstPDFExport) {}
@@ -67,8 +67,11 @@ export class FontManager {
 				typstPath: typstPath
 			};
 			
-			const fontsCachePath = path.join(this.plugin.manifest.dir!, 'fonts-cache.json');
-			await this.plugin.app.vault.adapter.write(fontsCachePath, 
+			const pathUtils = new PathUtils(this.plugin.app);
+			const vaultPath = pathUtils.getVaultPath();
+			const pluginDir = pathUtils.getPluginDir(this.plugin.manifest);
+			const fontsCachePath = pathUtils.joinPath(vaultPath, pluginDir, 'fonts-cache.json');
+			await this.plugin.app.vault.adapter.write(fontsCachePath,
 				JSON.stringify(cacheData, null, 2));
 		} catch (error) {
 			console.error('Failed to cache fonts from typst:', error);
@@ -86,7 +89,10 @@ export class FontManager {
 				error: error.message
 			};
 			
-			const fontsCachePath = path.join(this.plugin.manifest.dir!, 'fonts-cache.json');
+			const pathUtils = new PathUtils(this.plugin.app);
+			const vaultPath = pathUtils.getVaultPath();
+			const pluginDir = pathUtils.getPluginDir(this.plugin.manifest);
+			const fontsCachePath = pathUtils.joinPath(vaultPath, pluginDir, 'fonts-cache.json');
 			await this.plugin.app.vault.adapter.write(fontsCachePath,
 				JSON.stringify(cacheData, null, 2));
 		}
@@ -97,7 +103,10 @@ export class FontManager {
 	 */
 	async getCachedFonts(): Promise<string[]> {
 		try {
-			const fontsCachePath = path.join(this.plugin.manifest.dir!, 'fonts-cache.json');
+			const pathUtils = new PathUtils(this.plugin.app);
+			const vaultPath = pathUtils.getVaultPath();
+			const pluginDir = pathUtils.getPluginDir(this.plugin.manifest);
+			const fontsCachePath = pathUtils.joinPath(vaultPath, pluginDir, 'fonts-cache.json');
 			const cacheContent = await this.plugin.app.vault.adapter.read(fontsCachePath);
 			const cacheData = JSON.parse(cacheContent);
 			
