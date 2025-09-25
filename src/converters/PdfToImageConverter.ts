@@ -124,7 +124,7 @@ export class PdfToImageConverter {
 			}
 
 			// Find the generated image file (may have different name than expected)
-			const fileDiscovery = await FileDiscovery.findGeneratedFile(outputDir, expectedOutputFileName);
+			const fileDiscovery = await FileDiscovery.findGeneratedFile(outputDir, expectedOutputFileName, this.plugin);
 			if (!fileDiscovery.found) {
 				return {
 					imagePath: '',
