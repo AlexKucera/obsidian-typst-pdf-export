@@ -20,7 +20,7 @@ export class PandocCommandBuilder {
 	constructor(plugin: obsidianTypstPDFExport) {
 		this.plugin = plugin;
 		this.variableMapper = new TypstVariableMapper(plugin);
-		this.resourcePathResolver = new ResourcePathResolver();
+		this.resourcePathResolver = new ResourcePathResolver(plugin);
 		this.pathResolver = new PathResolver(plugin);
 	}
 
