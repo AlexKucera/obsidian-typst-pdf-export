@@ -3,12 +3,10 @@
  * Handles the conversion of Markdown to PDF using Pandoc with Typst engine
  */
 
-import { promises as fsPromises } from 'fs';
-import * as path from 'path';
-import * as os from 'os';
 import { PandocOptions, TypstSettings, ConversionResult, ProgressCallback } from './converterTypes';
 import type { obsidianTypstPDFExport } from '../../main';
 import { TempDirectoryManager } from '../core/TempDirectoryManager';
+import { PathUtils } from '../core/PathUtils';
 
 import { PandocCommandBuilder } from './pandoc/PandocCommandBuilder';
 import { PandocExecutor } from './pandoc/PandocExecutor';
@@ -104,9 +102,10 @@ export class PandocTypstConverter {
 		
 		// Create temporary markdown file
 		await this.ensureTempDirectory();
-		const tempInputPath = path.join(this.tempDir!, `temp-${Date.now()}.md`);
-		
-		await fsPromises.writeFile(tempInputPath, content, 'utf-8');
+		const pathUtils = new PathUtils(this.plugin.app);
+		const tempInputPath = pathUtils.joinPath(this.tempDir!, `temp-${Date.now()}.md`);
+
+		await this.plugin.app.vault.adapter.write(tempInputPath, content);
 		
 		// Merge options
 		this.pandocOptions = { ...this.pandocOptions, ...options };
@@ -116,7 +115,7 @@ export class PandocTypstConverter {
 		
 		// Cleanup temp file
 		try {
-			await fsPromises.unlink(tempInputPath);
+			await this.plugin.app.vault.adapter.remove(tempInputPath);
 		} catch (error) {
 			console.warn('Failed to cleanup temp file:', error);
 		}
@@ -162,7 +161,8 @@ export class PandocTypstConverter {
 
 			// Remove temporary directory
 			if (this.tempDir) {
-				await fsPromises.rmdir(this.tempDir, { recursive: true });
+				const pathUtils = new PathUtils(this.plugin.app);
+				await pathUtils.cleanupDir(this.tempDir);
 				this.tempDir = null;
 			}
 		} catch (error) {
@@ -181,8 +181,12 @@ export class PandocTypstConverter {
 				const tempManager = TempDirectoryManager.create(this.pandocOptions.vaultBasePath, configDir, undefined, this.plugin?.app);
 				this.tempDir = await tempManager.ensureTempDir('pandoc');
 			} else {
-				// Fallback to system temp if plugin folder not available
-				this.tempDir = await fsPromises.mkdtemp(path.join(os.tmpdir(), 'obsidian-typst-'));
+				// Fallback to system temp if plugin folder not available - use TempDirectoryManager fallback
+				const pathUtils = new PathUtils(this.plugin.app);
+				const vaultPath = pathUtils.getVaultPath();
+				const configDir = this.plugin?.app?.vault?.configDir || '.obsidian';
+				const tempManager = new TempDirectoryManager({ vaultPath, configDir, app: this.plugin.app });
+				this.tempDir = await tempManager.ensureTempDir('pandoc');
 			}
 		}
 		return this.tempDir;
