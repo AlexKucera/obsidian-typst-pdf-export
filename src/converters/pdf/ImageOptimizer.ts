@@ -218,7 +218,20 @@ export class ImageOptimizer {
 					// Clean up the original PNG if conversion succeeded
 					try {
 						if (plugin?.app) {
-							await plugin.app.vault.adapter.remove(inputImagePath);
+							// Convert absolute path to vault-relative path for adapter.remove()
+							const pathUtils = new PathUtils(plugin.app);
+							const vaultBasePath = pathUtils.getVaultPath();
+
+							let relativePath = inputImagePath;
+							if (inputImagePath.startsWith(vaultBasePath)) {
+								// Remove vault base path and leading separator
+								relativePath = inputImagePath.substring(vaultBasePath.length);
+								if (relativePath.startsWith('/') || relativePath.startsWith('\\')) {
+									relativePath = relativePath.substring(1);
+								}
+							}
+
+							await plugin.app.vault.adapter.remove(relativePath);
 						} else {
 							const fs = require('fs').promises;
 							await fs.unlink(inputImagePath);
