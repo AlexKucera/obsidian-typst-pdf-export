@@ -5,6 +5,7 @@
 
 import * as path from 'path';
 import type { obsidianTypstPDFExport } from '../../../main';
+import { PathUtils } from '../../core/PathUtils';
 
 export interface BinaryLocation {
 	/** Full path to the binary */
@@ -32,19 +33,26 @@ export class BinaryLocator {
 			const possiblePluginDirs = this.getPossiblePluginDirs(plugin, pluginDirName, configDir);
 			
 			// Find the first directory that exists and has node_modules
-			const pluginDir = possiblePluginDirs.find(dir => {
+			let pluginDir = possiblePluginDirs[0]; // Default fallback
+			for (const dir of possiblePluginDirs) {
 				try {
 					const nodeModulesPath = path.join(dir, 'node_modules');
-					return require('fs').existsSync(nodeModulesPath);
+					if (plugin?.app) {
+						const pathUtils = new PathUtils(plugin.app);
+						if (await pathUtils.fileExists(nodeModulesPath)) {
+							pluginDir = dir;
+							break;
+						}
+					}
 				} catch {
-					return false;
+					continue;
 				}
-			}) || possiblePluginDirs[0]; // Fallback to first option
+			}
 			
 			const pdf2imgPath = path.join(pluginDir, 'node_modules', '.bin', 'pdf2img');
 			
 			// Check if the binary exists
-			const exists = await this.validateBinaryExists(pdf2imgPath);
+			const exists = await this.validateBinaryExists(pdf2imgPath, plugin);
 			
 			if (!exists) {
 				return {
@@ -83,19 +91,23 @@ export class BinaryLocator {
 			// Strategy 2: Assuming we're running from vault root
 			path.join(configDir, 'plugins', pluginDirName),
 			// Strategy 3: From vault base path if plugin is available
-			...(plugin ? [path.join((plugin.app.vault.adapter as unknown as { basePath: string }).basePath, plugin.manifest.dir!)] : [])
+			...(plugin ? [path.join(new PathUtils(plugin.app).getVaultPath(), plugin.manifest.dir!)] : [])
 		];
 	}
 
 	/**
 	 * Validate that a binary exists and is accessible.
 	 * @param binaryPath Full path to the binary
+	 * @param plugin Plugin instance for PathUtils
 	 * @returns True if binary exists, false otherwise
 	 */
-	private static async validateBinaryExists(binaryPath: string): Promise<boolean> {
+	private static async validateBinaryExists(binaryPath: string, plugin?: obsidianTypstPDFExport): Promise<boolean> {
 		try {
-			const fs2 = require('fs');
-			return fs2.existsSync(binaryPath);
+			if (!plugin?.app) {
+				return false;
+			}
+			const pathUtils = new PathUtils(plugin.app);
+			return await pathUtils.fileExists(binaryPath);
 		} catch {
 			return false;
 		}
