@@ -109,8 +109,8 @@ export class PandocCommandBuilder {
 
 			// Add plugin templates directory as a resource path so Typst can find template files
 			const templatesDir = pathUtils.joinPath(absolutePluginDir, 'templates');
-			// Quote the path to handle spaces and special characters
-			args.push('--resource-path', `"${templatesDir}"`);
+			// Path quoting handled automatically by spawn
+			args.push('--resource-path', templatesDir);
 			
 			// Pass the actual template path as a variable
 			// Use relative path from vault root for Typst import
