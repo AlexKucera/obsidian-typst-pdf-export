@@ -254,7 +254,7 @@ export class ExportOrchestrator {
 			
 			// Clean up temporary directories
 			try {
-				const cleanupManager = TempDirectoryManager.create(vaultPath, this.plugin.app.vault.configDir, undefined, this.plugin.app);
+				const cleanupManager = TempDirectoryManager.create(vaultPath, this.plugin.app.vault.configDir, this.plugin.manifest.id, this.plugin.app);
 				await cleanupManager.cleanupAllTempDirs();
 			} catch (cleanupError) {
 				console.warn('Export: Failed to clean up temporary directories:', cleanupError);
