@@ -105,8 +105,17 @@ export class PathUtils {
 			}
 		}
 
-		// For paths outside vault, use fs fallback (needed for external file processing)
-		if (path.includes('/') && !path.startsWith('.')) {
+		// For paths that might be absolute but outside vault, use fs fallback
+		// This handles external file processing (temp files, system paths, etc.)
+		// Check for common absolute path indicators across platforms
+		const isLikelyAbsolutePath = path.startsWith('/') ||                           // Unix absolute
+									 path.startsWith('\\') ||                          // UNC paths
+									 (path.length >= 3 && path[1] === ':') ||          // Windows drive letter (C:)
+									 path.startsWith('file:') ||                       // File URLs
+									 path.includes('temp') ||                          // Temp directory indicators
+									 path.includes('tmp');                             // Common temp paths
+
+		if (isLikelyAbsolutePath) {
 			try {
 				const fs = require('fs').promises;
 				await fs.access(path);
