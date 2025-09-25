@@ -97,7 +97,8 @@ export class ResourcePathResolver {
 				return foundResourcePaths;
 			}
 
-			const vaultContents = await this.plugin.app.vault.adapter.list(vaultBasePath);
+			// Use vault root (empty string) for adapter.list() to get vault-relative paths
+			const vaultContents = await this.plugin.app.vault.adapter.list('');
 			for (const item of vaultContents.folders) {
 				const itemName = item.split('/').pop() || item;
 
@@ -109,7 +110,9 @@ export class ResourcePathResolver {
 							/\.(png|jpg|jpeg|gif|svg|webp|bmp|ico|tiff)$/i.test(file)
 						);
 						if (hasImages) {
-							foundResourcePaths.push(item);
+							// Convert vault-relative path to absolute path for external tools
+							const absolutePath = pathUtils.joinPath(vaultBasePath, item);
+							foundResourcePaths.push(absolutePath);
 						}
 					} catch {
 						// Ignore directories we can't read
