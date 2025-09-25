@@ -81,10 +81,34 @@ export class FileDiscovery {
 		plugin: obsidianTypstPDFExport
 	): Promise<FileDiscoveryResult> {
 		try {
-			// Debug: List what files are actually in the output directory
-			const dirList = await plugin.app.vault.adapter.list(outputDir);
-			const files = dirList.files.map(f => path.basename(f));
 			const pathUtils = new PathUtils(plugin.app);
+
+			// Check if outputDir is inside the vault
+			const vaultPath = plugin.app.vault.adapter.basePath || '';
+			let isVaultRelative = false;
+			let vaultRelativeDir = outputDir;
+
+			if (vaultPath) {
+				// Compute relative path from vault root
+				const relativePath = path.relative(vaultPath, outputDir);
+				// Path is inside vault if it doesn't start with '..' or path separator
+				isVaultRelative = !relativePath.startsWith('..') && !path.isAbsolute(relativePath);
+				if (isVaultRelative) {
+					vaultRelativeDir = relativePath;
+				}
+			}
+
+			let files: string[];
+
+			if (isVaultRelative) {
+				// Use adapter for vault-relative paths
+				const dirList = await plugin.app.vault.adapter.list(vaultRelativeDir);
+				files = dirList.files.map(f => path.basename(f));
+			} else {
+				// Use filesystem fallback for absolute/external paths
+				const fs = require('fs').promises;
+				files = await fs.readdir(outputDir);
+			}
 
 			// Look for any image files that might match
 			const imageFiles = files.filter(f =>
