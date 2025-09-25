@@ -11,10 +11,14 @@ import { ModalSettingsHelper } from '../core/ModalSettingsHelper';
 import { MarkdownPreprocessor } from '../converters/MarkdownPreprocessor';
 import { TempDirectoryManager } from '../core/TempDirectoryManager';
 import { ExportErrorHandler } from '../core/ExportErrorHandler';
-import * as path from 'path';
+import { PathUtils } from '../core/PathUtils';
 
 export class ExportOrchestrator {
-	constructor(private plugin: obsidianTypstPDFExport) {}
+	private readonly pathUtils: PathUtils;
+
+	constructor(private plugin: obsidianTypstPDFExport) {
+		this.pathUtils = new PathUtils(plugin.app);
+	}
 	
 	/**
 	 * Export a file with default configuration
@@ -132,8 +136,8 @@ export class ExportOrchestrator {
 	 * Export a file with specific configuration
 	 */
 	async exportFileWithConfig(file: TFile, config: ExportConfig): Promise<void> {
-		const vaultPath = (this.plugin.app.vault.adapter as unknown as { basePath: string }).basePath;
-		const pluginDir = path.join(vaultPath, this.plugin.manifest.dir!);
+		const vaultPath = this.pathUtils.getVaultPath();
+		const pluginDir = this.pathUtils.joinPath(vaultPath, this.pathUtils.getPluginDir(this.plugin.manifest));
 		
 		// Create controller for this export (allows cancellation)
 		this.plugin.currentExportController = new AbortController();
