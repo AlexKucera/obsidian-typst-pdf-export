@@ -75,13 +75,47 @@ export class PathUtils {
 
 	/**
 	 * Check if file or directory exists
+	 * Handles both vault-relative paths and absolute filesystem paths
 	 */
 	async fileExists(path: string): Promise<boolean> {
-		const normalizedPath = normalizePath(path);
 		try {
-			return await this.app.vault.adapter.exists(normalizedPath);
+			// First, try as vault-relative path
+			const normalizedPath = normalizePath(path);
+			const exists = await this.app.vault.adapter.exists(normalizedPath);
+			if (exists) {
+				return true;
+			}
 		} catch {
-			return false;
+			// If vault.adapter fails, path might be absolute
 		}
+
+		// If path is absolute, convert to vault-relative and try again
+		const vaultBasePath = this.getVaultPath();
+		if (path.startsWith(vaultBasePath)) {
+			try {
+				// Remove vault base path and leading separator
+				let relativePath = path.substring(vaultBasePath.length);
+				if (relativePath.startsWith('/') || relativePath.startsWith('\\')) {
+					relativePath = relativePath.substring(1);
+				}
+				const normalizedRelativePath = normalizePath(relativePath);
+				return await this.app.vault.adapter.exists(normalizedRelativePath);
+			} catch {
+				return false;
+			}
+		}
+
+		// For paths outside vault, use fs fallback (needed for external file processing)
+		if (path.includes('/') && !path.startsWith('.')) {
+			try {
+				const fs = require('fs').promises;
+				await fs.access(path);
+				return true;
+			} catch {
+				return false;
+			}
+		}
+
+		return false;
 	}
 }
