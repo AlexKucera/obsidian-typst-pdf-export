@@ -102,8 +102,12 @@ export class TempDirectoryManager {
 	 */
 	public isPluginTempDir(dirPath: string): boolean {
 		const pluginDir = this.getPluginDir();
-		// Simple string comparison for temp directory validation
-		return dirPath.startsWith(pluginDir) &&
-		       (dirPath.includes(PLUGIN_DIRS.TEMP_IMAGES) || dirPath.includes(PLUGIN_DIRS.TEMP_PANDOC));
+		const normalizedDirPath = normalizePath(dirPath);
+		const normalizedPluginDir = normalizePath(pluginDir);
+		const tempImagesDir = normalizePath([normalizedPluginDir, PLUGIN_DIRS.TEMP_IMAGES].join('/'));
+		const tempPandocDir = normalizePath([normalizedPluginDir, PLUGIN_DIRS.TEMP_PANDOC].join('/'));
+
+		return normalizedDirPath.startsWith(tempImagesDir) ||
+		       normalizedDirPath.startsWith(tempPandocDir);
 	}
 }
