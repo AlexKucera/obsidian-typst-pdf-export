@@ -144,7 +144,12 @@ export class ExportOrchestrator {
 		
 		try {
 			// Create temp directory for conversion
-			const tempManager = new TempDirectoryManager({ vaultPath: vaultPath, configDir: this.plugin.app.vault.configDir, app: this.plugin.app });
+			const tempManager = new TempDirectoryManager({
+				vaultPath: vaultPath,
+				configDir: this.plugin.app.vault.configDir,
+				app: this.plugin.app,
+				pluginName: this.plugin.manifest.id
+			});
 			const tempDir = await tempManager.ensureTempDir('pandoc');
 			
 			// Load file content
