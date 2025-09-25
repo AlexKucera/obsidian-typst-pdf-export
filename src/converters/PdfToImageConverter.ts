@@ -143,7 +143,8 @@ export class PdfToImageConverter {
 				{
 					format: opts.format,
 					quality: opts.quality
-				}
+				},
+				this.plugin
 			);
 
 			if (!optimizationResult.success) {

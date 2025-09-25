@@ -3,8 +3,9 @@
  * Handles format conversion, quality management, and dimension detection.
  */
 
-import * as fs from 'fs/promises';
 import * as path from 'path';
+import { PathUtils } from '../../core/PathUtils';
+import type { obsidianTypstPDFExport } from '../../../main';
 
 export interface ImageOptimizationOptions {
 	/** Output format (default: 'png') */
@@ -183,7 +184,8 @@ export class ImageOptimizer {
 		inputImagePath: string,
 		outputDir: string,
 		baseFileName: string,
-		options: ImageOptimizationOptions = {}
+		options: ImageOptimizationOptions = {},
+		plugin?: obsidianTypstPDFExport
 	): Promise<ImageOptimizationResult> {
 		try {
 			const opts = {
@@ -193,7 +195,13 @@ export class ImageOptimizer {
 
 			// Generate final output path
 			const finalOutputFileName = `${baseFileName}_preview.${opts.format}`;
-			const finalOutputPath = path.join(outputDir, finalOutputFileName);
+			let finalOutputPath: string;
+			if (plugin?.app) {
+				const pathUtils = new PathUtils(plugin.app);
+				finalOutputPath = pathUtils.joinPath(outputDir, finalOutputFileName);
+			} else {
+				finalOutputPath = path.join(outputDir, finalOutputFileName);
+			}
 
 			let actualImagePath = inputImagePath;
 
@@ -209,7 +217,12 @@ export class ImageOptimizer {
 				if (conversionResult.success) {
 					// Clean up the original PNG if conversion succeeded
 					try {
-						await fs.unlink(inputImagePath);
+						if (plugin?.app) {
+							await plugin.app.vault.adapter.remove(inputImagePath);
+						} else {
+							const fs = require('fs').promises;
+							await fs.unlink(inputImagePath);
+						}
 					} catch (unlinkError) {
 						console.warn(`Could not remove original PNG: ${unlinkError}`);
 					}
@@ -218,12 +231,26 @@ export class ImageOptimizer {
 					console.warn(`ImageMagick not available for JPEG conversion, keeping PNG format: ${conversionResult.error}`);
 					// Just rename the file to PNG format
 					const pngFinalPath = finalOutputPath.replace(/\.jpeg?$/, '.png');
-					await fs.rename(inputImagePath, pngFinalPath);
+					if (plugin?.app) {
+						const content = await plugin.app.vault.adapter.readBinary(inputImagePath);
+						await plugin.app.vault.adapter.writeBinary(pngFinalPath, content);
+						await plugin.app.vault.adapter.remove(inputImagePath);
+					} else {
+						const fs = require('fs').promises;
+						await fs.rename(inputImagePath, pngFinalPath);
+					}
 					actualImagePath = pngFinalPath;
 				}
 			} else {
 				// Keep as PNG, just rename to final location
-				await fs.rename(inputImagePath, finalOutputPath);
+				if (plugin?.app) {
+					const content = await plugin.app.vault.adapter.readBinary(inputImagePath);
+					await plugin.app.vault.adapter.writeBinary(finalOutputPath, content);
+					await plugin.app.vault.adapter.remove(inputImagePath);
+				} else {
+					const fs = require('fs').promises;
+					await fs.rename(inputImagePath, finalOutputPath);
+				}
 				actualImagePath = finalOutputPath;
 			}
 
