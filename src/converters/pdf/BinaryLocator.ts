@@ -20,6 +20,7 @@ export class BinaryLocator {
 	/**
 	 * Find the pdf2img binary in the plugin's node_modules directory.
 	 * Handles the complex Obsidian environment where __dirname points to electron.asar.
+	 * Includes Windows-specific executable detection and fallback paths.
 	 * @param plugin The plugin instance for accessing manifest and settings
 	 * @returns Binary location info
 	 */
@@ -31,7 +32,7 @@ export class BinaryLocator {
 			const pluginDirName = plugin?.manifest?.dir || 'typst-pdf-export';
 			const configDir = plugin?.app.vault.configDir || '.obsidian';
 			const possiblePluginDirs = this.getPossiblePluginDirs(plugin, pluginDirName, configDir);
-			
+
 			// Find the first directory that exists and has node_modules
 			let pluginDir = possiblePluginDirs[0]; // Default fallback
 			for (const dir of possiblePluginDirs) {
@@ -48,24 +49,11 @@ export class BinaryLocator {
 					continue;
 				}
 			}
-			
-			const pdf2imgPath = path.join(pluginDir, 'node_modules', '.bin', 'pdf2img');
-			
-			// Check if the binary exists
-			const exists = await this.validateBinaryExists(pdf2imgPath, plugin);
-			
-			if (!exists) {
-				return {
-					binaryPath: pdf2imgPath,
-					exists: false,
-					error: `PDF2IMG binary not found at: ${pdf2imgPath}`
-				};
-			}
 
-			return {
-				binaryPath: pdf2imgPath,
-				exists: true
-			};
+			// Try to find the binary with platform-specific handling
+			const binaryLocation = await this.findBinaryWithFallbacks(pluginDir, plugin);
+
+			return binaryLocation;
 
 		} catch (error: unknown) {
 			const errorMessage = error instanceof Error ? error.message : String(error);
@@ -75,6 +63,64 @@ export class BinaryLocator {
 				error: `Failed to locate pdf2img binary: ${errorMessage}`
 			};
 		}
+	}
+
+	/**
+	 * Find the pdf2img binary with platform-specific extensions and multiple fallback paths.
+	 * @param pluginDir The plugin directory path
+	 * @param plugin The plugin instance for path utilities
+	 * @returns Binary location info
+	 */
+	private static async findBinaryWithFallbacks(pluginDir: string, plugin?: obsidianTypstPDFExport): Promise<BinaryLocation> {
+		// Define Windows-specific executable extensions
+		const windowsExtensions = process.platform === 'win32' ? ['.cmd', '.bat', '.ps1', '.exe'] : [''];
+
+		// Get platform-specific binary name
+		const baseBinaryName = 'pdf2img';
+
+		// Define fallback search paths for different installation methods
+		const fallbackPaths = [
+			// Standard npm binary location
+			path.join(pluginDir, 'node_modules', '.bin'),
+			// Direct package binary location
+			path.join(pluginDir, 'node_modules', 'pdf-to-img', 'bin'),
+			// Windows-specific npm locations
+			...(process.platform === 'win32' ? [
+				path.join(process.env.APPDATA || '', 'npm'),
+				path.join(process.env.LOCALAPPDATA || '', 'npm-cache'),
+				// Additional Windows global npm locations
+				path.join(process.env.PROGRAMFILES || 'C:\\Program Files', 'nodejs'),
+				path.join(process.env['PROGRAMFILES(X86)'] || 'C:\\Program Files (x86)', 'nodejs')
+			] : [])
+		];
+
+		// Try each fallback path with platform-specific extensions
+		for (const searchPath of fallbackPaths) {
+			for (const extension of windowsExtensions) {
+				const binaryName = baseBinaryName + extension;
+				const fullBinaryPath = path.join(searchPath, binaryName);
+
+				// Check if this binary exists and is accessible
+				const exists = await this.validateBinaryExists(fullBinaryPath, plugin);
+
+				if (exists) {
+					return {
+						binaryPath: fullBinaryPath,
+						exists: true
+					};
+				}
+			}
+		}
+
+		// If no binary found, return the default expected path for error reporting
+		const defaultPath = path.join(pluginDir, 'node_modules', '.bin', baseBinaryName);
+		const finalPath = process.platform === 'win32' ? defaultPath + '.cmd' : defaultPath;
+
+		return {
+			binaryPath: finalPath,
+			exists: false,
+			error: `PDF2IMG binary not found. Searched in ${fallbackPaths.length} locations with platform-specific extensions. Expected at: ${finalPath}`
+		};
 	}
 
 	/**
