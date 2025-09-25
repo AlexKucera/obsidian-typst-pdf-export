@@ -9,10 +9,14 @@ import { PandocTypstConverter } from '../converters/PandocTypstConverter';
 import { TemplateManager } from '../templates/TemplateManager';
 import { EmbeddedTemplateManager } from '../templates/embeddedTemplates';
 import { TempDirectoryManager } from '../core/TempDirectoryManager';
-import * as path from 'path';
+import { PathUtils } from '../core/PathUtils';
 
 export class PluginLifecycle {
-	constructor(private plugin: obsidianTypstPDFExport) {}
+	private readonly pathUtils: PathUtils;
+
+	constructor(private plugin: obsidianTypstPDFExport) {
+		this.pathUtils = new PathUtils(plugin.app);
+	}
 
 	/**
 	 * Initialize the plugin during onload
@@ -22,8 +26,8 @@ export class PluginLifecycle {
 		await this.plugin.loadSettings();
 		
 		// Initialize embedded template manager
-		const vaultPath = (this.plugin.app.vault.adapter as unknown as { basePath: string }).basePath;
-		const pluginDir = path.join(vaultPath, this.plugin.manifest.dir!);
+		const vaultPath = this.pathUtils.getVaultPath();
+		const pluginDir = this.pathUtils.joinPath(vaultPath, this.pathUtils.getPluginDir(this.plugin.manifest));
 		this.plugin.embeddedTemplateManager = new EmbeddedTemplateManager(pluginDir);
 		
 		// Extract any missing templates from embedded data
@@ -67,7 +71,7 @@ export class PluginLifecycle {
 		// Clean up temp directories on plugin unload (fire-and-forget async)
 		(async () => {
 			try {
-				const vaultPath = (this.plugin.app.vault.adapter as unknown as { basePath: string }).basePath;
+				const vaultPath = this.pathUtils.getVaultPath();
 				const cleanupManager = TempDirectoryManager.create(vaultPath, this.plugin.app.vault.configDir, undefined, this.plugin.app);
 				await cleanupManager.cleanupAllTempDirs();
 			} catch (error) {
@@ -83,7 +87,7 @@ export class PluginLifecycle {
 		// Clean up temp directories (fire-and-forget async)
 		(async () => {
 			try {
-				const vaultPath = (this.plugin.app.vault.adapter as unknown as { basePath: string }).basePath;
+				const vaultPath = this.pathUtils.getVaultPath();
 				const cleanupManager = TempDirectoryManager.create(vaultPath, this.plugin.app.vault.configDir, undefined, this.plugin.app);
 				const _result = await cleanupManager.cleanupAllTempDirs();
 
