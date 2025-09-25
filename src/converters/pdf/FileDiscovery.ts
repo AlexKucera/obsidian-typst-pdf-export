@@ -84,7 +84,13 @@ export class FileDiscovery {
 			const pathUtils = new PathUtils(plugin.app);
 
 			// Check if outputDir is inside the vault
-			const vaultPath = plugin.app.vault.adapter.basePath || '';
+			let vaultPath = '';
+			try {
+				vaultPath = pathUtils.getVaultPath();
+			} catch {
+				// If vault path unavailable, treat all paths as external
+				vaultPath = '';
+			}
 			let isVaultRelative = false;
 			let vaultRelativeDir = outputDir;
 
