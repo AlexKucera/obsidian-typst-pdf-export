@@ -7,11 +7,15 @@ import { TFile } from 'obsidian';
 import type { obsidianTypstPDFExport } from '../../main';
 import type { PreprocessingResult } from '../converters/MarkdownPreprocessor';
 import { ExportErrorHandler } from '../core/ExportErrorHandler';
+import { PathUtils } from '../core/PathUtils';
 import * as path from 'path';
-import * as fs from 'fs';
 
 export class EmbedProcessor {
-	constructor(private plugin: obsidianTypstPDFExport) {}
+	private readonly pathUtils: PathUtils;
+
+	constructor(private plugin: obsidianTypstPDFExport) {
+		this.pathUtils = new PathUtils(plugin.app);
+	}
 	
 	/**
 	 * Process PDF embeds - convert PDF pages to images for inclusion
@@ -126,9 +130,11 @@ export class EmbedProcessor {
 				// Try each possible path until we find one that exists
 				for (const possiblePath of possiblePaths) {
 					try {
-						await fs.promises.access(possiblePath);
-						fullImagePath = possiblePath;
-						break;
+						const exists = await this.pathUtils.fileExists(possiblePath);
+						if (exists) {
+							fullImagePath = possiblePath;
+							break;
+						}
 					} catch {
 						// File doesn't exist, continue to next path
 					}
@@ -150,10 +156,10 @@ export class EmbedProcessor {
 					// Convert WebP to PNG using ImageMagick
 					const originalImageName = path.basename(fullImagePath);
 					const pngFileName = originalImageName.replace(/\.webp$/i, '.png');
-					const vaultTempImagesDir = path.join(vaultBasePath, this.plugin.manifest.dir!, 'temp-images');
-					await fs.promises.mkdir(vaultTempImagesDir, { recursive: true });
+					const vaultTempImagesDir = this.pathUtils.joinPath(vaultBasePath, this.pathUtils.getPluginDir(this.plugin.manifest), 'temp-images');
+					await this.pathUtils.ensureDir(vaultTempImagesDir);
 					
-					const convertedImagePath = path.join(vaultTempImagesDir, pngFileName);
+					const convertedImagePath = this.pathUtils.joinPath(vaultTempImagesDir, pngFileName);
 					
 					const { exec } = require('child_process');
 					const util = require('util');
@@ -291,20 +297,22 @@ export class EmbedProcessor {
 	private async resolvePdfPath(sanitizedPath: string, vaultBasePath: string, currentFile?: TFile): Promise<string | null> {
 		// Decode the URL-encoded sanitized path back to normal characters
 		const decodedPath = decodeURIComponent(sanitizedPath);
-		
+
 		// Strategy 1: Use Obsidian's link resolution API (primary strategy)
 		if (currentFile) {
 			const resolvedFile = this.plugin.app.metadataCache.getFirstLinkpathDest(
-				decodedPath, 
+				decodedPath,
 				currentFile.path
 			);
-			
+
 			if (resolvedFile && resolvedFile instanceof TFile) {
 				// Convert to full filesystem path
 				const fullPath = path.resolve(vaultBasePath, resolvedFile.path);
 				try {
-					await fs.promises.access(fullPath);
-					return fullPath;
+					const exists = await this.pathUtils.fileExists(fullPath);
+					if (exists) {
+						return fullPath;
+					}
 				} catch {
 					// File exists in metadata but not on filesystem, continue to fallbacks
 				}
@@ -322,8 +330,10 @@ export class EmbedProcessor {
 		// Try each possible path until we find one that exists
 		for (const possiblePath of possiblePaths) {
 			try {
-				await fs.promises.access(possiblePath);
-				return possiblePath;
+				const exists = await this.pathUtils.fileExists(possiblePath);
+				if (exists) {
+					return possiblePath;
+				}
 			} catch {
 				// File doesn't exist, continue to next path
 			}
@@ -338,20 +348,22 @@ export class EmbedProcessor {
 	private async resolveFilePath(sanitizedPath: string, vaultBasePath: string, currentFile?: TFile): Promise<string | null> {
 		// Decode the URL-encoded sanitized path back to normal characters
 		const decodedPath = decodeURIComponent(sanitizedPath);
-		
+
 		// Strategy 1: Use Obsidian's link resolution API (primary strategy)
 		if (currentFile) {
 			const resolvedFile = this.plugin.app.metadataCache.getFirstLinkpathDest(
-				decodedPath, 
+				decodedPath,
 				currentFile.path
 			);
-			
+
 			if (resolvedFile && resolvedFile instanceof TFile) {
 				// Convert to full filesystem path
 				const fullPath = path.resolve(vaultBasePath, resolvedFile.path);
 				try {
-					await fs.promises.access(fullPath);
-					return fullPath;
+					const exists = await this.pathUtils.fileExists(fullPath);
+					if (exists) {
+						return fullPath;
+					}
 				} catch {
 					// File exists in metadata but not on filesystem, continue to fallbacks
 				}
@@ -371,8 +383,10 @@ export class EmbedProcessor {
 		// Try each possible path until we find one that exists
 		for (const possiblePath of possiblePaths) {
 			try {
-				await fs.promises.access(possiblePath);
-				return possiblePath;
+				const exists = await this.pathUtils.fileExists(possiblePath);
+				if (exists) {
+					return possiblePath;
+				}
 			} catch {
 				// File doesn't exist, continue to next path
 			}
@@ -396,23 +410,26 @@ export class EmbedProcessor {
 		vaultBasePath: string
 	): Promise<{ relativeImagePath: string; relativePdfPath: string }> {
 		// Copy image to vault temp directory for access
-		const vaultTempImagesDir = path.join(vaultBasePath, this.plugin.manifest.dir!, 'temp-images');
-		await fs.promises.mkdir(vaultTempImagesDir, { recursive: true });
-		
+		const vaultTempImagesDir = this.pathUtils.joinPath(vaultBasePath, this.pathUtils.getPluginDir(this.plugin.manifest), 'temp-images');
+		await this.pathUtils.ensureDir(vaultTempImagesDir);
+
 		// Sanitize the basename for use in filename - replace problematic characters
 		const sanitizedBaseName = baseName
 			.replace(/[^a-zA-Z0-9\-_]/g, '_')  // Replace non-alphanumeric chars with underscore
 			.replace(/_{2,}/g, '_')            // Collapse multiple underscores
 			.replace(/^_+|_+$/g, '');          // Remove leading/trailing underscores
-		
+
 		const imageFileName = `${sanitizedBaseName}_preview.png`;
-		const vaultImagePath = path.join(vaultTempImagesDir, imageFileName);
-		await fs.promises.copyFile(imagePath, vaultImagePath);
-		
+		const vaultImagePath = this.pathUtils.joinPath(vaultTempImagesDir, imageFileName);
+
+		// Copy file using vault adapter
+		const sourceBuffer = await this.plugin.app.vault.adapter.readBinary(imagePath);
+		await this.plugin.app.vault.adapter.writeBinary(vaultImagePath, sourceBuffer);
+
 		// Get relative paths from vault base
 		const relativeImagePath = path.relative(vaultBasePath, vaultImagePath);
 		const relativePdfPath = path.relative(vaultBasePath, pdfPath);
-		
+
 		return { relativeImagePath, relativePdfPath };
 	}
 
