@@ -73,7 +73,7 @@ Typst offers several advantages over standard PDF export:
 
 **⚠️ Important**: This plugin requires template files to function. Always use the complete ZIP package.
 
-1. Go to [GitHub Releases](https://github.com/akucera/obsidian-typst-pdf-export/releases)
+1. Go to [GitHub Releases](https://github.com/AlexKucera/obsidian-typst-pdf-export/releases)
 2. Download the **complete ZIP package** (`typst-pdf-export.zip`) - **NOT just main.js**
 3. Extract the entire contents to `{VaultFolder}/.obsidian/plugins/typst-pdf-export/`
 4. Ensure the `templates/` directory is included with all `.typ` files:
@@ -95,7 +95,7 @@ Typst offers several advantages over standard PDF export:
 ### Method 3: BRAT (Beta Reviewer's Auto-update Tool)
 
 1. Install the [BRAT plugin](https://github.com/TfTHacker/obsidian42-brat)
-2. Add this repository: `akucera/obsidian-typst-pdf-export`
+2. Add this repository: `https://github.com/AlexKucera/obsidian-typst-pdf-export`
 3. Enable the plugin after installation
 
 ### Method 4: Developer Installation
@@ -105,7 +105,7 @@ For development or the latest changes:
 1. Clone the repository to your vault's plugins folder:
    ```bash
    cd {VaultFolder}/.obsidian/plugins/
-   git clone https://github.com/akucera/obsidian-typst-pdf-export.git typst-pdf-export
+   git clone https://github.com/AlexKucera/obsidian-typst-pdf-export.git typst-pdf-export
    cd typst-pdf-export
    ```
 2. Install dependencies and build:
