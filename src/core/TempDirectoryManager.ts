@@ -35,26 +35,9 @@ export class TempDirectoryManager {
 	 * Handles absolute paths correctly on Windows
 	 */
 	private getPluginDir(): string {
-		// Use path.join to properly handle absolute paths
-		const segments = [this.vaultPath, this.configDir, 'plugins', this.pluginName];
-		let result = '';
-
-		for (const segment of segments) {
-			if (!segment) continue;
-
-			if (path.isAbsolute(segment)) {
-				// This segment is absolute, use it as the new base
-				result = segment;
-			} else if (result) {
-				// Join with the current result
-				result = path.join(result, segment);
-			} else {
-				// First relative segment
-				result = segment;
-			}
-		}
-
-		return normalizePath(path.normalize(result));
+		// path.join automatically handles absolute paths correctly
+		const result = path.join(this.vaultPath, this.configDir, 'plugins', this.pluginName);
+		return normalizePath(result);
 	}
 
 	/**
@@ -135,9 +118,8 @@ export class TempDirectoryManager {
 		const normalizedDirPath = normalizePath(dirPath);
 		const normalizedPluginDir = normalizePath(pluginDir);
 
-		// Use path.join to properly handle absolute paths
-		const tempImagesDir = normalizePath(path.normalize(path.join(normalizedPluginDir, PLUGIN_DIRS.TEMP_IMAGES)));
-		const tempPandocDir = normalizePath(path.normalize(path.join(normalizedPluginDir, PLUGIN_DIRS.TEMP_PANDOC)));
+		const tempImagesDir = normalizePath(path.join(normalizedPluginDir, PLUGIN_DIRS.TEMP_IMAGES));
+		const tempPandocDir = normalizePath(path.join(normalizedPluginDir, PLUGIN_DIRS.TEMP_PANDOC));
 
 		return normalizedDirPath.startsWith(tempImagesDir) ||
 		       normalizedDirPath.startsWith(tempPandocDir);
