@@ -18,6 +18,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 - **Windows Absolute Path Handling**: Fixed ENOENT errors on Windows caused by improper path joining when combining vault paths with plugin directories. PathUtils.joinPath() now properly detects and handles absolute paths using path.isAbsolute() to prevent invalid path construction like `C:\MyVault\C:\MyVault\...`
 - **Remote URL Image Handling**: Fixed ENOENT errors when markdown contains remote image URLs. Remote images are now automatically downloaded and embedded, with graceful fallback to placeholder text if download fails
+- **Bibliography Errors**: Fixed "document does not contain a bibliography" errors by disabling Pandoc's automatic citeproc filter. Pandoc was detecting citation-like patterns in markdown (such as wikilinks or certain frontmatter fields) and attempting to generate bibliographies without a bibliography file
 - **Cross-Platform Binary Discovery**: BinaryLocator now includes comprehensive fallback paths for different installation methods
 - **Vault-Relative Path Consistency**: Fixed all vault.adapter operations to use proper vault-relative paths instead of absolute paths
 - **Resource Path Resolution**: Removed extra quotes from Pandoc arguments that could break spawn commands on Windows
