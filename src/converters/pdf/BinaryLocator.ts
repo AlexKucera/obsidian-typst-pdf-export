@@ -131,13 +131,16 @@ export class BinaryLocator {
 	 * @returns Array of possible plugin directory paths
 	 */
 	private static getPossiblePluginDirs(plugin: obsidianTypstPDFExport | undefined, pluginDirName: string, configDir: string): string[] {
+		const pathUtils = plugin ? new PathUtils(plugin.app) : null;
+
 		return [
 			// Strategy 1: From process.cwd() if it's in the vault
 			path.join(process.cwd(), configDir, 'plugins', pluginDirName),
 			// Strategy 2: Assuming we're running from vault root
 			path.join(configDir, 'plugins', pluginDirName),
 			// Strategy 3: From vault base path if plugin is available
-			...(plugin ? [path.join(new PathUtils(plugin.app).getVaultPath(), plugin.manifest.dir!)] : [])
+			// Use PathUtils.joinPath to handle absolute paths correctly on Windows
+			...(pathUtils ? [pathUtils.joinPath(pathUtils.getVaultPath(), plugin!.manifest.dir!)] : [])
 		];
 	}
 

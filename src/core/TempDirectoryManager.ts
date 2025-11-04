@@ -4,6 +4,7 @@
 import { PLUGIN_DIRS } from './constants';
 import { normalizePath } from 'obsidian';
 import type { App } from 'obsidian';
+import * as path from 'path';
 
 export interface TempDirectoryOptions {
 	/** Base path for the vault */
@@ -31,17 +32,45 @@ export class TempDirectoryManager {
 
 	/**
 	 * Get the plugin directory path
+	 * Handles absolute paths correctly on Windows
 	 */
 	private getPluginDir(): string {
-		return normalizePath([this.vaultPath, this.configDir, 'plugins', this.pluginName].join('/'));
+		// Use path.join to properly handle absolute paths
+		const segments = [this.vaultPath, this.configDir, 'plugins', this.pluginName];
+		let result = '';
+
+		for (const segment of segments) {
+			if (!segment) continue;
+
+			if (path.isAbsolute(segment)) {
+				// This segment is absolute, use it as the new base
+				result = segment;
+			} else if (result) {
+				// Join with the current result
+				result = path.join(result, segment);
+			} else {
+				// First relative segment
+				result = segment;
+			}
+		}
+
+		return normalizePath(path.normalize(result));
 	}
 
 	/**
 	 * Get the path for a specific temp directory
+	 * Handles absolute paths correctly on Windows
 	 */
 	public getTempDir(type: 'images' | 'pandoc'): string {
 		const dirName = type === 'images' ? PLUGIN_DIRS.TEMP_IMAGES : PLUGIN_DIRS.TEMP_PANDOC;
-		return normalizePath([this.getPluginDir(), dirName].join('/'));
+		const pluginDir = this.getPluginDir();
+
+		// Use path.join to properly handle absolute paths
+		const result = path.isAbsolute(pluginDir)
+			? path.join(pluginDir, dirName)
+			: path.join(pluginDir, dirName);
+
+		return normalizePath(path.normalize(result));
 	}
 
 	/**
@@ -99,13 +128,16 @@ export class TempDirectoryManager {
 
 	/**
 	 * Check if a path is within the plugin's temp directories
+	 * Handles absolute paths correctly on Windows
 	 */
 	public isPluginTempDir(dirPath: string): boolean {
 		const pluginDir = this.getPluginDir();
 		const normalizedDirPath = normalizePath(dirPath);
 		const normalizedPluginDir = normalizePath(pluginDir);
-		const tempImagesDir = normalizePath([normalizedPluginDir, PLUGIN_DIRS.TEMP_IMAGES].join('/'));
-		const tempPandocDir = normalizePath([normalizedPluginDir, PLUGIN_DIRS.TEMP_PANDOC].join('/'));
+
+		// Use path.join to properly handle absolute paths
+		const tempImagesDir = normalizePath(path.normalize(path.join(normalizedPluginDir, PLUGIN_DIRS.TEMP_IMAGES)));
+		const tempPandocDir = normalizePath(path.normalize(path.join(normalizedPluginDir, PLUGIN_DIRS.TEMP_PANDOC)));
 
 		return normalizedDirPath.startsWith(tempImagesDir) ||
 		       normalizedDirPath.startsWith(tempPandocDir);

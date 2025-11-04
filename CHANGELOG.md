@@ -5,9 +5,10 @@ All notable changes to the Obsidian Typst PDF Export plugin will be documented i
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [1.3.1] - 2025-01-25
+## [Unreleased] - 2025-09-25
 
 ### Added
+- **Remote Image Download**: Automatic download and embedding of remote images (http:// and https:// URLs) during export. Works with both wikilink-style embeds `![[https://...]]` and standard markdown images `![alt](https://...)`. Falls back to placeholder text if download fails (10-second timeout). Images are downloaded to temp directory and cleaned up after export
 - **Windows Compatibility**: Comprehensive Windows executable detection with platform-specific extensions (.cmd, .bat, .ps1, .exe)
 - **Dynamic Image Format Support**: FileDiscovery now supports multiple image formats (.png, .jpg, .jpeg, .webp, .gif, .bmp, .tiff)
 - **Enhanced Pattern Matching**: Five-strategy file discovery system for robust PDF-to-image conversion output detection
@@ -15,6 +16,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Improved Plugin Isolation**: TempDirectoryManager now uses proper plugin namespacing to prevent conflicts
 
 ### Fixed
+- **Windows Absolute Path Handling**: Fixed ENOENT errors on Windows caused by improper path joining when combining vault paths with plugin directories. PathUtils.joinPath() now properly detects and handles absolute paths using path.isAbsolute() to prevent invalid path construction like `C:\MyVault\C:\MyVault\...`
+- **Remote URL Image Handling**: Fixed ENOENT errors when markdown contains remote image URLs. Remote images are now automatically downloaded and embedded, with graceful fallback to placeholder text if download fails
 - **Cross-Platform Binary Discovery**: BinaryLocator now includes comprehensive fallback paths for different installation methods
 - **Vault-Relative Path Consistency**: Fixed all vault.adapter operations to use proper vault-relative paths instead of absolute paths
 - **Resource Path Resolution**: Removed extra quotes from Pandoc arguments that could break spawn commands on Windows
@@ -31,7 +34,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Path Validation**: Enhanced path sanitization and validation for all file system operations
 - **Process Spawning**: Improved security in font discovery and binary execution with proper argument handling
 
-## [1.3.0] - 2024-12-25
+## [1.3.0] - 2025-09-25
 
 ### Added
 - PathUtils helper class for centralized path operations and safe Obsidian API usage
@@ -52,7 +55,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Enhanced error handling and path validation across all modules
 - Updated all 16 core files with consistent, safe path handling practices
 
-## [1.2.1] - 2025-01-10
+## [1.2.1] - 2025-09-10
 
 ### Fixed
 - **Horizontal Rule Processing**: Resolved YAML parsing conflicts when documents contain horizontal rules (`---`)
@@ -69,7 +72,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Improved type safety throughout the codebase
   - Enhanced code maintainability with proper type assertions
 
-## [1.2.0] - 2025-01-10
+## [1.2.0] - 2025-09-10
 
 ### Changed
 - **Major Refactoring**: Complete modularization of codebase for improved maintainability

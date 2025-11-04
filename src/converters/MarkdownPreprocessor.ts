@@ -9,6 +9,7 @@ import { EmbedProcessor, EmbedProcessorConfig } from './preprocessors/EmbedProce
 import { CalloutProcessor } from './preprocessors/CalloutProcessor';
 import { MetadataExtractor } from './preprocessors/MetadataExtractor';
 import { HorizontalRuleProcessor } from './preprocessors/HorizontalRuleProcessor';
+import * as path from 'path';
 
 export interface PreprocessorOptions {
 	/** Preserve existing frontmatter */
@@ -141,7 +142,10 @@ export class MarkdownPreprocessor {
 			
 			// Step 5: Convert embeds FIRST (before wikilinks to avoid .md extension being added)
 			result.content = this.embedProcessor.processEmbeds(result.content, result);
-			
+
+			// Step 5.5: Handle standard markdown images with remote URLs
+			result.content = this.processStandardMarkdownImages(result.content, result);
+
 			// Step 6: Convert wikilinks (after embeds are processed)
 			result.content = this.wikilinkProcessor.processWikilinks(result.content, result);
 			
@@ -159,7 +163,59 @@ export class MarkdownPreprocessor {
 		
 		return result;
 	}
-	
+
+	/**
+	 * Process standard markdown images and track remote URLs for download
+	 * Remote images are marked for later download and embedding
+	 */
+	private processStandardMarkdownImages(content: string, result: PreprocessingResult): string {
+		// Pattern to match standard markdown images: ![alt](url)
+		const markdownImagePattern = /!\[([^\]]*)\]\(([^)]+)\)/g;
+
+		return content.replace(markdownImagePattern, (match, alt, url) => {
+			// Check if this is a remote URL (http:// or https://)
+			const isRemoteUrl = /^https?:\/\//i.test(url.trim());
+
+			if (isRemoteUrl) {
+				const cleanUrl = url.trim();
+
+				// Extract filename from URL for tracking
+				let fileName = 'remote-image.png';
+				try {
+					const urlObj = new URL(cleanUrl);
+					fileName = path.basename(urlObj.pathname) || fileName;
+				} catch {
+					// Use default if URL parsing fails
+				}
+
+				const baseName = fileName.replace(/\.[^/.]+$/, ""); // Remove extension
+
+				// Create a marker that the export process can detect and replace
+				const marker = `IMAGE_EMBED_MARKER:${cleanUrl}:${baseName}:${alt || ''}`;
+
+				// Add to processing queue for later download and embedding
+				if (!result.metadata.imageEmbeds) {
+					result.metadata.imageEmbeds = [];
+				}
+				result.metadata.imageEmbeds.push({
+					originalPath: cleanUrl,
+					sanitizedPath: cleanUrl, // For remote URLs, sanitized = original
+					fileName: fileName,
+					baseName: baseName,
+					sizeOrAlt: alt,
+					marker: marker
+				});
+
+				result.warnings.push(`Remote URL image queued for download: ${cleanUrl}`);
+
+				return marker;
+			}
+
+			// Keep local images as-is for normal processing
+			return match;
+		});
+	}
+
 	/**
 	 * Update configuration
 	 */
