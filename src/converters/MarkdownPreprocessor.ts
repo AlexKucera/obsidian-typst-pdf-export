@@ -144,6 +144,8 @@ export class MarkdownPreprocessor {
 			result.content = this.embedProcessor.processEmbeds(result.content, result);
 
 			// Step 5.5: Handle standard markdown images with remote URLs
+			// Process after embeds (which handle ![[]] syntax) but before wikilinks
+			// to ensure remote URLs in standard markdown ![](url) format are queued for download
 			result.content = this.processStandardMarkdownImages(result.content, result);
 
 			// Step 6: Convert wikilinks (after embeds are processed)
