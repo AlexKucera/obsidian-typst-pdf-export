@@ -49,9 +49,7 @@ export class TempDirectoryManager {
 		const pluginDir = this.getPluginDir();
 
 		// Use path.join to properly handle absolute paths
-		const result = path.isAbsolute(pluginDir)
-			? path.join(pluginDir, dirName)
-			: path.join(pluginDir, dirName);
+		const result = path.join(pluginDir, dirName);
 
 		return normalizePath(path.normalize(result));
 	}
