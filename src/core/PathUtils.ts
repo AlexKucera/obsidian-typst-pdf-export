@@ -32,33 +32,12 @@ export class PathUtils {
 	 * Handles absolute paths correctly by using the last absolute path found
 	 */
 	joinPath(...segments: string[]): string {
-		// Filter out empty segments
 		const filtered = segments.filter(s => s);
-
 		if (filtered.length === 0) {
 			return '';
 		}
-
-		// Find the last absolute path in the segments
-		// If a segment is absolute, it becomes the new base and we ignore previous segments
-		let result = '';
-		for (const segment of filtered) {
-			if (path.isAbsolute(segment)) {
-				// This segment is absolute, use it as the new base
-				result = segment;
-			} else if (result) {
-				// Join with the current result
-				result = path.join(result, segment);
-			} else {
-				// First relative segment
-				result = segment;
-			}
-		}
-
-		// Normalize the final path using path.normalize for cross-platform compatibility
-		// then use Obsidian's normalizePath for vault-relative paths
-		const normalized = path.normalize(result);
-		return normalizePath(normalized);
+		const result = path.join(...filtered);
+		return normalizePath(result);
 	}
 
 	/**
