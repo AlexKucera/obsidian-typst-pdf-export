@@ -115,9 +115,13 @@ export class EmbedProcessor {
 					if (response.statusCode === 301 || response.statusCode === 302) {
 						const redirectUrl = response.headers.location;
 						if (redirectUrl) {
-							console.log(`Export: Following redirect to: ${redirectUrl}`);
-							// Recursively follow redirect
-							this.downloadRemoteImage(redirectUrl, tempDir).then(resolve);
+							// Resolve relative redirects against the original request URL
+							// This handles both absolute URLs (e.g., "https://example.com/img.png")
+							// and relative URLs (e.g., "/assets/img.png" or "../img.png")
+							const absoluteRedirectUrl = new URL(redirectUrl, imageUrl).href;
+							console.log(`Export: Following redirect to: ${absoluteRedirectUrl}`);
+							// Recursively follow redirect with resolved absolute URL
+							this.downloadRemoteImage(absoluteRedirectUrl, tempDir).then(resolve);
 							return;
 						}
 					}
