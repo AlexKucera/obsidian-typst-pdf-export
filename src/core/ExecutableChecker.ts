@@ -73,22 +73,33 @@ export class ExecutableChecker {
 	 * The resulting PATH helps find executables in non-standard locations that
 	 * might not be in the user's shell PATH when running from Obsidian.
 	 *
+	 * Uses platform-specific path delimiters (';' on Windows, ':' on Unix) and
+	 * filters out empty segments to prevent PATH corruption.
+	 *
 	 * @param additionalPaths - Optional array of additional paths to include
-	 * @returns The augmented PATH string with all paths separated by colons
+	 * @returns The augmented PATH string with all paths separated by platform-specific delimiter
 	 * @private
 	 */
 	private static getAugmentedPath(additionalPaths: string[] = []): string {
 		const homeDir = process.env.HOME || process.env.USERPROFILE || '';
-		
+
 		// Build default system paths - always included regardless of user settings
 		const homeRelativePaths = DEPENDENCY_CONSTANTS.COMMON_PATHS.HOME_RELATIVE.map(p => homeDir + p);
 		const absolutePaths = DEPENDENCY_CONSTANTS.COMMON_PATHS.ABSOLUTE;
 		const defaultSystemPaths = [...homeRelativePaths, ...absolutePaths];
-		
+
 		// Combine default system paths with user-provided additional paths
 		const allAdditionalPaths = [...defaultSystemPaths, ...additionalPaths];
-		
-		return `${process.env.PATH}:${allAdditionalPaths.join(':')}`;
+
+		// Use platform-specific delimiter (';' on Windows, ':' on Unix)
+		const delimiter = process.platform === 'win32' ? ';' : ':';
+
+		// Filter out empty segments and join with platform-specific delimiter
+		const segments = [
+			process.env.PATH ?? '',
+			...allAdditionalPaths.filter(p => p && p.trim() !== '')
+		];
+		return segments.filter(Boolean).join(delimiter);
 	}
 
 	/**
