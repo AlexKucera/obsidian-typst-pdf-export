@@ -207,7 +207,7 @@ export class TempDirectoryManager {
 		// Use path.join to properly handle absolute paths
 		const result = path.join(pluginDir, dirName);
 
-		return normalizePath(path.normalize(result));
+		return normalizePath(result);
 	}
 
 	/**
@@ -442,10 +442,9 @@ export class TempDirectoryManager {
 	public isPluginTempDir(dirPath: string): boolean {
 		const pluginDir = this.getPluginDir();
 		const normalizedDirPath = normalizePath(dirPath);
-		const normalizedPluginDir = normalizePath(pluginDir);
 
-		const tempImagesDir = normalizePath(path.join(normalizedPluginDir, PLUGIN_DIRS.TEMP_IMAGES));
-		const tempPandocDir = normalizePath(path.join(normalizedPluginDir, PLUGIN_DIRS.TEMP_PANDOC));
+		const tempImagesDir = normalizePath(path.join(pluginDir, PLUGIN_DIRS.TEMP_IMAGES));
+		const tempPandocDir = normalizePath(path.join(pluginDir, PLUGIN_DIRS.TEMP_PANDOC));
 
 		return normalizedDirPath.startsWith(tempImagesDir) ||
 		       normalizedDirPath.startsWith(tempPandocDir);
