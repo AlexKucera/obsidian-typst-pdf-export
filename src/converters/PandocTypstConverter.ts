@@ -74,6 +74,8 @@ export class PandocTypstConverter {
 	private plugin: obsidianTypstPDFExport;
 	private commandBuilder: PandocCommandBuilder;
 	private pandocExecutor: PandocExecutor;
+	private processCleanupHandler: (() => void) | null = null;
+	private isDisposed = false;
 
 	/**
 	 * Creates a new PandocTypstConverter instance with configuration.
@@ -185,10 +187,9 @@ export class PandocTypstConverter {
 			// Add the output path to the result if successful
 			if (result.success) {
 				result.outputPath = outputPath;
+				progressCallback?.('Conversion complete!', 100);
 			}
-			
-			progressCallback?.('Conversion complete!', 100);
-			
+
 			return result;
 			
 		} catch (error) {
@@ -287,19 +288,26 @@ export class PandocTypstConverter {
 	 * - Normal exit
 	 * - SIGINT (Ctrl+C)
 	 * - SIGTERM (kill command)
-	 * - Uncaught exceptions
+	 *
+	 * Note: Handlers are stored and removed on dispose() to prevent listener leaks.
+	 * The uncaughtException handler is NOT registered to avoid swallowing errors.
 	 *
 	 * @private
 	 */
 	private setupCleanup(): void {
-		const cleanup = () => {
-			this.cleanup();
+		// Store handler reference so we can remove it later
+		this.processCleanupHandler = () => {
+			// Only cleanup if not already disposed to avoid double-cleanup
+			if (!this.isDisposed) {
+				this.cleanup();
+			}
 		};
 
-		process.on('exit', cleanup);
-		process.on('SIGINT', cleanup);
-		process.on('SIGTERM', cleanup);
-		process.on('uncaughtException', cleanup);
+		// Register cleanup handlers - these will be removed on dispose()
+		process.on('exit', this.processCleanupHandler);
+		process.on('SIGINT', this.processCleanupHandler);
+		process.on('SIGTERM', this.processCleanupHandler);
+		// Note: uncaughtException handler removed to avoid swallowing errors
 	}
 
 
@@ -380,6 +388,9 @@ export class PandocTypstConverter {
 	 * calling dispose explicitly allows for immediate cleanup and is recommended
 	 * when the converter is no longer needed.
 	 *
+	 * This method also removes all registered process event listeners to prevent
+	 * memory leaks and allow the converter instance to be garbage collected.
+	 *
 	 * @returns Promise that resolves when cleanup is complete
 	 *
 	 * @example
@@ -393,6 +404,21 @@ export class PandocTypstConverter {
 	 * ```
 	 */
 	async dispose(): Promise<void> {
+		if (this.isDisposed) {
+			return; // Already disposed, avoid double-cleanup
+		}
+
+		this.isDisposed = true;
+
+		// Remove process event listeners to prevent memory leaks
+		if (this.processCleanupHandler) {
+			process.off('exit', this.processCleanupHandler);
+			process.off('SIGINT', this.processCleanupHandler);
+			process.off('SIGTERM', this.processCleanupHandler);
+			this.processCleanupHandler = null;
+		}
+
+		// Cleanup temporary files and resources
 		await this.cleanup();
 	}
 }
