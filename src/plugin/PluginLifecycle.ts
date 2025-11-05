@@ -51,12 +51,12 @@ export class PluginLifecycle {
 
 		// Clean up any leftover temp directories from previous sessions
 		this.cleanupStartupTempDirectories();
-		
-		// Check dependencies on startup (async, don't await)
+
+		// Check dependencies on startup
 		this.plugin.checkDependenciesAsync();
-		
+
 		// Cache available fonts (async, don't await)
-		this.plugin.cacheAvailableFonts();
+		void this.plugin.cacheAvailableFonts();
 	}
 
 	/**
@@ -69,7 +69,7 @@ export class PluginLifecycle {
 		}
 		
 		// Clean up temp directories on plugin unload (fire-and-forget async)
-		(async () => {
+		void (async () => {
 			try {
 				const vaultPath = this.pathUtils.getVaultPath();
 				const cleanupManager = TempDirectoryManager.create(vaultPath, this.plugin.app.vault.configDir, undefined, this.plugin.app);
@@ -85,11 +85,11 @@ export class PluginLifecycle {
 	 */
 	private cleanupStartupTempDirectories(): void {
 		// Clean up temp directories (fire-and-forget async)
-		(async () => {
+		void (async () => {
 			try {
 				const vaultPath = this.pathUtils.getVaultPath();
 				const cleanupManager = TempDirectoryManager.create(vaultPath, this.plugin.app.vault.configDir, undefined, this.plugin.app);
-				const _result = await cleanupManager.cleanupAllTempDirs();
+				await cleanupManager.cleanupAllTempDirs();
 
 				if (this.plugin.settings.behavior.debugMode) {
 					// Debug logging was here but empty in original

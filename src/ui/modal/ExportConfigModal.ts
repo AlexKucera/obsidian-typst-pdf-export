@@ -20,7 +20,7 @@ export class ExportConfigModal extends Modal {
 	plugin: obsidianTypstPDFExport;
 	private state: ModalState;
 	private sections: Map<string, ModalSection> = new Map();
-	private onSubmit: (config: ExportConfig) => void;
+	private onSubmit: (config: ExportConfig) => void | Promise<void>;
 	private onCancel?: () => void;
 	private renderer: ModalRenderer;
 	private validator: ModalValidator;
@@ -29,7 +29,7 @@ export class ExportConfigModal extends Modal {
 		app: App,
 		plugin: obsidianTypstPDFExport,
 		settings: Partial<ExportConfigModalSettings>,
-		onSubmit: (config: ExportConfig) => void,
+		onSubmit: (config: ExportConfig) => void | Promise<void>,
 		onCancel?: () => void
 	) {
 		super(app);
@@ -38,7 +38,7 @@ export class ExportConfigModal extends Modal {
 		this.onCancel = onCancel;
 		
 		// Initialize state
-		this.state = new ModalState(settings);
+		this.state = new ModalState(settings, app);
 		
 		// Register sections
 		this.registerSections();
@@ -81,9 +81,9 @@ export class ExportConfigModal extends Modal {
 		
 		// Initialize renderer with content container
 		this.renderer.initialize(contentContainer);
-		
+
 		// Load available templates
-		this.loadAvailableTemplates();
+		void this.loadAvailableTemplates();
 	}
 	
 	private async loadAvailableTemplates(): Promise<void> {
@@ -117,10 +117,10 @@ export class ExportConfigModal extends Modal {
 		
 		// Re-render sections to update UI
 		this.renderer.refreshSections();
-		
+
 		// Reload templates to update the dropdown
-		this.loadAvailableTemplates();
-		
+		void this.loadAvailableTemplates();
+
 		ExportErrorHandler.showSettingsReset();
 	}
 	

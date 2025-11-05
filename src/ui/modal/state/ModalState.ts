@@ -3,6 +3,7 @@
  * Centralized state management for the Export Configuration Modal
  */
 
+import { App } from 'obsidian';
 import { ExportConfigModalSettings, ExportConfig, ModalState as IModalState } from '../modalTypes';
 import { ExportFormat, obsidianTypstPDFExportSettings } from '../../../core/settings';
 
@@ -13,7 +14,7 @@ export class ModalState implements IModalState {
 	private changeListeners: Set<() => void> = new Set();
 	private static readonly STORAGE_KEY = 'typst-export-modal-state';
 	
-	constructor(initialSettings: Partial<ExportConfigModalSettings>) {
+	constructor(initialSettings: Partial<ExportConfigModalSettings>, private app: App) {
 		// Load from localStorage if available
 		const savedState = this.loadFromStorage();
 		
@@ -174,7 +175,7 @@ export class ModalState implements IModalState {
 	}
 	
 	/**
-	 * Save current state to localStorage
+	 * Save current state to vault-specific storage
 	 */
 	private saveToStorage(): void {
 		const stateToSave = {
@@ -187,25 +188,25 @@ export class ModalState implements IModalState {
 			},
 			templateVariables: this.templateVariables
 		};
-		
+
 		try {
-			localStorage.setItem(ModalState.STORAGE_KEY, JSON.stringify(stateToSave));
+			this.app.saveLocalStorage(ModalState.STORAGE_KEY, JSON.stringify(stateToSave));
 		} catch (error) {
-			console.warn('Failed to save modal state to localStorage:', error);
+			console.warn('Failed to save modal state to vault storage:', error);
 		}
 	}
 	
 	/**
-	 * Load state from localStorage
+	 * Load state from vault-specific storage
 	 */
 	private loadFromStorage(): { settings: Partial<ExportConfigModalSettings>, templateVariables: Record<string, string | number | boolean> } | null {
 		try {
-			const saved = localStorage.getItem(ModalState.STORAGE_KEY);
+			const saved = this.app.loadLocalStorage(ModalState.STORAGE_KEY);
 			if (saved) {
 				return JSON.parse(saved);
 			}
 		} catch (error) {
-			console.warn('Failed to load modal state from localStorage:', error);
+			console.warn('Failed to load modal state from vault storage:', error);
 		}
 		return null;
 	}

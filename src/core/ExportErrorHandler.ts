@@ -181,7 +181,7 @@ export class ExportErrorHandler {
 				console.warn(`${operation}:`, error);
 				break;
 			case 'info':
-				console.info(`${operation}:`, error);
+				console.debug(`${operation}:`, error);
 				break;
 		}
 		

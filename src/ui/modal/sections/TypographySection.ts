@@ -13,10 +13,12 @@ export class TypographySection implements ModalSection {
 	render(containerEl: HTMLElement, state: ModalState, app?: App): void {
 		if (app) this.app = app;
 		this.container = containerEl.createDiv('export-section');
-		this.container.createEl('h3', { text: 'Typography' });
+		new Setting(this.container)
+			.setName('Typography')
+			.setHeading();
 		
 		// Create font settings asynchronously
-		this.createFontSettings(state);
+		void this.createFontSettings(state);
 		this.createFontSizeSettings(state);
 	}
 	

@@ -10,7 +10,7 @@ import { ModalSection } from './modalTypes';
 export interface ModalRendererCallbacks {
 	onReset: () => void;
 	onCancel: () => void;
-	onSubmit: () => void;
+	onSubmit: () => void | Promise<void>;
 }
 
 export class ModalRenderer {
@@ -47,7 +47,6 @@ export class ModalRenderer {
 	initialize(contentContainer: HTMLElement): void {
 		this.contentContainer = contentContainer;
 		this.setupInitialLayout();
-		this.addModalStyles();
 	}
 	
 	/**
@@ -119,9 +118,9 @@ export class ModalRenderer {
 		// Progress bar container
 		const progressBarContainer = this.progressContainer.createDiv('export-progress-bar-container');
 		this.progressBar = progressBarContainer.createDiv('export-progress-bar');
-		
+
 		// Progress percentage
-		const _progressPercent = this.progressContainer.createEl('div', {
+		this.progressContainer.createEl('div', {
 			cls: 'export-progress-percent',
 			text: '0%'
 		});
@@ -135,7 +134,7 @@ export class ModalRenderer {
 		
 		// Reset button (left side)
 		this.resetButton = buttonContainer.createEl('button', {
-			text: 'Reset to Defaults',
+			text: 'Reset to defaults',
 			cls: 'mod-muted'
 		});
 		this.resetButton.addEventListener('click', () => this.callbacks.onReset());
@@ -219,7 +218,7 @@ export class ModalRenderer {
 		}
 		
 		const errorContainer = this.formContainer.createDiv('validation-errors');
-		errorContainer.createEl('h4', { text: 'Validation Errors', cls: 'error-title' });
+		errorContainer.createEl('h4', { text: 'Validation errors', cls: 'error-title' });
 		
 		const errorList = errorContainer.createEl('ul');
 		errors.forEach(error => {
@@ -250,242 +249,5 @@ export class ModalRenderer {
 		
 		// Remove after 5 seconds
 		setTimeout(() => warningContainer.remove(), 5000);
-	}
-	
-	/**
-	 * Add custom CSS styles for the modal
-	 */
-	private addModalStyles(): void {
-		// Add custom styles for the modal
-		const style = document.createElement('style');
-		style.textContent = `
-			.export-config-modal {
-				width: 90vw;
-				max-width: 520px;
-				height: 80vh;
-				max-height: 600px;
-			}
-			
-			.export-config-container {
-				display: flex;
-				flex-direction: column;
-				height: 100%;
-			}
-			
-			.export-config-header {
-				padding: 16px 24px 8px 24px;
-				border-bottom: 1px solid var(--background-modifier-border);
-				flex-shrink: 0;
-			}
-			
-			.export-config-header h2 {
-				margin: 0 0 8px 0;
-				font-size: 18px;
-				font-weight: 600;
-			}
-			
-			.export-note-title {
-				margin: 0;
-				font-size: 14px;
-				color: var(--text-muted);
-				opacity: 0.8;
-			}
-			
-			.export-config-form {
-				flex: 1;
-				overflow-y: auto;
-				padding: 16px 24px;
-			}
-			
-			.export-config-section {
-				margin-bottom: 24px;
-			}
-			
-			.export-config-section:last-child {
-				margin-bottom: 0;
-			}
-			
-			.export-config-section-title {
-				font-weight: 600;
-				margin-bottom: 12px;
-				padding-bottom: 4px;
-				border-bottom: 1px solid var(--background-modifier-border-hover);
-			}
-			
-			.export-config-buttons {
-				padding: 16px 24px;
-				border-top: 1px solid var(--background-modifier-border);
-				display: flex;
-				justify-content: space-between;
-				align-items: center;
-				flex-shrink: 0;
-			}
-			
-			.export-config-buttons .right-buttons {
-				display: flex;
-				gap: 8px;
-			}
-			
-			/* Progress styles */
-			.export-progress-container {
-				padding: 24px;
-				text-align: center;
-			}
-			
-			.export-progress-container.export-hidden {
-				display: none;
-			}
-			
-			.export-progress-container.export-progress-visible {
-				display: block;
-			}
-			
-			.export-form-hidden {
-				display: none !important;
-			}
-			
-			.export-progress-text {
-				margin-bottom: 16px;
-				font-size: 14px;
-				color: var(--text-muted);
-			}
-			
-			.export-progress-bar-container {
-				width: 100%;
-				height: 8px;
-				background-color: var(--background-modifier-border);
-				border-radius: 4px;
-				margin-bottom: 8px;
-				overflow: hidden;
-			}
-			
-			.export-progress-bar {
-				height: 100%;
-				background-color: var(--interactive-accent);
-				border-radius: 4px;
-				width: var(--progress-width, 0%);
-				transition: width 0.3s ease;
-			}
-			
-			.export-progress-percent {
-				font-size: 12px;
-				color: var(--text-muted);
-			}
-			
-			/* Form field styles */
-			.export-setting-item {
-				margin-bottom: 16px;
-			}
-			
-			.export-setting-item-info {
-				margin-bottom: 6px;
-			}
-			
-			.export-setting-item-name {
-				font-weight: 500;
-				margin-bottom: 2px;
-			}
-			
-			.export-setting-item-description {
-				font-size: 12px;
-				color: var(--text-muted);
-			}
-			
-			.export-setting-item-control {
-				display: flex;
-				align-items: center;
-			}
-			
-			.export-setting-item-control input,
-			.export-setting-item-control select {
-				flex: 1;
-			}
-			
-			/* Folder suggest styles */
-			.export-folder-suggest-container {
-				position: relative;
-			}
-			
-			.export-folder-suggest-input {
-				width: 100%;
-				padding: 6px 8px;
-				border: 1px solid var(--background-modifier-border);
-				border-radius: 4px;
-				background: var(--background-primary);
-				color: var(--text-normal);
-			}
-			
-			.export-folder-suggest-input:focus {
-				border-color: var(--interactive-accent);
-				outline: none;
-			}
-			
-			/* Validation styles */
-			.validation-errors, .validation-warnings {
-				background: var(--background-modifier-error);
-				padding: 15px;
-				border-radius: 5px;
-				margin-bottom: 20px;
-			}
-			
-			.validation-warnings {
-				background: var(--background-modifier-warning);
-			}
-			
-			.error-title {
-				color: var(--text-error);
-				margin: 0 0 10px 0;
-			}
-			
-			.warning-title {
-				color: var(--text-warning);
-				margin: 0 0 10px 0;
-			}
-			
-			.validation-errors ul, .validation-warnings ul {
-				margin: 0;
-				padding-left: 20px;
-			}
-			
-			.export-validation-error {
-				color: var(--text-error);
-				font-size: 12px;
-				margin-top: 4px;
-			}
-			
-			.export-validation-warning {
-				color: var(--text-warning);
-				font-size: 12px;
-				margin-top: 4px;
-			}
-			
-			/* Template variable styles */
-			.export-template-variables {
-				margin-top: 12px;
-			}
-			
-			.export-template-variable {
-				margin-bottom: 8px;
-				padding: 8px;
-				background: var(--background-secondary);
-				border-radius: 4px;
-				font-size: 12px;
-			}
-			
-			.export-template-variable-name {
-				font-weight: 500;
-				margin-bottom: 2px;
-			}
-			
-			.export-template-variable-description {
-				color: var(--text-muted);
-				font-style: italic;
-			}
-		`;
-		
-		if (!document.head.querySelector('style[data-export-config-modal]')) {
-			style.setAttribute('data-export-config-modal', 'true');
-			document.head.appendChild(style);
-		}
 	}
 }

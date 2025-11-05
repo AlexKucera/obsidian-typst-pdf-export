@@ -3,6 +3,7 @@
  * Handles font discovery, caching, and retrieval for the plugin
  */
 
+import { spawn } from 'child_process';
 import type { obsidianTypstPDFExport } from '../../main';
 import { ExportErrorHandler } from '../core/ExportErrorHandler';
 import { FALLBACK_FONTS } from '../core/constants';
@@ -16,8 +17,6 @@ export class FontManager {
 	 */
 	async cacheAvailableFonts(): Promise<void> {
 		try {
-			const { spawn } = require('child_process');
-			
 			const typstPath = this.plugin.resolveExecutablePath(this.plugin.settings.typstPath, 'typst');
 			
 			// Use spawn instead of exec for security - arguments passed separately

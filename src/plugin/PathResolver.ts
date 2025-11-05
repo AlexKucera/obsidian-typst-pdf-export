@@ -3,6 +3,7 @@
  * Handles executable path resolution and output path preparation
  */
 
+import { spawnSync } from 'child_process';
 import { TFile } from 'obsidian';
 import type { obsidianTypstPDFExport } from '../../main';
 import { SecurityUtils } from '../core/SecurityUtils';
@@ -26,8 +27,6 @@ export class PathResolver {
 		}
 		
 		// Try to find the executable using which command
-		const { spawnSync } = require('child_process');
-
 		// Use platform-specific command: 'where' on Windows, 'which' on Unix
 		const whichCommand = process.platform === 'win32' ? 'where' : 'which';
 

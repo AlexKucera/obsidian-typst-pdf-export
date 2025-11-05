@@ -27,8 +27,10 @@ export class ObsidianTypstPDFExportSettingTab extends PluginSettingTab {
 	display(): void {
 		const { containerEl } = this;
 		containerEl.empty();
-		
-		containerEl.createEl('h2', { text: 'Typst PDF Export Settings' });
+
+		new Setting(containerEl)
+			.setName('Typst PDF Export Settings')
+			.setHeading();
 		
 		// Executable paths section
 		this.createExecutablePathsSection(containerEl);
@@ -47,14 +49,16 @@ export class ObsidianTypstPDFExportSettingTab extends PluginSettingTab {
 	}
 	
 	private createExecutablePathsSection(containerEl: HTMLElement): void {
-		containerEl.createEl('h3', { text: 'Executable Paths' });
+		new Setting(containerEl)
+			.setName('Executable paths')
+			.setHeading();
 		
 		// Add dependency check button
 		new Setting(containerEl)
 			.setName('Dependencies')
 			.setDesc('Check the status of external dependencies')
 			.addButton(button => button
-				.setButtonText('Check Dependencies')
+				.setButtonText('Check dependencies')
 				.setCta()
 				.onClick(async () => {
 					await this.plugin.showDependencyStatus();
@@ -131,7 +135,9 @@ export class ObsidianTypstPDFExportSettingTab extends PluginSettingTab {
 	}
 	
 	private createExportDefaultsSection(containerEl: HTMLElement): void {
-		containerEl.createEl('h3', { text: 'Export Defaults' });
+		new Setting(containerEl)
+			.setName('Export defaults')
+			.setHeading();
 		
 		new Setting(containerEl)
 			.setName('Default template')
@@ -229,7 +235,9 @@ export class ObsidianTypstPDFExportSettingTab extends PluginSettingTab {
 	}
 
 	private createTypographyDefaultsSection(containerEl: HTMLElement): void {
-	containerEl.createEl('h3', { text: 'Typography Defaults' });
+	new Setting(containerEl)
+		.setName('Typography defaults')
+		.setHeading();
 	
 	// Use helper method for all three font dropdowns
 	this.createFontDropdown(
@@ -293,7 +301,9 @@ export class ObsidianTypstPDFExportSettingTab extends PluginSettingTab {
 	}
 
 	private createPageSetupSection(containerEl: HTMLElement): void {
-	containerEl.createEl('h3', { text: 'Page Setup' });
+	new Setting(containerEl)
+		.setName('Page setup')
+		.setHeading();
 	
 	new Setting(containerEl)
 		.setName('Page size')
@@ -363,7 +373,9 @@ export class ObsidianTypstPDFExportSettingTab extends PluginSettingTab {
 }
 	
 	private createBehaviorSection(containerEl: HTMLElement): void {
-	containerEl.createEl('h3', { text: 'Behavior' });
+	new Setting(containerEl)
+		.setName('Behavior')
+		.setHeading();
 	
 	new Setting(containerEl)
 		.setName('Open after export')

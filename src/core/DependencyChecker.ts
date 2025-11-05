@@ -348,12 +348,12 @@ ${dependencyResult.allAvailable
 	 * //  Run 'Check Dependencies' command for details."
 	 * ```
 	 */
-	public static async checkDependenciesAsync(
+	public static checkDependenciesAsync(
 		pandocPath?: string,
 		typstPath?: string,
 		imagemagickPath?: string,
 		additionalPaths: string[] = []
-	): Promise<void> {
+	): void {
 		// Check dependencies silently on startup
 		try {
 			const missingDeps = this.checkDependenciesSync(

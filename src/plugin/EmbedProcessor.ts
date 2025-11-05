@@ -3,6 +3,8 @@
  * Handles processing of PDF, image, and file embeds for PDF export
  */
 
+import { exec } from 'child_process';
+import * as util from 'util';
 import { TFile } from 'obsidian';
 import type { obsidianTypstPDFExport } from '../../main';
 import type { PreprocessingResult } from '../converters/MarkdownPreprocessor';
@@ -108,7 +110,7 @@ export class EmbedProcessor {
 				// Select appropriate protocol based on parsed URL (handles case-insensitive schemes)
 				const protocol = urlObj.protocol === 'https:' ? https : http;
 
-				console.log(`Export: Downloading remote image: ${imageUrl}`);
+				console.debug(`Export:Downloading remote image: ${imageUrl}`);
 
 				// Use parsed URL object for the request to ensure correct protocol handling
 				const request = protocol.get(urlObj, (response) => {
@@ -120,7 +122,7 @@ export class EmbedProcessor {
 							// This handles both absolute URLs (e.g., "https://example.com/img.png")
 							// and relative URLs (e.g., "/assets/img.png" or "../img.png")
 							const absoluteRedirectUrl = new URL(redirectUrl, imageUrl).href;
-							console.log(`Export: Following redirect to: ${absoluteRedirectUrl}`);
+							console.debug(`Export:Following redirect to: ${absoluteRedirectUrl}`);
 							// Recursively follow redirect with resolved absolute URL
 							this.downloadRemoteImage(absoluteRedirectUrl, tempDir).then(resolve);
 							return;
@@ -157,7 +159,7 @@ export class EmbedProcessor {
 							const arrayBuffer = buffer.buffer.slice(buffer.byteOffset, buffer.byteOffset + buffer.byteLength);
 							await this.plugin.app.vault.adapter.writeBinary(outputPath, arrayBuffer);
 
-							console.log(`Export: Successfully downloaded image to: ${outputPath}`);
+							console.debug(`Export:Successfully downloaded image to: ${outputPath}`);
 							resolve(outputPath);
 						} catch (err) {
 							console.error(`Export: Error writing image file: ${err.message}`);
@@ -295,13 +297,13 @@ export class EmbedProcessor {
 
 				if (isRemoteUrl) {
 					// Try to download the remote image
-					console.log(`Export: Attempting to download remote image: ${decodedPath}`);
+					console.debug(`Export:Attempting to download remote image: ${decodedPath}`);
 					const downloadedPath = await this.downloadRemoteImage(decodedPath, tempDir);
 
 					if (downloadedPath) {
 						// Successfully downloaded, use it as a local image
 						fullImagePath = downloadedPath;
-						console.log(`Export: Successfully downloaded and will embed remote image`);
+						console.debug(`Export:Successfully downloaded and will embed remote image`);
 					} else {
 						// Download failed, use placeholder
 						console.warn(`Export: Failed to download remote image: ${decodedPath}`);
@@ -342,11 +344,9 @@ export class EmbedProcessor {
 					await this.pathUtils.ensureDir(vaultTempImagesDir);
 					
 					const convertedImagePath = this.pathUtils.joinPath(vaultTempImagesDir, pngFileName);
-					
-					const { exec } = require('child_process');
-					const util = require('util');
+
 					const execAsync = util.promisify(exec);
-					
+
 					try {
 						// Use PathResolver to get the correct ImageMagick path
 						const { PathResolver } = await import('./PathResolver');

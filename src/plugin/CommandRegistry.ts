@@ -18,7 +18,9 @@ export class CommandRegistry {
 			id: 'export-current-note',
 			name: 'Export current note(s)',
 			editorCallback: (editor: Editor, view: MarkdownView) => {
-				this.plugin.exportCurrentNote(view);
+				this.plugin.exportCurrentNote(view).catch(error => {
+					console.error('Failed to export current note:', error);
+				});
 			}
 		});
 		
@@ -27,7 +29,9 @@ export class CommandRegistry {
 			id: 'export-with-config',
 			name: 'Export with configuration…',
 			editorCallback: (editor: Editor, view: MarkdownView) => {
-				this.plugin.showExportModal(view);
+				this.plugin.showExportModal(view).catch(error => {
+					console.error('Failed to show export modal:', error);
+				});
 			}
 		});
 		
@@ -36,7 +40,9 @@ export class CommandRegistry {
 			id: 'check-dependencies',
 			name: 'Check Pandoc and Typst dependencies',
 			callback: () => {
-				this.plugin.showDependencyStatus();
+				this.plugin.showDependencyStatus().catch(error => {
+					console.error('Failed to show dependency status:', error);
+				});
 			}
 		});
 	}

@@ -3,6 +3,8 @@
  * Extracted from MarkdownPreprocessor for better code organization
  */
 
+import * as yaml from 'js-yaml';
+import matter from 'gray-matter';
 import { PreprocessingResult } from '../MarkdownPreprocessor';
 
 export interface FrontmatterProcessorConfig {
@@ -32,7 +34,6 @@ export class FrontmatterProcessor {
 		if (!this.FRONTMATTER_PATTERN.test(content)) {
 			// No frontmatter found - add title frontmatter if we have a noteTitle
 			if (this.noteTitle) {
-				const yaml = require('js-yaml');
 				const titleFrontmatter = yaml.dump({ title: this.noteTitle });
 				result.metadata.title = this.noteTitle;
 				result.metadata.frontmatter = { title: this.noteTitle };
@@ -43,11 +44,10 @@ export class FrontmatterProcessor {
 		}
 
 		// Use gray-matter for robust frontmatter parsing
-		const matter = require('gray-matter');
 		
 		// Add debugging to see what's being parsed
-		console.log('FrontmatterProcessor: Attempting to parse content with frontmatter pattern detected');
-		console.log('First 200 chars:', content.substring(0, 200));
+		console.debug('FrontmatterProcessor: Attempting to parse content with frontmatter pattern detected');
+		console.debug('First 200 chars:', content.substring(0, 200));
 		
 		const parsed = matter(content);
 		
@@ -100,7 +100,6 @@ export class FrontmatterProcessor {
 			
 			if (this.preserveFrontmatter) {
 				// Keep the frontmatter in the content, but reconstruct it with the modified title
-				const yaml = require('js-yaml');
 				const newFrontmatter = yaml.dump(finalFrontmatter);
 				let processedContent = `---\n${newFrontmatter}---\n${parsed.content}`;
 				
@@ -115,8 +114,7 @@ export class FrontmatterProcessor {
 				// Return content without frontmatter, but add title as frontmatter for Pandoc
 				let processedContent: string;
 				if (this.noteTitle) {
-					const yaml = require('js-yaml');
-					const titleFrontmatter = yaml.dump({ title: this.noteTitle });
+						const titleFrontmatter = yaml.dump({ title: this.noteTitle });
 					processedContent = `---\n${titleFrontmatter}---\n${parsed.content}`;
 				} else {
 					processedContent = parsed.content;
@@ -141,7 +139,6 @@ export class FrontmatterProcessor {
 		} else {
 			// No frontmatter found - add title frontmatter if we have a noteTitle
 			if (this.noteTitle) {
-				const yaml = require('js-yaml');
 				const titleFrontmatter = yaml.dump({ title: this.noteTitle });
 				result.metadata.title = this.noteTitle;
 				result.metadata.frontmatter = { title: this.noteTitle };
@@ -152,8 +149,8 @@ export class FrontmatterProcessor {
 		}
 	} catch (error: unknown) {
 		const errorMessage = error instanceof Error ? error.message : String(error);
-		console.log('FrontmatterProcessor: gray-matter failed with error:', errorMessage);
-		console.log('Content being parsed (first 500 chars):', content.substring(0, 500));
+		console.error('FrontmatterProcessor: gray-matter failed with error:', errorMessage);
+		console.error('Content being parsed (first 500 chars):', content.substring(0, 500));
 		result.warnings.push(`Failed to parse frontmatter with gray-matter: ${errorMessage}`);
 		
 		// Fallback to simple regex-based parsing
@@ -185,8 +182,7 @@ export class FrontmatterProcessor {
 				if (this.preserveFrontmatter) {
 					// Reconstruct frontmatter with modified title
 					if (this.noteTitle) {
-						const yaml = require('js-yaml');
-						const newFrontmatter = yaml.dump(frontmatter);
+								const newFrontmatter = yaml.dump(frontmatter);
 						let processedContent = content.replace(this.FRONTMATTER_PATTERN, `---\n${newFrontmatter}---\n`);
 						
 						// Add printed frontmatter if requested
@@ -205,8 +201,7 @@ export class FrontmatterProcessor {
 				} else {
 					// Add title as frontmatter for Pandoc even when not preserving original
 					if (this.noteTitle) {
-						const yaml = require('js-yaml');
-						const titleFrontmatter = yaml.dump({ title: this.noteTitle });
+								const titleFrontmatter = yaml.dump({ title: this.noteTitle });
 						let processedContent = content.replace(this.FRONTMATTER_PATTERN, `---\n${titleFrontmatter}---\n`);
 						
 						// Add printed frontmatter if requested
@@ -230,7 +225,6 @@ export class FrontmatterProcessor {
 		} else {
 			// No frontmatter pattern found, but gray-matter failed - treat as file without frontmatter
 			if (this.noteTitle) {
-				const yaml = require('js-yaml');
 				const titleFrontmatter = yaml.dump({ title: this.noteTitle });
 				result.metadata.title = this.noteTitle;
 				result.metadata.frontmatter = { title: this.noteTitle };
@@ -265,13 +259,18 @@ export class FrontmatterProcessor {
 			if (Array.isArray(value)) {
 				// For arrays, put each item on its own line if there are many items
 				if (value.length > 3) {
-					formattedValue = '\n\n' + value.map(item => `- ${item}`).join('\n') + '\n';
+					formattedValue = '\n\n' + value.map(item =>
+						typeof item === 'object' ? JSON.stringify(item) : String(item)
+					).join('\n').split('\n').map(line => `- ${line}`).join('\n') + '\n';
 				} else {
-					formattedValue = value.join(', ');
+					formattedValue = value.map(item =>
+						typeof item === 'object' ? JSON.stringify(item) : String(item)
+					).join(', ');
 				}
-			} else if (typeof value === 'object') {
+			} else if (typeof value === 'object' && value !== null) {
 				formattedValue = JSON.stringify(value);
-			} else {
+			} else if (typeof value === 'string' || typeof value === 'number' || typeof value === 'boolean') {
+				// Handle primitive values
 				const valueStr = String(value);
 				// If the value is very long (like email lists), break it up
 				if (valueStr.length > 80 && valueStr.includes(',')) {
@@ -308,8 +307,11 @@ export class FrontmatterProcessor {
 				} else {
 					formattedValue = valueStr;
 				}
+			} else {
+				// Handle null, undefined, or any other unexpected types
+				formattedValue = '';
 			}
-			
+
 			// Add line break after the property label, then the value
 			if (formattedValue.startsWith('\n')) {
 				// Value already starts with newline (like lists), so just add the label

@@ -11,7 +11,9 @@ export class BehaviorSection implements ModalSection {
 	
 	render(containerEl: HTMLElement, state: ModalState): void {
 		this.container = containerEl.createDiv('export-section');
-		this.container.createEl('h3', { text: 'Export Behavior' });
+		new Setting(this.container)
+			.setName('Export behavior')
+			.setHeading();
 		
 		this.createBehaviorToggles(state);
 	}

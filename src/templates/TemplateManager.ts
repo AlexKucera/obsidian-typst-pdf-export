@@ -127,11 +127,12 @@ export class TemplateManager {
 				case 'version':
 					metadata.version = value;
 					break;
-				case 'variable':
+				case 'variable': {
 					// Parse variable definition (e.g., @variable: font:string:Body font family)
 					const [name, type, description] = value.split(':');
 					metadata.variables.push({ name, type, description });
 					break;
+				}
 			}
 		}
 		

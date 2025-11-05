@@ -299,7 +299,7 @@ export class PandocTypstConverter {
 		this.processCleanupHandler = () => {
 			// Only cleanup if not already disposed to avoid double-cleanup
 			if (!this.isDisposed) {
-				this.cleanup();
+				void this.cleanup();
 			}
 		};
 
@@ -364,14 +364,14 @@ export class PandocTypstConverter {
 		if (!this.tempDir) {
 			if (this.pandocOptions.vaultBasePath) {
 				// Use TempDirectoryManager for plugin temp directories
-				const configDir = this.plugin?.app?.vault?.configDir || '.obsidian';
+				const configDir = this.plugin?.app?.vault?.configDir;
 				const tempManager = TempDirectoryManager.create(this.pandocOptions.vaultBasePath, configDir, undefined, this.plugin?.app);
 				this.tempDir = await tempManager.ensureTempDir('pandoc');
 			} else {
 				// Fallback to system temp if plugin folder not available - use TempDirectoryManager fallback
 				const pathUtils = new PathUtils(this.plugin.app);
 				const vaultPath = pathUtils.getVaultPath();
-				const configDir = this.plugin?.app?.vault?.configDir || '.obsidian';
+				const configDir = this.plugin?.app?.vault?.configDir;
 				const tempManager = new TempDirectoryManager({ vaultPath, configDir, app: this.plugin.app });
 				this.tempDir = await tempManager.ensureTempDir('pandoc');
 			}

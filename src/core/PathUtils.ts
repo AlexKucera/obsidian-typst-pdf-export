@@ -1,6 +1,7 @@
 // ABOUTME: Centralized path utilities for safe Obsidian API operations
 // ABOUTME: Handles vault paths, plugin directories, and file operations
 
+import { promises as fs } from 'fs';
 import { FileSystemAdapter, normalizePath, Notice } from 'obsidian';
 import type { App, PluginManifest } from 'obsidian';
 import * as path from 'path';
@@ -238,7 +239,6 @@ export class PathUtils {
 
 		if (isAbsolutePath) {
 			try {
-				const fs = require('fs').promises;
 				await fs.access(path);
 				return true;
 			} catch {

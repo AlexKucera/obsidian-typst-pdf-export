@@ -11,6 +11,7 @@ import {
 	Notice,
 	MarkdownView
 } from 'obsidian';
+import { shell } from 'electron';
 
 import { obsidianTypstPDFExportSettings, DEFAULT_SETTINGS } from './src/core/settings';
 import { DependencyChecker } from './src/core/DependencyChecker';
@@ -177,8 +178,8 @@ export class obsidianTypstPDFExport extends Plugin {
 		);
 	}
 
-	async checkDependenciesAsync(): Promise<void> {
-		return DependencyChecker.checkDependenciesAsync(
+	checkDependenciesAsync(): void {
+		DependencyChecker.checkDependenciesAsync(
 			this.settings.pandocPath,
 			this.settings.typstPath,
 			this.settings.executablePaths?.imagemagickPath,
@@ -212,8 +213,7 @@ export class obsidianTypstPDFExport extends Plugin {
 	 * Open a PDF file in the default viewer
 	 */
 	openPDF(pdfPath: string): void {
-		const { shell } = require('electron');
-		shell.openPath(pdfPath);
+		void shell.openPath(pdfPath);
 	}
 	
 	async loadSettings() {

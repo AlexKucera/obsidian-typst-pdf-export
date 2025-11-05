@@ -18,7 +18,9 @@ export class GeneralSection implements ModalSection {
 	render(containerEl: HTMLElement, state: ModalState, app?: App): void {
 		if (app) this.app = app;
 		this.container = containerEl.createDiv('export-section');
-		this.container.createEl('h3', { text: 'General Settings' });
+		new Setting(this.container)
+			.setName('General settings')
+			.setHeading();
 		
 		this.createTemplateSelection(state);
 		this.createFormatSelection(state);

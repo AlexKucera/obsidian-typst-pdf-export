@@ -157,7 +157,7 @@ export class ExportOrchestrator {
 			
 			// Create progress notice with cancel button
 			const progressNotice = new Notice('', 0);
-			const cancelButton = progressNotice.noticeEl.createEl('button', {
+			const cancelButton = progressNotice.messageEl.createEl('button', {
 				text: 'Cancel',
 				cls: 'mod-warning'
 			});
@@ -179,7 +179,7 @@ export class ExportOrchestrator {
 				noteTitle: file.basename
 			});
 			
-			const processedResult = await preprocessor.process(content);
+			const processedResult = preprocessor.process(content);
 			
 			if (processedResult.errors.length > 0) {
 				console.warn('Preprocessing errors:', processedResult.errors);
@@ -319,7 +319,7 @@ export class ExportOrchestrator {
 	 */
 	async handleFolderExport(folder: TFolder): Promise<void> {
 		// Get all markdown files in the folder
-		const markdownFiles = folder.children.filter(this.plugin.isMarkdownFile);
+		const markdownFiles = folder.children.filter((file) => this.plugin.isMarkdownFile(file));
 		
 		if (markdownFiles.length === 0) {
 			new Notice('No markdown files found in this folder');

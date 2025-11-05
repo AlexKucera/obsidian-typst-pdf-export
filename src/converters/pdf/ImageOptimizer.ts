@@ -3,6 +3,8 @@
  * Handles format conversion, quality management, and dimension detection.
  */
 
+import { spawn } from 'child_process';
+import { promises as fs } from 'fs';
 import * as path from 'path';
 import { PathUtils } from '../../core/PathUtils';
 import type { obsidianTypstPDFExport } from '../../../main';
@@ -58,7 +60,6 @@ export class ImageOptimizer {
 		quality: number = 90
 	): Promise<{success: boolean; error?: string}> {
 		try {
-			const { spawn } = require('child_process');
 			
 			// Use ImageMagick to convert PNG to JPEG
 			const convertProcess = spawn('magick', [
@@ -108,7 +109,6 @@ export class ImageOptimizer {
 		fallbackDimensions: ImageDimensions = { width: 800, height: 600 }
 	): Promise<{dimensions: ImageDimensions; success: boolean; error?: string}> {
 		try {
-			const { spawn } = require('child_process');
 			
 			// Use ImageMagick identify to get image dimensions
 			const identifyProcess = spawn('magick', [
@@ -233,7 +233,6 @@ export class ImageOptimizer {
 
 							await plugin.app.vault.adapter.remove(relativePath);
 						} else {
-							const fs = require('fs').promises;
 							await fs.unlink(inputImagePath);
 						}
 					} catch (unlinkError) {
@@ -249,7 +248,6 @@ export class ImageOptimizer {
 						await plugin.app.vault.adapter.writeBinary(pngFinalPath, content);
 						await plugin.app.vault.adapter.remove(inputImagePath);
 					} else {
-						const fs = require('fs').promises;
 						await fs.rename(inputImagePath, pngFinalPath);
 					}
 					actualImagePath = pngFinalPath;
@@ -261,7 +259,6 @@ export class ImageOptimizer {
 					await plugin.app.vault.adapter.writeBinary(finalOutputPath, content);
 					await plugin.app.vault.adapter.remove(inputImagePath);
 				} else {
-					const fs = require('fs').promises;
 					await fs.rename(inputImagePath, finalOutputPath);
 				}
 				actualImagePath = finalOutputPath;
