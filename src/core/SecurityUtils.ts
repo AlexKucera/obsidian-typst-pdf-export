@@ -217,7 +217,7 @@ export class SecurityUtils {
 		
 		// Check for command injection attempts
 		const dangerousPatterns = [
-			/[;&|`$(){}[\]]/,  // Shell metacharacters
+			/[;&|`$<>]/,       // Shell metacharacters that can't appear in safe paths
 			// eslint-disable-next-line no-control-regex
 			/\x00/,            // Null bytes
 			/\n|\r/,           // Newlines
@@ -371,7 +371,7 @@ export class SecurityUtils {
 		
 		const normalizedPath = path.normalize(executablePath.trim());
 		
-		if (/[;&|`$(){}[\]]/.test(normalizedPath)) {
+		if (/[;&|`$<>]/.test(normalizedPath)) {
 			return 'Shell metacharacters are not allowed in executable paths';
 		}
 		if (/\x00/.test(normalizedPath)) { // eslint-disable-line no-control-regex
