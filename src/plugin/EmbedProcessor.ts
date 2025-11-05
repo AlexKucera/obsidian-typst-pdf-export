@@ -9,12 +9,185 @@ import type { PreprocessingResult } from '../converters/MarkdownPreprocessor';
 import { ExportErrorHandler } from '../core/ExportErrorHandler';
 import { PathUtils } from '../core/PathUtils';
 import * as path from 'path';
+import * as https from 'https';
+import * as http from 'http';
 
 export class EmbedProcessor {
 	private readonly pathUtils: PathUtils;
 
 	constructor(private plugin: obsidianTypstPDFExport) {
 		this.pathUtils = new PathUtils(plugin.app);
+	}
+
+	/**
+	 * Resolve a local file path using Obsidian's API and filesystem fallbacks
+	 * @param decodedPath The decoded (non-URL-encoded) path to resolve
+	 * @param vaultBasePath Base path of the vault
+	 * @param currentFile Current file being processed (optional, enables Obsidian API resolution)
+	 * @param additionalPaths Additional paths to try after standard paths
+	 * @param useObsidianApi Whether to try Obsidian's link resolution API first (requires currentFile)
+	 * @returns Full path to file if found, null otherwise
+	 */
+	private async resolveLocalPath(
+		decodedPath: string,
+		vaultBasePath: string,
+		currentFile?: TFile,
+		additionalPaths: string[] = [],
+		useObsidianApi: boolean = true
+	): Promise<string | null> {
+		// Strategy 1: Use Obsidian's link resolution API (if enabled and currentFile provided)
+		if (useObsidianApi && currentFile) {
+			const resolvedFile = this.plugin.app.metadataCache.getFirstLinkpathDest(
+				decodedPath,
+				currentFile.path
+			);
+
+			if (resolvedFile && resolvedFile instanceof TFile) {
+				// Convert to full filesystem path
+				const fullPath = path.resolve(vaultBasePath, resolvedFile.path);
+				try {
+					const exists = await this.pathUtils.fileExists(fullPath);
+					if (exists) {
+						return fullPath;
+					}
+				} catch {
+					// File exists in metadata but not on filesystem, continue to fallbacks
+				}
+			}
+		}
+
+		// Fallback strategies: Try filesystem-based resolution
+		const possiblePaths = [
+			// Standard path relative to vault root
+			path.resolve(vaultBasePath, decodedPath),
+			// Relative to current file's directory (for local attachments)
+			currentFile ? path.resolve(vaultBasePath, path.dirname(currentFile.path), decodedPath) : null,
+			// Additional paths provided by caller
+			...additionalPaths
+		].filter((p): p is string => p !== null);
+
+		// Try each possible path until we find one that exists
+		for (const possiblePath of possiblePaths) {
+			try {
+				const exists = await this.pathUtils.fileExists(possiblePath);
+				if (exists) {
+					return possiblePath;
+				}
+			} catch {
+				// File doesn't exist, continue to next path
+			}
+		}
+
+		return null;
+	}
+
+	/**
+	 * Download a remote image to the temp directory
+	 * Returns the local path if successful, null if failed
+	 */
+	private async downloadRemoteImage(imageUrl: string, tempDir: string): Promise<string | null> {
+		return new Promise((resolve) => {
+			try {
+				// Parse URL to get filename
+				const urlObj = new URL(imageUrl);
+				const urlPath = urlObj.pathname;
+				const fileName = path.basename(urlPath) || `remote-image-${Date.now()}`;
+
+				// Ensure we have a valid file extension
+				// Extract extension and normalize it (lowercase)
+				const ext = path.extname(fileName).toLowerCase();
+
+				// Preserve any existing extension, or append .png if no extension present
+				// This handles all image types (svg, ico, avif, etc.) without forcing .png
+				const finalFileName = ext
+					? fileName  // Has an extension, preserve it
+					: `${fileName}.png`;  // No extension, append .png
+
+				const outputPath = path.join(tempDir, finalFileName);
+
+				// Select appropriate protocol based on parsed URL (handles case-insensitive schemes)
+				const protocol = urlObj.protocol === 'https:' ? https : http;
+
+				console.log(`Export: Downloading remote image: ${imageUrl}`);
+
+				// Use parsed URL object for the request to ensure correct protocol handling
+				const request = protocol.get(urlObj, (response) => {
+					// Handle redirects
+					if (response.statusCode === 301 || response.statusCode === 302) {
+						const redirectUrl = response.headers.location;
+						if (redirectUrl) {
+							// Resolve relative redirects against the original request URL
+							// This handles both absolute URLs (e.g., "https://example.com/img.png")
+							// and relative URLs (e.g., "/assets/img.png" or "../img.png")
+							const absoluteRedirectUrl = new URL(redirectUrl, imageUrl).href;
+							console.log(`Export: Following redirect to: ${absoluteRedirectUrl}`);
+							// Recursively follow redirect with resolved absolute URL
+							this.downloadRemoteImage(absoluteRedirectUrl, tempDir).then(resolve);
+							return;
+						}
+					}
+
+					// Check for successful response
+					if (response.statusCode !== 200) {
+						console.warn(`Export: Failed to download image, status code: ${response.statusCode}`);
+						resolve(null);
+						return;
+					}
+
+					// Collect response data in memory
+					const chunks: Buffer[] = [];
+
+					response.on('data', (chunk: Buffer) => {
+						chunks.push(chunk);
+					});
+
+					response.on('end', async () => {
+						try {
+							// Check if file already exists to avoid overwriting
+							const exists = await this.pathUtils.fileExists(outputPath);
+							if (exists) {
+								console.warn(`Export: Image file already exists, using existing: ${outputPath}`);
+								resolve(outputPath);
+								return;
+							}
+
+							// Combine chunks and write using vault adapter
+							const buffer = Buffer.concat(chunks);
+							// Convert Buffer to ArrayBuffer for vault adapter
+							const arrayBuffer = buffer.buffer.slice(buffer.byteOffset, buffer.byteOffset + buffer.byteLength);
+							await this.plugin.app.vault.adapter.writeBinary(outputPath, arrayBuffer);
+
+							console.log(`Export: Successfully downloaded image to: ${outputPath}`);
+							resolve(outputPath);
+						} catch (err) {
+							console.error(`Export: Error writing image file: ${err.message}`);
+							resolve(null);
+						}
+					});
+
+					response.on('error', (err) => {
+						console.error(`Export: Error receiving image data: ${err.message}`);
+						resolve(null);
+					});
+				});
+
+				request.on('error', (err) => {
+					console.error(`Export: Error downloading image: ${err.message}`);
+					resolve(null);
+				});
+
+				// Set timeout
+				request.setTimeout(10000, () => {
+					request.destroy();
+					console.warn(`Export: Image download timeout: ${imageUrl}`);
+					resolve(null);
+				});
+
+			} catch (error) {
+				console.error(`Export: Error in downloadRemoteImage: ${error.message}`);
+				resolve(null);
+			}
+		});
 	}
 	
 	/**
@@ -109,37 +282,46 @@ export class EmbedProcessor {
 	 */
 	async processImageEmbeds(processedResult: PreprocessingResult, vaultBasePath: string, tempDir: string, currentFile?: TFile): Promise<void> {
 		let updatedContent = processedResult.content;
-		
+
 		for (const imageEmbed of processedResult.metadata?.imageEmbeds || []) {
 			try {
 				// Decode the URL-encoded sanitized path back to normal characters
 				const decodedPath = decodeURIComponent(imageEmbed.sanitizedPath);
-				
-				// Try multiple path resolution strategies
-				const possiblePaths = [
-					// Strategy 1: Relative to vault root (standard Obsidian behavior)
-					path.resolve(vaultBasePath, decodedPath),
-					// Strategy 2: Relative to current file's directory (for local attachments)
-					currentFile ? path.resolve(vaultBasePath, path.dirname(currentFile.path), decodedPath) : null,
-					// Strategy 3: Check in attachments folder (common pattern)
-					path.resolve(vaultBasePath, 'attachments', path.basename(decodedPath))
-				].filter((p): p is string => p !== null);
-				
-				let fullImagePath = null;
-				
-				// Try each possible path until we find one that exists
-				for (const possiblePath of possiblePaths) {
-					try {
-						const exists = await this.pathUtils.fileExists(possiblePath);
-						if (exists) {
-							fullImagePath = possiblePath;
-							break;
-						}
-					} catch {
-						// File doesn't exist, continue to next path
+
+				let fullImagePath: string | null = null;
+
+				// Check if this is a remote URL (http:// or https://)
+				const isRemoteUrl = /^https?:\/\//i.test(decodedPath);
+
+				if (isRemoteUrl) {
+					// Try to download the remote image
+					console.log(`Export: Attempting to download remote image: ${decodedPath}`);
+					const downloadedPath = await this.downloadRemoteImage(decodedPath, tempDir);
+
+					if (downloadedPath) {
+						// Successfully downloaded, use it as a local image
+						fullImagePath = downloadedPath;
+						console.log(`Export: Successfully downloaded and will embed remote image`);
+					} else {
+						// Download failed, use placeholder
+						console.warn(`Export: Failed to download remote image: ${decodedPath}`);
+						const fallbackOutput = `[🌐 **Remote image download failed:** ${imageEmbed.sizeOrAlt || imageEmbed.originalPath}]`;
+						updatedContent = updatedContent.replace(imageEmbed.marker, fallbackOutput);
+						continue;
 					}
+				} else {
+					// Resolve local file path using helper method
+					// Note: Image embeds don't use Obsidian API, only filesystem resolution
+					const attachmentsPath = path.resolve(vaultBasePath, 'attachments', path.basename(decodedPath));
+					fullImagePath = await this.resolveLocalPath(
+						decodedPath,
+						vaultBasePath,
+						currentFile,
+						[attachmentsPath],
+						false // Don't use Obsidian API for image embeds
+					);
 				}
-				
+
 				if (!fullImagePath) {
 					console.warn(`Export: Image file not found: ${decodedPath}`);
 					// Keep the original marker or replace with placeholder
@@ -298,48 +480,14 @@ export class EmbedProcessor {
 		// Decode the URL-encoded sanitized path back to normal characters
 		const decodedPath = decodeURIComponent(sanitizedPath);
 
-		// Strategy 1: Use Obsidian's link resolution API (primary strategy)
-		if (currentFile) {
-			const resolvedFile = this.plugin.app.metadataCache.getFirstLinkpathDest(
-				decodedPath,
-				currentFile.path
-			);
-
-			if (resolvedFile && resolvedFile instanceof TFile) {
-				// Convert to full filesystem path
-				const fullPath = path.resolve(vaultBasePath, resolvedFile.path);
-				try {
-					const exists = await this.pathUtils.fileExists(fullPath);
-					if (exists) {
-						return fullPath;
-					}
-				} catch {
-					// File exists in metadata but not on filesystem, continue to fallbacks
-				}
-			}
-		}
-		
-		// Fallback strategies: Try filesystem-based resolution
-		const possiblePaths = [
-			// Strategy 2: Relative to vault root (standard Obsidian behavior)
-			path.resolve(vaultBasePath, decodedPath),
-			// Strategy 3: Relative to current file's directory (for local attachments)
-			currentFile ? path.resolve(vaultBasePath, path.dirname(currentFile.path), decodedPath) : null
-		].filter((p): p is string => p !== null);
-		
-		// Try each possible path until we find one that exists
-		for (const possiblePath of possiblePaths) {
-			try {
-				const exists = await this.pathUtils.fileExists(possiblePath);
-				if (exists) {
-					return possiblePath;
-				}
-			} catch {
-				// File doesn't exist, continue to next path
-			}
-		}
-		
-		return null;
+		// Use helper method with Obsidian API enabled
+		return await this.resolveLocalPath(
+			decodedPath,
+			vaultBasePath,
+			currentFile,
+			[], // No additional paths for PDFs
+			true // Use Obsidian API
+		);
 	}
 
 	/**
@@ -349,50 +497,15 @@ export class EmbedProcessor {
 		// Decode the URL-encoded sanitized path back to normal characters
 		const decodedPath = decodeURIComponent(sanitizedPath);
 
-		// Strategy 1: Use Obsidian's link resolution API (primary strategy)
-		if (currentFile) {
-			const resolvedFile = this.plugin.app.metadataCache.getFirstLinkpathDest(
-				decodedPath,
-				currentFile.path
-			);
-
-			if (resolvedFile && resolvedFile instanceof TFile) {
-				// Convert to full filesystem path
-				const fullPath = path.resolve(vaultBasePath, resolvedFile.path);
-				try {
-					const exists = await this.pathUtils.fileExists(fullPath);
-					if (exists) {
-						return fullPath;
-					}
-				} catch {
-					// File exists in metadata but not on filesystem, continue to fallbacks
-				}
-			}
-		}
-		
-		// Fallback strategies: Try filesystem-based resolution
-		const possiblePaths = [
-			// Strategy 2: Relative to vault root (standard Obsidian behavior)
-			path.resolve(vaultBasePath, decodedPath),
-			// Strategy 3: Relative to current file's directory (for local attachments)
-			currentFile ? path.resolve(vaultBasePath, path.dirname(currentFile.path), decodedPath) : null,
-			// Strategy 4: Check in attachments folder (common pattern)
-			path.resolve(vaultBasePath, 'attachments', path.basename(decodedPath))
-		].filter((p): p is string => p !== null);
-		
-		// Try each possible path until we find one that exists
-		for (const possiblePath of possiblePaths) {
-			try {
-				const exists = await this.pathUtils.fileExists(possiblePath);
-				if (exists) {
-					return possiblePath;
-				}
-			} catch {
-				// File doesn't exist, continue to next path
-			}
-		}
-		
-		return null;
+		// Use helper method with Obsidian API enabled and attachments folder as additional path
+		const attachmentsPath = path.resolve(vaultBasePath, 'attachments', path.basename(decodedPath));
+		return await this.resolveLocalPath(
+			decodedPath,
+			vaultBasePath,
+			currentFile,
+			[attachmentsPath], // Check attachments folder as additional path
+			true // Use Obsidian API
+		);
 	}
 
 	/**
