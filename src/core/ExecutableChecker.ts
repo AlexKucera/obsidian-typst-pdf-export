@@ -10,6 +10,7 @@
  */
 
 import { DEPENDENCY_CONSTANTS } from './constants';
+import * as path from 'path';
 
 /**
  * Information about a checked dependency executable.
@@ -140,12 +141,15 @@ export class ExecutableChecker {
 	 */
 	private static async findExecutableWithWhich(executableName: string, additionalPaths: string[] = []): Promise<string | null> {
 		const { spawn } = require('child_process');
-		
+
 		try {
 			const stdout = await new Promise<string>((resolve, reject) => {
 				const env = this.getAugmentedEnv(additionalPaths);
-				
-				const whichProcess = spawn('which', [executableName], {
+
+				// Use platform-specific command: 'where' on Windows, 'which' on Unix
+				const whichCommand = process.platform === 'win32' ? 'where' : 'which';
+
+				const whichProcess = spawn(whichCommand, [executableName], {
 					stdio: ['pipe', 'pipe', 'pipe'],
 					env: env
 				});
@@ -213,8 +217,8 @@ export class ExecutableChecker {
 	 * ```
 	 */
 	public static async resolveExecutablePath(userPath: string | undefined, defaultName: string, additionalPaths: string[] = []): Promise<string> {
-		// If user provided a full path (contains /), use it as-is
-		if (userPath && userPath.trim() !== '' && userPath.includes('/')) {
+		// If user provided an absolute path, use it as-is
+		if (userPath && userPath.trim() !== '' && path.isAbsolute(userPath)) {
 			return userPath;
 		}
 		
@@ -246,18 +250,22 @@ export class ExecutableChecker {
 	 * @see {@link resolveExecutablePath} for detailed resolution logic and examples
 	 */
 	public static resolveExecutablePathSync(userPath: string | undefined, defaultName: string, additionalPaths: string[] = []): string {
-		// If user provided a full path (contains /), use it as-is
-		if (userPath && userPath.trim() !== '' && userPath.includes('/')) {
+		// If user provided an absolute path, use it as-is
+		if (userPath && userPath.trim() !== '' && path.isAbsolute(userPath)) {
 			return userPath;
 		}
 		
 		// If user provided just an executable name or empty path, resolve it
 		const searchName = (userPath && userPath.trim() !== '') ? userPath.trim() : defaultName;
-		
+
 		// Try to find the executable using which command synchronously
 		const { spawnSync } = require('child_process');
+
+		// Use platform-specific command: 'where' on Windows, 'which' on Unix
+		const whichCommand = process.platform === 'win32' ? 'where' : 'which';
+
 		try {
-			const result = spawnSync('which', [searchName], {
+			const result = spawnSync(whichCommand, [searchName], {
 				encoding: 'utf8',
 				env: this.getAugmentedEnv(additionalPaths)
 			});
