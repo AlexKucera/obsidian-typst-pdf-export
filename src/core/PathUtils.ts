@@ -106,6 +106,11 @@ export class PathUtils {
 			return '';
 		}
 		const result = path.join(...filtered);
+		// Don't use normalizePath on absolute paths as it strips the leading slash
+		// Only normalize vault-relative paths
+		if (path.isAbsolute(result)) {
+			return result;
+		}
 		return normalizePath(result);
 	}
 
@@ -133,8 +138,10 @@ export class PathUtils {
 				await this.app.vault.adapter.mkdir(normalizedPath);
 			}
 		} catch (error) {
-			new Notice(`Failed to create directory: ${normalizedPath}`);
-			throw error;
+			const errorMessage = error instanceof Error ? error.message : String(error);
+			const userMessage = `Failed to create output directory "${normalizedPath}". ${errorMessage.includes('parent') || errorMessage.includes('ENOENT') ? 'The parent directory may not exist or you may not have write permissions.' : 'You may not have write permissions or the path is invalid.'}`;
+			new Notice(userMessage);
+			throw new Error(userMessage);
 		}
 	}
 

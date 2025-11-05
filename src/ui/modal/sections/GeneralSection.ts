@@ -4,6 +4,7 @@
  */
 
 import { Setting, App, normalizePath, DropdownComponent } from 'obsidian';
+import * as path from 'path';
 import { ModalSection, ModalState, ValidationResult } from '../modalTypes';
 import { ExportFormat } from '../../../core/settings';
 import { FolderSuggest } from '../../components/FolderSuggest';
@@ -80,7 +81,8 @@ export class GeneralSection implements ModalSection {
 					.setPlaceholder('PDF exports')
 					.setValue(state.settings.outputFolder || 'exports')
 					.onChange(value => {
-						const normalizedValue = normalizePath(value);
+						// Don't normalize absolute paths as normalizePath strips the leading slash
+					const normalizedValue = path.isAbsolute(value) ? value : normalizePath(value);
 						state.updateSettings({ outputFolder: normalizedValue });
 					});
 				this.outputFolderInput = input.inputEl;

@@ -30,7 +30,9 @@ export class BinaryLocator {
 			// Get the plugin directory - need to handle Obsidian's environment
 			// In Obsidian, __dirname points to electron.asar, so we need to find the actual plugin path
 			// Try multiple strategies to find the plugin directory
-			const pluginDirName = plugin?.manifest?.dir || 'typst-pdf-export';
+			// Extract just the plugin folder name from manifest.dir (e.g., "typst-pdf-export" from ".obsidian/plugins/typst-pdf-export")
+			const fullManifestDir = plugin?.manifest?.dir || 'typst-pdf-export';
+			const pluginDirName = path.basename(fullManifestDir);
 			const configDir = plugin?.app.vault.configDir;
 			if (!configDir) {
 				throw new Error('Unable to determine Obsidian configuration directory');

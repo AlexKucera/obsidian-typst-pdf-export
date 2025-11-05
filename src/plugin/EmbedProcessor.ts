@@ -158,7 +158,18 @@ export class EmbedProcessor {
 							const buffer = Buffer.concat(chunks);
 							// Convert Buffer to ArrayBuffer for vault adapter
 							const arrayBuffer = buffer.buffer.slice(buffer.byteOffset, buffer.byteOffset + buffer.byteLength);
-							await this.plugin.app.vault.adapter.writeBinary(outputPath, arrayBuffer);
+
+							// Convert absolute path to vault-relative for adapter operations
+							const vaultBasePath = this.pathUtils.getVaultPath();
+							let relativeOutputPath = outputPath;
+							if (outputPath.startsWith(vaultBasePath)) {
+								relativeOutputPath = outputPath.substring(vaultBasePath.length);
+								if (relativeOutputPath.startsWith('/') || relativeOutputPath.startsWith('\\')) {
+									relativeOutputPath = relativeOutputPath.substring(1);
+								}
+							}
+
+							await this.plugin.app.vault.adapter.writeBinary(relativeOutputPath, arrayBuffer);
 
 							console.debug(`Export:Successfully downloaded image to: ${outputPath}`);
 							resolve(outputPath);
@@ -342,9 +353,12 @@ export class EmbedProcessor {
 					// Convert WebP to PNG using ImageMagick
 					const originalImageName = path.basename(fullImagePath);
 					const pngFileName = originalImageName.replace(/\.webp$/i, '.png');
-					const vaultTempImagesDir = this.pathUtils.joinPath(vaultBasePath, this.pathUtils.getPluginDir(this.plugin.manifest), 'temp-images');
-					await this.pathUtils.ensureDir(vaultTempImagesDir);
-					
+					// Use vault-relative path for ensureDir (it uses vault.adapter)
+					const vaultRelativeTempDir = this.pathUtils.joinPath(this.pathUtils.getPluginDir(this.plugin.manifest), 'temp-images');
+					await this.pathUtils.ensureDir(vaultRelativeTempDir);
+					// But use absolute path for ImageMagick
+					const vaultTempImagesDir = this.pathUtils.joinPath(vaultBasePath, vaultRelativeTempDir);
+
 					const convertedImagePath = this.pathUtils.joinPath(vaultTempImagesDir, pngFileName);
 
 					const execAsync = util.promisify(exec);
@@ -525,8 +539,11 @@ export class EmbedProcessor {
 		vaultBasePath: string
 	): Promise<{ relativeImagePath: string; relativePdfPath: string }> {
 		// Copy image to vault temp directory for access
-		const vaultTempImagesDir = this.pathUtils.joinPath(vaultBasePath, this.pathUtils.getPluginDir(this.plugin.manifest), 'temp-images');
-		await this.pathUtils.ensureDir(vaultTempImagesDir);
+		// Use vault-relative path for ensureDir (it uses vault.adapter)
+		const vaultRelativeTempDir = this.pathUtils.joinPath(this.pathUtils.getPluginDir(this.plugin.manifest), 'temp-images');
+		await this.pathUtils.ensureDir(vaultRelativeTempDir);
+		// But use absolute path for file operations
+		const vaultTempImagesDir = this.pathUtils.joinPath(vaultBasePath, vaultRelativeTempDir);
 
 		// Sanitize the basename for use in filename - replace problematic characters
 		const sanitizedBaseName = baseName
@@ -538,8 +555,25 @@ export class EmbedProcessor {
 		const vaultImagePath = this.pathUtils.joinPath(vaultTempImagesDir, imageFileName);
 
 		// Copy file using vault adapter
-		const sourceBuffer = await this.plugin.app.vault.adapter.readBinary(imagePath);
-		await this.plugin.app.vault.adapter.writeBinary(vaultImagePath, sourceBuffer);
+		// Convert absolute paths to vault-relative paths for adapter operations
+		let relativeSourcePath = imagePath;
+		if (imagePath.startsWith(vaultBasePath)) {
+			relativeSourcePath = imagePath.substring(vaultBasePath.length);
+			if (relativeSourcePath.startsWith('/') || relativeSourcePath.startsWith('\\')) {
+				relativeSourcePath = relativeSourcePath.substring(1);
+			}
+		}
+
+		let relativeVaultImagePath = vaultImagePath;
+		if (vaultImagePath.startsWith(vaultBasePath)) {
+			relativeVaultImagePath = vaultImagePath.substring(vaultBasePath.length);
+			if (relativeVaultImagePath.startsWith('/') || relativeVaultImagePath.startsWith('\\')) {
+				relativeVaultImagePath = relativeVaultImagePath.substring(1);
+			}
+		}
+
+		const sourceBuffer = await this.plugin.app.vault.adapter.readBinary(relativeSourcePath);
+		await this.plugin.app.vault.adapter.writeBinary(relativeVaultImagePath, sourceBuffer);
 
 		// Get relative paths from vault base
 		const relativeImagePath = path.relative(vaultBasePath, vaultImagePath);

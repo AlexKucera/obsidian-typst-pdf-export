@@ -143,7 +143,7 @@ export class ExportOrchestrator {
 		this.plugin.currentExportController = new AbortController();
 		
 		try {
-			// Create temp directory for conversion
+			// Create temp directories for conversion
 			const tempManager = new TempDirectoryManager({
 				vaultPath: vaultPath,
 				configDir: this.plugin.app.vault.configDir,
@@ -151,6 +151,7 @@ export class ExportOrchestrator {
 				pluginName: this.plugin.manifest.id
 			});
 			const tempDir = await tempManager.ensureTempDir('pandoc');
+			const tempImagesDir = await tempManager.ensureTempDir('images');
 			
 			// Load file content
 			const content = await this.plugin.app.vault.read(file);
@@ -191,12 +192,12 @@ export class ExportOrchestrator {
 			// Process PDF embeds if any were found
 			if (processedResult.metadata.pdfEmbeds && processedResult.metadata.pdfEmbeds.length > 0) {
 				const embedPdfFiles = config.embedPdfFiles ?? this.plugin.settings.behavior.embedPdfFiles;
-				await this.plugin.processPdfEmbeds(processedResult, vaultPath, tempDir, file, embedPdfFiles);
+				await this.plugin.processPdfEmbeds(processedResult, vaultPath, tempImagesDir, file, embedPdfFiles);
 			}
 			
 			// Process image embeds if any were found
 			if (processedResult.metadata.imageEmbeds && processedResult.metadata.imageEmbeds.length > 0) {
-				await this.plugin.processImageEmbeds(processedResult, vaultPath, tempDir, file);
+				await this.plugin.processImageEmbeds(processedResult, vaultPath, tempImagesDir, file);
 			}
 			
 			// Process file embeds if any were found

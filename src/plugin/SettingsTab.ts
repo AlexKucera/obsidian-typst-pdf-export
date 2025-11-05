@@ -9,6 +9,7 @@ import {
 	Setting,
 	normalizePath
 } from 'obsidian';
+import * as path from 'path';
 import type { obsidianTypstPDFExport } from '../../main';
 import { ExportFormat } from '../core/settings';
 import { SecurityUtils } from '../core/SecurityUtils';
@@ -184,7 +185,8 @@ export class ObsidianTypstPDFExportSettingTab extends PluginSettingTab {
 					.setPlaceholder('Exports')
 					.setValue(this.plugin.settings.outputFolder)
 					.onChange(async (value) => {
-						const normalizedValue = normalizePath(value);
+						// Don't normalize absolute paths as normalizePath strips the leading slash
+					const normalizedValue = path.isAbsolute(value) ? value : normalizePath(value);
 						if (!SecurityUtils.validateOutputPath(normalizedValue)) {
 							ExportErrorHandler.showValidationError('output folder', SecurityUtils.getPathValidationError(normalizedValue));
 							return;

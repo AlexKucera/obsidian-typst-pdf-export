@@ -94,9 +94,10 @@ export class FrontmatterProcessor {
 			}
 			
 			// Handle frontmatter preservation and display options
-			const finalFrontmatter = this.noteTitle ? 
-				{ ...parsed.data, title: this.noteTitle } : 
-				parsed.data;
+			const sanitizedFrontmatter = this.stripCitationFields(parsed.data);
+			const finalFrontmatter = this.noteTitle ?
+				{ ...sanitizedFrontmatter, title: this.noteTitle } :
+				sanitizedFrontmatter;
 			
 			if (this.preserveFrontmatter) {
 				// Keep the frontmatter in the content, but reconstruct it with the modified title
@@ -235,6 +236,20 @@ export class FrontmatterProcessor {
 		return content;
 	}
 }
+
+	/**
+	 * Strip citation-related fields from frontmatter to prevent Pandoc bibliography processing
+	 */
+	private stripCitationFields(frontmatter: Record<string, unknown>): Record<string, unknown> {
+		const citationFields = ['bibliography', 'references', 'csl', 'citation-style', 'nocite', 'link-citations', 'reference-section-title'];
+		const sanitized = { ...frontmatter };
+
+		for (const field of citationFields) {
+			delete sanitized[field];
+		}
+
+		return sanitized;
+	}
 
 	/**
 	 * Format frontmatter as a readable display block

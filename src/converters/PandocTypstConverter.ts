@@ -18,6 +18,7 @@ import { PandocOptions, TypstSettings, ConversionResult, ProgressCallback } from
 import type { obsidianTypstPDFExport } from '../../main';
 import { TempDirectoryManager } from '../core/TempDirectoryManager';
 import { PathUtils } from '../core/PathUtils';
+import { promises as fs } from 'fs';
 
 import { PandocCommandBuilder } from './pandoc/PandocCommandBuilder';
 import { PandocExecutor } from './pandoc/PandocExecutor';
@@ -254,7 +255,8 @@ export class PandocTypstConverter {
 		const pathUtils = new PathUtils(this.plugin.app);
 		const tempInputPath = pathUtils.joinPath(this.tempDir!, `temp-${Date.now()}.md`);
 
-		await this.plugin.app.vault.adapter.write(tempInputPath, content);
+		// Use fs.writeFile for temp files since external tools (Pandoc) need absolute paths
+		await fs.writeFile(tempInputPath, content, 'utf-8');
 		
 		// Merge options
 		this.pandocOptions = { ...this.pandocOptions, ...options };
@@ -264,7 +266,8 @@ export class PandocTypstConverter {
 		
 		// Cleanup temp file
 		try {
-			await this.plugin.app.vault.adapter.remove(tempInputPath);
+			// Use fs.unlink for temp files since they're in external temp directories
+			await fs.unlink(tempInputPath);
 		} catch (error) {
 			console.warn('Failed to cleanup temp file:', error);
 		}
