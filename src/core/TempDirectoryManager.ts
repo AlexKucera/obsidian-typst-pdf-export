@@ -446,7 +446,13 @@ export class TempDirectoryManager {
 		const tempImagesDir = normalizePath(path.join(pluginDir, PLUGIN_DIRS.TEMP_IMAGES));
 		const tempPandocDir = normalizePath(path.join(pluginDir, PLUGIN_DIRS.TEMP_PANDOC));
 
-		return normalizedDirPath.startsWith(tempImagesDir) ||
-		       normalizedDirPath.startsWith(tempPandocDir);
+		const isImagesDir =
+			normalizedDirPath === tempImagesDir ||
+			normalizedDirPath.startsWith(`${tempImagesDir}/`);
+		const isPandocDir =
+			normalizedDirPath === tempPandocDir ||
+			normalizedDirPath.startsWith(`${tempPandocDir}/`);
+
+		return isImagesDir || isPandocDir;
 	}
 }
