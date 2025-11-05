@@ -20,7 +20,7 @@ export class EventHandlers {
 				if (file.extension === 'md') {
 					menu.addItem((item) => {
 						item
-							.setTitle('Export to PDF (Typst)')
+							.setTitle('Export to PDF')
 							.setIcon('file-output')
 							.onClick(() => {
 								this.plugin.exportFile(file).catch(error => {
@@ -37,7 +37,7 @@ export class EventHandlers {
 			this.plugin.app.workspace.on('editor-menu', (menu: Menu, editor: Editor, view: MarkdownView) => {
 				menu.addItem((item) => {
 					item
-						.setTitle('Export to PDF (Typst)')
+						.setTitle('Export to PDF')
 						.setIcon('file-output')
 						.onClick(() => {
 							this.plugin.exportCurrentNote(view).catch(error => {
@@ -57,7 +57,7 @@ export class EventHandlers {
 				if (markdownFiles.length > 0) {
 					menu.addItem((item) => {
 						item
-							.setTitle(`Export to PDF (Typst)`)
+							.setTitle(`Export to PDF`)
 							.setIcon('file-output')
 							.onClick(() => {
 								this.plugin.exportFiles(markdownFiles).catch(error => {

@@ -38,7 +38,7 @@ export class CommandRegistry {
 		// Check dependencies command
 		this.plugin.addCommand({
 			id: 'check-dependencies',
-			name: 'Check Pandoc and Typst dependencies',
+			name: 'Check pandoc and typst dependencies',
 			callback: () => {
 				this.plugin.showDependencyStatus().catch(error => {
 					console.error('Failed to show dependency status:', error);

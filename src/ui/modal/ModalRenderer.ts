@@ -154,7 +154,7 @@ export class ModalRenderer {
 			text: 'Export',
 			cls: 'mod-cta'
 		});
-		this.submitButton.addEventListener('click', () => this.callbacks.onSubmit());
+		this.submitButton.addEventListener('click', () => void this.callbacks.onSubmit());
 	}
 	
 	/**

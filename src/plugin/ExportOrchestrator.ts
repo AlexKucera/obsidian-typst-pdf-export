@@ -162,9 +162,9 @@ export class ExportOrchestrator {
 				cls: 'mod-warning'
 			});
 			cancelButton.addEventListener('click', () => this.cancelExport());
-			progressNotice.setMessage('Preprocessing markdown content...');
+			progressNotice.setMessage('Preprocessing Markdown content...');
 			
-			// Preprocess markdown
+			// Preprocess Markdown
 			const preprocessor = new MarkdownPreprocessor({
 				vaultPath: vaultPath,
 				options: {
@@ -322,7 +322,7 @@ export class ExportOrchestrator {
 		const markdownFiles = folder.children.filter((file) => this.plugin.isMarkdownFile(file));
 		
 		if (markdownFiles.length === 0) {
-			new Notice('No markdown files found in this folder');
+			new Notice('No Markdown files found in this folder');
 			return;
 		}
 		

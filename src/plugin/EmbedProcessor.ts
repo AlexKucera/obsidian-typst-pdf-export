@@ -88,7 +88,7 @@ export class EmbedProcessor {
 	 * Returns the local path if successful, null if failed
 	 */
 	private async downloadRemoteImage(imageUrl: string, tempDir: string): Promise<string | null> {
-		return new Promise((resolve) => {
+		return new Promise((resolve, reject) => {
 			try {
 				// Parse URL to get filename
 				const urlObj = new URL(imageUrl);
@@ -124,7 +124,7 @@ export class EmbedProcessor {
 							const absoluteRedirectUrl = new URL(redirectUrl, imageUrl).href;
 							console.debug(`Export:Following redirect to: ${absoluteRedirectUrl}`);
 							// Recursively follow redirect with resolved absolute URL
-							this.downloadRemoteImage(absoluteRedirectUrl, tempDir).then(resolve);
+							this.downloadRemoteImage(absoluteRedirectUrl, tempDir).then(resolve).catch(reject);
 							return;
 						}
 					}
@@ -143,7 +143,8 @@ export class EmbedProcessor {
 						chunks.push(chunk);
 					});
 
-					response.on('end', async () => {
+					response.on('end', () => {
+					void (async () => {
 						try {
 							// Check if file already exists to avoid overwriting
 							const exists = await this.pathUtils.fileExists(outputPath);
@@ -165,7 +166,8 @@ export class EmbedProcessor {
 							console.error(`Export: Error writing image file: ${err.message}`);
 							resolve(null);
 						}
-					});
+					})();
+			});
 
 					response.on('error', (err) => {
 						console.error(`Export: Error receiving image data: ${err.message}`);
