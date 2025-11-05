@@ -91,14 +91,17 @@ export class EmbedProcessor {
 				// Parse URL to get filename
 				const urlObj = new URL(imageUrl);
 				const urlPath = urlObj.pathname;
-				const fileName = path.basename(urlPath) || `remote-image-${Date.now()}.png`;
+				const fileName = path.basename(urlPath) || `remote-image-${Date.now()}`;
 
 				// Ensure we have a valid file extension
+				// Extract extension and normalize it (lowercase)
 				const ext = path.extname(fileName).toLowerCase();
-				const validExtensions = ['.png', '.jpg', '.jpeg', '.gif', '.webp', '.bmp', '.tiff'];
-				const finalFileName = validExtensions.includes(ext)
-					? fileName
-					: `${fileName}.png`;
+
+				// Preserve any existing extension, or append .png if no extension present
+				// This handles all image types (svg, ico, avif, etc.) without forcing .png
+				const finalFileName = ext
+					? fileName  // Has an extension, preserve it
+					: `${fileName}.png`;  // No extension, append .png
 
 				const outputPath = path.join(tempDir, finalFileName);
 
