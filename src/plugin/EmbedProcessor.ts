@@ -105,12 +105,13 @@ export class EmbedProcessor {
 
 				const outputPath = path.join(tempDir, finalFileName);
 
-				// Select appropriate protocol
-				const protocol = imageUrl.startsWith('https') ? https : http;
+				// Select appropriate protocol based on parsed URL (handles case-insensitive schemes)
+				const protocol = urlObj.protocol === 'https:' ? https : http;
 
 				console.log(`Export: Downloading remote image: ${imageUrl}`);
 
-				const request = protocol.get(imageUrl, (response) => {
+				// Use parsed URL object for the request to ensure correct protocol handling
+				const request = protocol.get(urlObj, (response) => {
 					// Handle redirects
 					if (response.statusCode === 301 || response.statusCode === 302) {
 						const redirectUrl = response.headers.location;
