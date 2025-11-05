@@ -85,7 +85,8 @@ export class SecurityUtils {
 	 * - Null bytes and control characters
 	 * - Double slashes and other suspicious patterns
 	 * - Invalid filename characters (<>:"|?*)
-	 * - Windows reserved system names (CON, PRN, AUX, etc.)
+	 * - Windows reserved system names in any path segment (CON, PRN, AUX, etc.)
+	 *   including when followed by extensions (e.g., CON.txt, AUX.log)
 	 *
 	 * The validation is intentionally strict - when in doubt, reject the path
 	 * rather than risk a security vulnerability. Use getPathValidationError()
@@ -105,6 +106,8 @@ export class SecurityUtils {
 	 * SecurityUtils.validateOutputPath('../../../etc');      // false - traversal
 	 * SecurityUtils.validateOutputPath('/tmp/evil');         // false - absolute
 	 * SecurityUtils.validateOutputPath('CON');               // false - reserved name
+	 * SecurityUtils.validateOutputPath('reports/CON/file');  // false - reserved in segment
+	 * SecurityUtils.validateOutputPath('AUX.txt');           // false - reserved with extension
 	 * SecurityUtils.validateOutputPath('test<>file');        // false - invalid chars
 	 * SecurityUtils.validateOutputPath('path//with//double'); // false - suspicious
 	 * ```
@@ -129,11 +132,26 @@ export class SecurityUtils {
 		const suspiciousPatterns = [
 			/\.\./,          // Directory traversal
 			/\/\//,          // Double slashes
-			/[<>:"|?*]/,     // Invalid filename characters
-			/^(CON|PRN|AUX|NUL|COM[1-9]|LPT[1-9])$/i  // Windows reserved names
+			/[<>:"|?*]/      // Invalid filename characters
 		];
-		
-		return !suspiciousPatterns.some(pattern => pattern.test(normalizedPath));
+
+		if (suspiciousPatterns.some(pattern => pattern.test(normalizedPath))) {
+			return false;
+		}
+
+		// Check for Windows reserved names in any path segment
+		// Reserved names are invalid even with extensions (e.g., CON.txt, AUX.log)
+		const reservedNamePattern = /^(CON|PRN|AUX|NUL|COM[1-9]|LPT[1-9])$/i;
+		const hasReservedName = normalizedPath
+			.split(/[\\/]+/)
+			.filter(segment => segment && segment !== '.')
+			.some(segment => {
+				// Strip extension and check base name
+				const baseName = segment.split('.')[0] ?? '';
+				return reservedNamePattern.test(baseName);
+			});
+
+		return !hasReservedName;
 	}
 	
 	/**
@@ -245,7 +263,9 @@ export class SecurityUtils {
 	 * const testPaths = [
 	 *   '../../../etc',        // "Path traversal attempts (..) are not allowed"
 	 *   '/absolute/path',      // "Absolute paths are not allowed..."
-	 *   'CON',                 // "Reserved system names are not allowed..."
+	 *   'CON',                 // "Reserved system names are not allowed in paths (found: CON)"
+	 *   'reports/AUX/file',    // "Reserved system names are not allowed in paths (found: AUX)"
+	 *   'COM1.txt',            // "Reserved system names are not allowed in paths (found: COM1.txt)"
 	 *   'invalid<>chars'       // "Invalid characters found in path"
 	 * ];
 	 *
@@ -278,10 +298,21 @@ export class SecurityUtils {
 		if (/[<>:"|?*]/.test(normalizedPath)) {
 			return 'Invalid characters found in path';
 		}
-		if (/^(CON|PRN|AUX|NUL|COM[1-9]|LPT[1-9])$/i.test(normalizedPath)) {
-			return 'Reserved system names are not allowed as folder names';
+
+		// Check for Windows reserved names in any path segment
+		const reservedNamePattern = /^(CON|PRN|AUX|NUL|COM[1-9]|LPT[1-9])$/i;
+		const reservedSegment = normalizedPath
+			.split(/[\\/]+/)
+			.filter(segment => segment && segment !== '.')
+			.find(segment => {
+				const baseName = segment.split('.')[0] ?? '';
+				return reservedNamePattern.test(baseName);
+			});
+
+		if (reservedSegment) {
+			return `Reserved system names are not allowed in paths (found: ${reservedSegment})`;
 		}
-		
+
 		return 'Invalid path format';
 	}
 	
