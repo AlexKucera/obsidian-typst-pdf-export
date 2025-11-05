@@ -5,11 +5,50 @@ import { FileSystemAdapter, normalizePath, Notice } from 'obsidian';
 import type { App, PluginManifest } from 'obsidian';
 import * as path from 'path';
 
+/**
+ * Centralized path utilities for safe Obsidian API operations.
+ *
+ * This class provides a unified interface for path operations that work correctly
+ * with both vault-relative and absolute filesystem paths. It handles cross-platform
+ * path normalization and provides safe wrappers around Obsidian's vault adapter.
+ *
+ * Key features:
+ * - Automatic path normalization for cross-platform compatibility
+ * - Safe handling of absolute and relative paths
+ * - FileSystemAdapter validation for desktop-only operations
+ * - Error handling with user notifications
+ *
+ * @example
+ * ```typescript
+ * const pathUtils = new PathUtils(app);
+ * const vaultPath = pathUtils.getVaultPath();
+ * const pluginDir = pathUtils.getPluginDir(manifest);
+ * const fullPath = pathUtils.joinPath(vaultPath, pluginDir, 'templates');
+ * ```
+ */
 export class PathUtils {
+	/**
+	 * Creates a new PathUtils instance.
+	 *
+	 * @param app - The Obsidian App instance used for vault operations
+	 */
 	constructor(private app: App) {}
 
 	/**
-	 * Get vault base path safely with FileSystemAdapter check
+	 * Gets the absolute filesystem path to the vault root directory.
+	 *
+	 * This method requires desktop Obsidian as it relies on FileSystemAdapter.
+	 * If the adapter is not available (e.g., mobile), it will show a notice
+	 * and throw an error.
+	 *
+	 * @returns The absolute path to the vault root directory
+	 * @throws {Error} If FileSystemAdapter is not available (non-desktop environment)
+	 *
+	 * @example
+	 * ```typescript
+	 * const vaultPath = pathUtils.getVaultPath();
+	 * // Returns: '/Users/username/Documents/MyVault'
+	 * ```
 	 */
 	getVaultPath(): string {
 		const adapter = this.app.vault.adapter;
@@ -21,15 +60,44 @@ export class PathUtils {
 	}
 
 	/**
-	 * Get plugin directory path
+	 * Gets the vault-relative path to the plugin directory.
+	 *
+	 * Extracts the directory path from the plugin manifest and normalizes it
+	 * for cross-platform compatibility. This is typically something like
+	 * '.obsidian/plugins/plugin-name'.
+	 *
+	 * @param pluginManifest - The plugin's manifest containing directory information
+	 * @returns The normalized vault-relative path to the plugin directory
+	 *
+	 * @example
+	 * ```typescript
+	 * const pluginDir = pathUtils.getPluginDir(this.manifest);
+	 * // Returns: '.obsidian/plugins/typst-pdf-export'
+	 * ```
 	 */
 	getPluginDir(pluginManifest: PluginManifest): string {
 		return normalizePath(pluginManifest.dir || '');
 	}
 
 	/**
-	 * Join path segments with normalizePath
-	 * Handles absolute paths correctly by using the last absolute path found
+	 * Joins multiple path segments into a single normalized path.
+	 *
+	 * This method filters out empty segments, joins them using Node's path.join,
+	 * and normalizes the result for Obsidian compatibility. It correctly handles
+	 * absolute paths by using Node's standard path joining behavior (which uses
+	 * the rightmost absolute path if multiple absolute paths are provided).
+	 *
+	 * @param segments - Variable number of path segments to join
+	 * @returns The joined and normalized path, or empty string if no segments
+	 *
+	 * @example
+	 * ```typescript
+	 * const fullPath = pathUtils.joinPath(vaultPath, '.obsidian', 'plugins', 'my-plugin');
+	 * // Returns: '/path/to/vault/.obsidian/plugins/my-plugin'
+	 *
+	 * const withEmpty = pathUtils.joinPath('folder', '', 'subfolder');
+	 * // Returns: 'folder/subfolder' (empty segments filtered)
+	 * ```
 	 */
 	joinPath(...segments: string[]): string {
 		const filtered = segments.filter(s => s);
@@ -41,7 +109,20 @@ export class PathUtils {
 	}
 
 	/**
-	 * Ensure directory exists, create if necessary
+	 * Ensures a directory exists, creating it if necessary.
+	 *
+	 * This method checks if the directory exists and creates it if it doesn't.
+	 * The path is automatically normalized before operations. If creation fails,
+	 * a notice is shown to the user and the error is re-thrown.
+	 *
+	 * @param path - The path to the directory (vault-relative or absolute)
+	 * @throws {Error} If directory creation fails
+	 *
+	 * @example
+	 * ```typescript
+	 * await pathUtils.ensureDir('.obsidian/plugins/my-plugin/temp');
+	 * // Creates directory if it doesn't exist
+	 * ```
 	 */
 	async ensureDir(path: string): Promise<void> {
 		const normalizedPath = normalizePath(path);
@@ -57,7 +138,23 @@ export class PathUtils {
 	}
 
 	/**
-	 * Clean up directory contents (files only, like current TempDirectoryManager)
+	 * Cleans up directory contents by removing all files (but not subdirectories).
+	 *
+	 * This method removes only the files directly within the directory, leaving
+	 * any subdirectories intact. This matches the behavior of TempDirectoryManager
+	 * for safe cleanup operations. If the directory doesn't exist or cleanup fails,
+	 * the method returns false and logs a warning.
+	 *
+	 * @param path - The path to the directory to clean (vault-relative or absolute)
+	 * @returns True if cleanup succeeded or directory doesn't exist, false on error
+	 *
+	 * @example
+	 * ```typescript
+	 * const success = await pathUtils.cleanupDir('temp-images');
+	 * if (success) {
+	 *   console.log('Temp directory cleaned');
+	 * }
+	 * ```
 	 */
 	async cleanupDir(path: string): Promise<boolean> {
 		const normalizedPath = normalizePath(path);
@@ -78,8 +175,33 @@ export class PathUtils {
 	}
 
 	/**
-	 * Check if file or directory exists
-	 * Handles both vault-relative paths and absolute filesystem paths
+	 * Checks if a file or directory exists at the given path.
+	 *
+	 * This method intelligently handles multiple path formats:
+	 * 1. First attempts as vault-relative path
+	 * 2. If that fails and path is within vault, converts absolute to relative
+	 * 3. For paths outside vault, uses Node's fs module directly
+	 *
+	 * Supports:
+	 * - Vault-relative paths: 'folder/file.md'
+	 * - Absolute Unix paths: '/home/user/vault/file.md'
+	 * - Windows drive letters: 'C:\\Users\\vault\\file.md'
+	 * - Windows UNC paths: '\\\\server\\share\\file.md'
+	 *
+	 * @param path - The path to check (vault-relative or absolute)
+	 * @returns True if the file or directory exists, false otherwise
+	 *
+	 * @example
+	 * ```typescript
+	 * // Check vault-relative path
+	 * const exists = await pathUtils.fileExists('templates/default.typ');
+	 *
+	 * // Check absolute path
+	 * const exists = await pathUtils.fileExists('/usr/bin/pandoc');
+	 *
+	 * // Check Windows path
+	 * const exists = await pathUtils.fileExists('C:\\Program Files\\Pandoc\\pandoc.exe');
+	 * ```
 	 */
 	async fileExists(path: string): Promise<boolean> {
 		try {

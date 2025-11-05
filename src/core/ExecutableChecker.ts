@@ -1,10 +1,24 @@
 /**
- * Executable checking utilities for Obsidian Typst PDF Export plugin
- * Handles path resolution, version detection, and availability checking for external executables
+ * Executable checking utilities for Obsidian Typst PDF Export plugin.
+ *
+ * This module provides comprehensive utilities for checking external executable
+ * availability and versions. It handles:
+ * - Path resolution with support for system PATH and additional paths
+ * - Version detection using configurable regex patterns
+ * - Both async and sync operations for different use cases
+ * - Cross-platform path handling (Unix and Windows)
  */
 
 import { DEPENDENCY_CONSTANTS } from './constants';
 
+/**
+ * Information about a checked dependency executable.
+ *
+ * @property name - Human-readable name of the dependency (e.g., "Pandoc")
+ * @property version - Detected version string, or null if unavailable
+ * @property isAvailable - Whether the executable was found and executed successfully
+ * @property executablePath - The resolved path to the executable
+ */
 export interface DependencyInfo {
 	name: string;
 	version: string | null;
@@ -13,12 +27,55 @@ export interface DependencyInfo {
 }
 
 /**
- * Utilities for checking executable availability and versions
+ * Utilities for checking executable availability and versions.
+ *
+ * This class provides static methods for:
+ * - Resolving executable paths from user input or system PATH
+ * - Augmenting PATH with common system directories
+ * - Checking if executables are available
+ * - Detecting executable versions using regex patterns
+ *
+ * All methods support additional search paths to extend the default system PATH,
+ * ensuring executables can be found in non-standard locations.
+ *
+ * @example
+ * ```typescript
+ * // Resolve path to pandoc executable
+ * const pandocPath = await ExecutableChecker.resolveExecutablePath(
+ *   settings.pandocPath,
+ *   'pandoc',
+ *   settings.additionalPaths
+ * );
+ *
+ * // Check if pandoc is available and get version
+ * const info = await ExecutableChecker.checkDependency(
+ *   'Pandoc',
+ *   pandocPath,
+ *   '--version',
+ *   /pandoc (\d+\.\d+(?:\.\d+)?)/
+ * );
+ *
+ * if (info.isAvailable) {
+ *   console.log(`Pandoc ${info.version} found at ${info.executablePath}`);
+ * }
+ * ```
  */
 export class ExecutableChecker {
 	
 	/**
-	 * Build an augmented PATH that includes common system paths and additional paths
+	 * Builds an augmented PATH string that includes common system paths and additional paths.
+	 *
+	 * This method combines the current process PATH with:
+	 * 1. Home-relative paths (e.g., ~/.local/bin, ~/.cargo/bin)
+	 * 2. Common absolute paths (e.g., /usr/local/bin, /opt/homebrew/bin)
+	 * 3. User-provided additional paths
+	 *
+	 * The resulting PATH helps find executables in non-standard locations that
+	 * might not be in the user's shell PATH when running from Obsidian.
+	 *
+	 * @param additionalPaths - Optional array of additional paths to include
+	 * @returns The augmented PATH string with all paths separated by colons
+	 * @private
 	 */
 	private static getAugmentedPath(additionalPaths: string[] = []): string {
 		const homeDir = process.env.HOME || process.env.USERPROFILE || '';
@@ -35,7 +92,15 @@ export class ExecutableChecker {
 	}
 
 	/**
-	 * Build an augmented environment with extended PATH
+	 * Builds an augmented environment object with extended PATH.
+	 *
+	 * Creates a new environment object that inherits all current process environment
+	 * variables but with an augmented PATH that includes common system directories
+	 * and any additional paths specified.
+	 *
+	 * @param additionalPaths - Optional array of additional paths to include in PATH
+	 * @returns Environment object suitable for child_process spawn/exec
+	 * @private
 	 */
 	private static getAugmentedEnv(additionalPaths: string[] = []): NodeJS.ProcessEnv {
 		return {
@@ -45,7 +110,22 @@ export class ExecutableChecker {
 	}
 
 	/**
-	 * Try to find an executable using which command
+	 * Attempts to find an executable's full path using the `which` command.
+	 *
+	 * This method spawns a `which` subprocess with an augmented PATH to locate
+	 * the executable. It's more reliable than simple PATH searches as it uses
+	 * the system's own executable resolution logic.
+	 *
+	 * @param executableName - Name of the executable to find (e.g., 'pandoc')
+	 * @param additionalPaths - Optional additional paths to search
+	 * @returns The full path to the executable, or null if not found
+	 * @private
+	 *
+	 * @example
+	 * ```typescript
+	 * const pandocPath = await findExecutableWithWhich('pandoc', ['/opt/local/bin']);
+	 * // Returns: '/usr/local/bin/pandoc' or null
+	 * ```
 	 */
 	private static async findExecutableWithWhich(executableName: string, additionalPaths: string[] = []): Promise<string | null> {
 		const { spawn } = require('child_process');
@@ -91,7 +171,35 @@ export class ExecutableChecker {
 	}
 
 	/**
-	 * Resolve executable path - async version
+	 * Resolves an executable path from user input or system PATH (async version).
+	 *
+	 * Resolution logic:
+	 * 1. If userPath contains a '/', treat it as an absolute/relative path and use as-is
+	 * 2. If userPath is just a name or empty, search for the executable using `which`
+	 * 3. If `which` fails, fall back to the executable name (relies on runtime PATH)
+	 *
+	 * This method is useful for allowing users to specify either full paths or just
+	 * executable names in plugin settings.
+	 *
+	 * @param userPath - User-provided path or executable name (can be undefined/empty)
+	 * @param defaultName - Default executable name to use if userPath is empty
+	 * @param additionalPaths - Additional directories to search for the executable
+	 * @returns Resolved path to use for spawning the executable
+	 *
+	 * @example
+	 * ```typescript
+	 * // User provided full path
+	 * const path1 = await resolveExecutablePath('/usr/local/bin/pandoc', 'pandoc');
+	 * // Returns: '/usr/local/bin/pandoc'
+	 *
+	 * // User provided just name
+	 * const path2 = await resolveExecutablePath('pandoc', 'pandoc');
+	 * // Returns: '/usr/bin/pandoc' (found via which)
+	 *
+	 * // User provided nothing
+	 * const path3 = await resolveExecutablePath('', 'typst', ['/opt/bin']);
+	 * // Returns: '/opt/bin/typst' (found via which with additional path)
+	 * ```
 	 */
 	public static async resolveExecutablePath(userPath: string | undefined, defaultName: string, additionalPaths: string[] = []): Promise<string> {
 		// If user provided a full path (contains /), use it as-is
@@ -113,7 +221,18 @@ export class ExecutableChecker {
 	}
 
 	/**
-	 * Resolve executable path - sync version
+	 * Resolves an executable path from user input or system PATH (synchronous version).
+	 *
+	 * This is the synchronous counterpart to `resolveExecutablePath`. Use this when
+	 * async operations are not possible (e.g., in constructors or sync initialization).
+	 * The resolution logic is identical to the async version.
+	 *
+	 * @param userPath - User-provided path or executable name (can be undefined/empty)
+	 * @param defaultName - Default executable name to use if userPath is empty
+	 * @param additionalPaths - Additional directories to search for the executable
+	 * @returns Resolved path to use for spawning the executable
+	 *
+	 * @see {@link resolveExecutablePath} for detailed resolution logic and examples
 	 */
 	public static resolveExecutablePathSync(userPath: string | undefined, defaultName: string, additionalPaths: string[] = []): string {
 		// If user provided a full path (contains /), use it as-is
@@ -147,7 +266,37 @@ export class ExecutableChecker {
 	}
 
 	/**
-	 * Check if a dependency is available and get its version - async version
+	 * Checks if a dependency executable is available and extracts its version (async version).
+	 *
+	 * This method:
+	 * 1. Spawns the executable with the version command (e.g., '--version')
+	 * 2. Captures stdout and parses version using the provided regex
+	 * 3. Returns comprehensive dependency information
+	 *
+	 * Security: Uses spawn instead of exec to prevent command injection. Arguments
+	 * are passed separately from the command.
+	 *
+	 * @param name - Human-readable name for the dependency (e.g., "Pandoc")
+	 * @param executablePath - Path to the executable to check
+	 * @param versionCommand - Command argument for version (e.g., '--version')
+	 * @param versionRegex - Regex with capture group for version number
+	 * @returns DependencyInfo object with availability and version information
+	 *
+	 * @example
+	 * ```typescript
+	 * const info = await ExecutableChecker.checkDependency(
+	 *   'Pandoc',
+	 *   '/usr/bin/pandoc',
+	 *   '--version',
+	 *   /pandoc (\d+\.\d+(?:\.\d+)?)/
+	 * );
+	 *
+	 * if (info.isAvailable) {
+	 *   console.log(`Found ${info.name} version ${info.version}`);
+	 * } else {
+	 *   console.error(`${info.name} not available at ${info.executablePath}`);
+	 * }
+	 * ```
 	 */
 	public static async checkDependency(
 		name: string,
@@ -209,7 +358,23 @@ export class ExecutableChecker {
 	}
 
 	/**
-	 * Quick sync check if a dependency is available
+	 * Performs a quick synchronous check if a dependency is available.
+	 *
+	 * This is a simplified version of `checkDependency` that only checks if the
+	 * executable can be run successfully (exit code 0), without parsing version
+	 * information. Useful for fast availability checks during initialization.
+	 *
+	 * @param executablePath - Path to the executable to check
+	 * @param versionCommand - Command argument to test (e.g., '--version')
+	 * @returns True if the executable runs successfully, false otherwise
+	 *
+	 * @example
+	 * ```typescript
+	 * const pandocAvailable = ExecutableChecker.checkDependencySync('/usr/bin/pandoc', '--version');
+	 * if (!pandocAvailable) {
+	 *   console.error('Pandoc not available');
+	 * }
+	 * ```
 	 */
 	public static checkDependencySync(executablePath: string, versionCommand: string): boolean {
 		const { spawnSync } = require('child_process');

@@ -1,34 +1,162 @@
 /**
- * Core settings and configuration for Obsidian Typst PDF Export plugin
+ * Settings and configuration schema for Obsidian Typst PDF Export plugin.
+ *
+ * This module defines the complete configuration structure for the plugin, including:
+ * - External tool paths (Pandoc, Typst, ImageMagick)
+ * - Export defaults and presets
+ * - Typography and page layout settings
+ * - Behavior flags and preferences
+ * - Default values for fresh installations
+ *
+ * The settings are persisted to the vault's data.json file and can be modified
+ * through the plugin's settings tab. All settings have safe defaults that work
+ * out-of-the-box when external tools are available in PATH.
+ *
+ * Settings Organization:
+ * - Top-level: Core paths and output configuration
+ * - executablePaths: External tool configuration
+ * - exportDefaults: Default values for new exports
+ * - typography: Font configuration
+ * - pageSetup: Page layout and margins
+ * - behavior: Plugin behavior flags
+ *
+ * Type Safety:
+ * All settings use TypeScript for compile-time validation, preventing invalid
+ * configuration values and catching errors before runtime.
  */
 
+/**
+ * Export format options for PDF generation.
+ *
+ * Determines the pagination and layout style of the exported PDF:
+ * - Standard: Traditional multi-page format with page breaks
+ * - Single-page: Continuous single-page format without pagination
+ *
+ * The format affects Typst compilation parameters and influences layout decisions
+ * like automatic width adjustment for landscape orientation.
+ */
 export enum ExportFormat {
-	/** Standard multi-page PDF format */
+	/** Standard multi-page PDF format with automatic pagination */
 	Standard = 'standard',
-	/** Single-page continuous PDF format */
+	/** Single-page continuous PDF format without page breaks */
 	SinglePage = 'single-page'
 }
 
+/**
+ * Complete plugin settings interface.
+ *
+ * Defines all configurable options for the plugin, organized into logical groups.
+ * This interface serves as both the TypeScript type definition and the schema
+ * for the settings tab UI.
+ *
+ * Settings Lifecycle:
+ * 1. Plugin initializes with DEFAULT_SETTINGS
+ * 2. Persisted settings loaded from data.json (if exists)
+ * 3. User modifies via settings tab
+ * 4. Changes saved immediately to data.json
+ * 5. Export operations use current settings
+ *
+ * @example
+ * ```typescript
+ * // Load settings with defaults
+ * const settings: obsidianTypstPDFExportSettings = {
+ *   ...DEFAULT_SETTINGS,
+ *   ...await this.loadData()
+ * };
+ *
+ * // Use settings in export
+ * const converter = new PandocTypstConverter(
+ *   this.plugin,
+ *   { template: settings.exportDefaults.template },
+ *   { ppi: 144 }
+ * );
+ * ```
+ */
 export interface obsidianTypstPDFExportSettings {
-	/** Path to the Pandoc executable */
+	/**
+	 * Path to the Pandoc executable.
+	 *
+	 * Can be either:
+	 * - Empty string: Use system PATH resolution
+	 * - Executable name: e.g., 'pandoc' (searches augmented PATH)
+	 * - Absolute path: e.g., '/usr/local/bin/pandoc'
+	 *
+	 * Pandoc 2.0+ required for Typst output support.
+	 */
 	pandocPath: string;
-	/** Path to the Typst executable */
+
+	/**
+	 * Path to the Typst executable.
+	 *
+	 * Can be either:
+	 * - Empty string: Use system PATH resolution
+	 * - Executable name: e.g., 'typst' (searches augmented PATH)
+	 * - Absolute path: e.g., '/opt/typst/bin/typst'
+	 *
+	 * Typst 0.11+ recommended for best compatibility.
+	 */
 	typstPath: string;
-	/** Default output folder for exported PDFs */
+
+	/**
+	 * Default output folder for exported PDFs.
+	 *
+	 * Relative path from vault root. Will be created if it doesn't exist.
+	 * Security: Must pass SecurityUtils.validateOutputPath() validation.
+	 *
+	 * @example 'exports' - PDF files saved to <vault>/exports/
+	 * @example 'pdfs/from-notes' - PDF files saved to <vault>/pdfs/from-notes/
+	 */
 	outputFolder: string;
-	
-	/** Executable paths configuration */
+
+	/**
+	 * Executable paths configuration for optional dependencies.
+	 *
+	 * Controls where the plugin searches for external tools and how
+	 * it augments the PATH environment variable.
+	 */
 	executablePaths: {
-		/** Path to ImageMagick command (optional, uses PATH if not specified) */
+		/**
+		 * Path to ImageMagick command (optional).
+		 *
+		 * ImageMagick is optional but recommended for embedded PDF support.
+		 * If not configured, embedded PDFs will be skipped during export.
+		 *
+		 * Can be:
+		 * - Empty string: Use system PATH (default)
+		 * - Executable name: e.g., 'magick'
+		 * - Absolute path: e.g., '/usr/bin/magick'
+		 */
 		imagemagickPath: string;
-		/** Additional paths to append to PATH environment variable */
+
+		/**
+		 * Additional directories to search for executables.
+		 *
+		 * These paths are added to the PATH environment variable when
+		 * searching for external tools. Useful for non-standard installations
+		 * or when tools aren't in the user's shell PATH.
+		 *
+		 * @example ['/opt/homebrew/bin', '/usr/local/bin']
+		 */
 		additionalPaths: string[];
 	};
-	
-	/** Custom environment variables for subprocess execution */
+
+	/**
+	 * Custom environment variables for subprocess execution.
+	 *
+	 * Additional environment variables passed to Pandoc and Typst processes.
+	 * Useful for configuring tool behavior or providing authentication.
+	 *
+	 * @example { 'TYPST_FONT_PATHS': '/custom/fonts:/system/fonts' }
+	 * @example { 'PANDOC_USER_DATA_DIR': '/custom/pandoc/data' }
+	 */
 	customEnvironmentVariables: { [key: string]: string };
-	
-	/** Export defaults */
+
+	/**
+	 * Default values for new export operations.
+	 *
+	 * These settings are used when opening the export modal. Users can override
+	 * them on a per-export basis through the modal interface.
+	 */
 	exportDefaults: {
 		/** Default template to use for exports */
 		template: string;
@@ -101,6 +229,55 @@ export interface obsidianTypstPDFExportSettings {
 	};
 }
 
+/**
+ * Default settings for fresh plugin installations.
+ *
+ * These values are used when:
+ * - Plugin is first installed (no data.json exists)
+ * - Settings are reset to defaults
+ * - Individual settings are missing from persisted data
+ *
+ * The defaults are designed to:
+ * - Work out-of-the-box when external tools are in PATH
+ * - Produce professional-looking PDFs with minimal configuration
+ * - Use widely-available fonts as fallbacks
+ * - Enable helpful features (auto-open, folder structure preservation)
+ *
+ * Settings Strategy:
+ * - Empty paths for executables (rely on PATH resolution)
+ * - Common system paths in additionalPaths for macOS/Linux
+ * - Conservative concurrency (3) for stability
+ * - Professional typography (Concourse OT, SF Pro)
+ * - Standard A4 paper with reasonable margins
+ *
+ * @example
+ * ```typescript
+ * // Initialize plugin with defaults
+ * async onload() {
+ *   await this.loadSettings();  // Merges with DEFAULT_SETTINGS
+ *   this.registerSettingsTab();
+ * }
+ *
+ * async loadSettings() {
+ *   this.settings = Object.assign(
+ *     {},
+ *     DEFAULT_SETTINGS,
+ *     await this.loadData()
+ *   );
+ * }
+ * ```
+ *
+ * @example
+ * ```typescript
+ * // Reset individual settings to defaults
+ * resetTypography() {
+ *   this.settings.typography = {
+ *     ...DEFAULT_SETTINGS.typography
+ *   };
+ *   await this.saveSettings();
+ * }
+ * ```
+ */
 export const DEFAULT_SETTINGS: obsidianTypstPDFExportSettings = {
 	pandocPath: '',
 	typstPath: '',
