@@ -106,9 +106,11 @@ export class GeneralSection implements ModalSection {
 		
 		// Validate output folder
 		if (this.outputFolderInput) {
-			const value = normalizePath(this.outputFolderInput.value.trim());
-			if (!SecurityUtils.validateOutputPath(value)) {
-				errors.push(SecurityUtils.getPathValidationError(value));
+			const rawValue = this.outputFolderInput.value.trim();
+			// Don't normalize absolute paths as normalizePath strips the leading slash
+			const normalizedValue = path.isAbsolute(rawValue) ? rawValue : normalizePath(rawValue);
+			if (!SecurityUtils.validateOutputPath(normalizedValue)) {
+				errors.push(SecurityUtils.getPathValidationError(normalizedValue));
 			}
 		}
 		
