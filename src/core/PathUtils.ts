@@ -255,4 +255,36 @@ export class PathUtils {
 
 		return false;
 	}
+
+	/**
+	 * Converts an absolute path to a vault-relative path.
+	 *
+	 * This method is used to convert absolute filesystem paths to vault-relative
+	 * paths suitable for use with Obsidian's vault adapter operations. If the path
+	 * does not start with the vault base path, it is returned unchanged.
+	 *
+	 * @param absolutePath - The absolute path to convert
+	 * @returns The vault-relative path (without leading slash) or the original path if not within vault
+	 *
+	 * @example
+	 * ```typescript
+	 * const pathUtils = new PathUtils(app);
+	 * const vaultPath = '/Users/name/vault';
+	 * const absolutePath = '/Users/name/vault/folder/file.md';
+	 * const relative = pathUtils.toVaultRelativePath(absolutePath);
+	 * // Returns: 'folder/file.md'
+	 * ```
+	 */
+	toVaultRelativePath(absolutePath: string): string {
+		const vaultBasePath = this.getVaultPath();
+		if (!absolutePath.startsWith(vaultBasePath)) {
+			return absolutePath;
+		}
+
+		let relativePath = absolutePath.substring(vaultBasePath.length);
+		if (relativePath.startsWith('/') || relativePath.startsWith('\\')) {
+			relativePath = relativePath.substring(1);
+		}
+		return relativePath;
+	}
 }

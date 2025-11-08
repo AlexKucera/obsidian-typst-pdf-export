@@ -14,11 +14,51 @@ import * as path from 'path';
 import * as https from 'https';
 import * as http from 'http';
 
+const execAsync = util.promisify(exec);
+
 export class EmbedProcessor {
 	private readonly pathUtils: PathUtils;
 
 	constructor(private plugin: obsidianTypstPDFExport) {
 		this.pathUtils = new PathUtils(plugin.app);
+	}
+
+	/**
+	 * Handle completion of image download and write to vault.
+	 * @param chunks Downloaded image data chunks
+	 * @param outputPath Absolute path where the image should be written
+	 * @param resolve Promise resolver to call with result
+	 */
+	private async handleDownloadComplete(
+		chunks: Buffer[],
+		outputPath: string,
+		resolve: (value: string | null) => void
+	): Promise<void> {
+		try {
+			// Check if file already exists to avoid overwriting
+			const exists = await this.pathUtils.fileExists(outputPath);
+			if (exists) {
+				console.warn(`Export: Image file already exists, using existing: ${outputPath}`);
+				resolve(outputPath);
+				return;
+			}
+
+			// Combine chunks and write using vault adapter
+			const buffer = Buffer.concat(chunks);
+			// Convert Buffer to ArrayBuffer for vault adapter
+			const arrayBuffer = buffer.buffer.slice(buffer.byteOffset, buffer.byteOffset + buffer.byteLength);
+
+			// Convert absolute path to vault-relative for adapter operations
+			const relativeOutputPath = this.pathUtils.toVaultRelativePath(outputPath);
+
+			await this.plugin.app.vault.adapter.writeBinary(relativeOutputPath, arrayBuffer);
+
+			console.debug(`Export:Successfully downloaded image to: ${outputPath}`);
+			resolve(outputPath);
+		} catch (err) {
+			console.error(`Export: Error writing image file: ${err.message}`);
+			resolve(null);
+		}
 	}
 
 	/**
@@ -144,41 +184,8 @@ export class EmbedProcessor {
 					});
 
 					response.on('end', () => {
-					void (async () => {
-						try {
-							// Check if file already exists to avoid overwriting
-							const exists = await this.pathUtils.fileExists(outputPath);
-							if (exists) {
-								console.warn(`Export: Image file already exists, using existing: ${outputPath}`);
-								resolve(outputPath);
-								return;
-							}
-
-							// Combine chunks and write using vault adapter
-							const buffer = Buffer.concat(chunks);
-							// Convert Buffer to ArrayBuffer for vault adapter
-							const arrayBuffer = buffer.buffer.slice(buffer.byteOffset, buffer.byteOffset + buffer.byteLength);
-
-							// Convert absolute path to vault-relative for adapter operations
-							const vaultBasePath = this.pathUtils.getVaultPath();
-							let relativeOutputPath = outputPath;
-							if (outputPath.startsWith(vaultBasePath)) {
-								relativeOutputPath = outputPath.substring(vaultBasePath.length);
-								if (relativeOutputPath.startsWith('/') || relativeOutputPath.startsWith('\\')) {
-									relativeOutputPath = relativeOutputPath.substring(1);
-								}
-							}
-
-							await this.plugin.app.vault.adapter.writeBinary(relativeOutputPath, arrayBuffer);
-
-							console.debug(`Export:Successfully downloaded image to: ${outputPath}`);
-							resolve(outputPath);
-						} catch (err) {
-							console.error(`Export: Error writing image file: ${err.message}`);
-							resolve(null);
-						}
-					})();
-			});
+					void this.handleDownloadComplete(chunks, outputPath, resolve);
+				});
 
 					response.on('error', (err) => {
 						console.error(`Export: Error receiving image data: ${err.message}`);
@@ -360,8 +367,6 @@ export class EmbedProcessor {
 					const vaultTempImagesDir = this.pathUtils.joinPath(vaultBasePath, vaultRelativeTempDir);
 
 					const convertedImagePath = this.pathUtils.joinPath(vaultTempImagesDir, pngFileName);
-
-					const execAsync = util.promisify(exec);
 
 					try {
 						// Use PathResolver to get the correct ImageMagick path
@@ -556,21 +561,8 @@ export class EmbedProcessor {
 
 		// Copy file using vault adapter
 		// Convert absolute paths to vault-relative paths for adapter operations
-		let relativeSourcePath = imagePath;
-		if (imagePath.startsWith(vaultBasePath)) {
-			relativeSourcePath = imagePath.substring(vaultBasePath.length);
-			if (relativeSourcePath.startsWith('/') || relativeSourcePath.startsWith('\\')) {
-				relativeSourcePath = relativeSourcePath.substring(1);
-			}
-		}
-
-		let relativeVaultImagePath = vaultImagePath;
-		if (vaultImagePath.startsWith(vaultBasePath)) {
-			relativeVaultImagePath = vaultImagePath.substring(vaultBasePath.length);
-			if (relativeVaultImagePath.startsWith('/') || relativeVaultImagePath.startsWith('\\')) {
-				relativeVaultImagePath = relativeVaultImagePath.substring(1);
-			}
-		}
+		const relativeSourcePath = this.pathUtils.toVaultRelativePath(imagePath);
+		const relativeVaultImagePath = this.pathUtils.toVaultRelativePath(vaultImagePath);
 
 		const sourceBuffer = await this.plugin.app.vault.adapter.readBinary(relativeSourcePath);
 		await this.plugin.app.vault.adapter.writeBinary(relativeVaultImagePath, sourceBuffer);
