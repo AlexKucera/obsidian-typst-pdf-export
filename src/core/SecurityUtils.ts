@@ -116,9 +116,10 @@ export class SecurityUtils {
 		if (!outputFolder || typeof outputFolder !== 'string') {
 			return false;
 		}
-		
-		// Normalize and resolve the path to detect traversal attempts
-		const normalizedPath = path.normalize(outputFolder.trim());
+
+		// Normalize path, but preserve absolute paths (mirrors SettingsTab storage logic)
+		const trimmed = outputFolder.trim();
+		const normalizedPath = path.isAbsolute(trimmed) ? trimmed : path.normalize(trimmed);
 		
 		// Check for path traversal attempts
 		if (normalizedPath.includes('..') || 
@@ -280,8 +281,10 @@ export class SecurityUtils {
 		if (!outputFolder || typeof outputFolder !== 'string') {
 			return 'Output folder is required';
 		}
-		
-		const normalizedPath = path.normalize(outputFolder.trim());
+
+		// Normalize path, but preserve absolute paths (mirrors SettingsTab storage logic)
+		const trimmed = outputFolder.trim();
+		const normalizedPath = path.isAbsolute(trimmed) ? trimmed : path.normalize(trimmed);
 		
 		if (normalizedPath.includes('..')) {
 			return 'Path traversal attempts (..) are not allowed';
