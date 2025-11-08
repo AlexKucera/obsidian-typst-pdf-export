@@ -62,22 +62,25 @@ export class PluginLifecycle {
 	/**
 	 * Clean up resources during onunload
 	 */
-	cleanup(): void {
+	async cleanup(): Promise<void> {
 		// Cancel any ongoing exports
 		if (this.plugin.currentExportController) {
 			this.plugin.currentExportController.abort();
 		}
-		
-		// Clean up temp directories on plugin unload (fire-and-forget async)
-		void (async () => {
-			try {
-				const vaultPath = this.pathUtils.getVaultPath();
-				const cleanupManager = TempDirectoryManager.create(vaultPath, this.plugin.app.vault.configDir, undefined, this.plugin.app);
-				await cleanupManager.cleanupAllTempDirs();
-			} catch (error) {
-				console.warn('Export: Failed to clean up temp directories during unload:', error);
-			}
-		})();
+
+		// Dispose converter to clean up its temp directories
+		if (this.plugin.converter) {
+			await this.plugin.converter.dispose();
+		}
+
+		// Clean up temp directories on plugin unload
+		try {
+			const vaultPath = this.pathUtils.getVaultPath();
+			const cleanupManager = TempDirectoryManager.create(vaultPath, this.plugin.app.vault.configDir, undefined, this.plugin.app);
+			await cleanupManager.cleanupAllTempDirs();
+		} catch (error) {
+			console.warn('Export: Failed to clean up temp directories during unload:', error);
+		}
 	}
 
 	/**

@@ -236,11 +236,14 @@ export class obsidianTypstPDFExport extends Plugin {
 			throw error; // Re-throw to let callers handle appropriately
 		}
 	}
-	
-	
-	onunload() {
+
+
+	// Obsidian supports async onunload and will await it properly, even though
+	// the Plugin type definition shows void return. This ensures cleanup completes.
+	// eslint-disable-next-line @typescript-eslint/no-misused-promises
+	async onunload(): Promise<void> {
 		// Use lifecycle manager for cleanup
-		this.lifecycle.cleanup();
+		await this.lifecycle.cleanup();
 	}
 }
 
