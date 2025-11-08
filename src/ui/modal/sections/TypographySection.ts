@@ -3,7 +3,7 @@
  * Handles font selection and size configuration
  */
 
-import { Setting, App, DropdownComponent } from 'obsidian';
+import { Setting, App } from 'obsidian';
 import { ModalSection, ModalState, ValidationResult } from '../modalTypes';
 
 export class TypographySection implements ModalSection {
@@ -162,57 +162,7 @@ export class TypographySection implements ModalSection {
 			];
 		}
 	}
-	
-	private addFallbackBodyFonts(dropdown: DropdownComponent, state: ModalState, fontType: 'body' | 'heading'): void {
-		/* eslint-disable obsidianmd/ui/sentence-case */
-		// Font names are proper nouns and must maintain original capitalization
-		dropdown
-			.addOption('Concourse OT', 'Concourse OT')
-			.addOption('Times New Roman', 'Times New Roman')
-			.addOption('Georgia', 'Georgia')
-			.addOption('Arial', 'Arial')
-			.addOption('Helvetica', 'Helvetica')
-			.addOption('Calibri', 'Calibri')
-			.addOption('Cambria', 'Cambria')
-			.addOption('Palatino', 'Palatino')
-			.addOption('Book Antiqua', 'Book Antiqua');
-		/* eslint-enable obsidianmd/ui/sentence-case */
-		
-		// Set the appropriate value based on font type
-		const currentValue = fontType === 'body' 
-			? state.templateVariables.bodyFont 
-			: state.templateVariables.headingFont;
-		
-		dropdown
-			.setValue(String(currentValue || 'Concourse OT'))
-			.onChange((value: string) => {
-				if (fontType === 'body') {
-					state.updateTemplateVariables({ bodyFont: value });
-				} else {
-					state.updateTemplateVariables({ headingFont: value });
-				}
-			});
-	}
-	
-	private addFallbackMonospaceFonts(dropdown: DropdownComponent, state: ModalState): void {
-		/* eslint-disable obsidianmd/ui/sentence-case */
-		// Font names are proper nouns and must maintain original capitalization
-		dropdown
-			.addOption('Source Code Pro', 'Source Code Pro')
-			.addOption('Courier New', 'Courier New')
-			.addOption('Monaco', 'Monaco')
-			.addOption('Consolas', 'Consolas')
-			.addOption('Menlo', 'Menlo')
-			.addOption('DejaVu Sans Mono', 'DejaVu Sans Mono')
-			.addOption('Liberation Mono', 'Liberation Mono')
-			.addOption('Ubuntu Mono', 'Ubuntu Mono')
-			.setValue(String(state.templateVariables.monospaceFont || 'Source Code Pro'))
-			.onChange((value: string) => {
-				state.updateTemplateVariables({ monospaceFont: value });
-			});
-		/* eslint-enable obsidianmd/ui/sentence-case */
-	}
-	
+
 	validate(): ValidationResult {
 		const errors: string[] = [];
 		const warnings: string[] = [];
