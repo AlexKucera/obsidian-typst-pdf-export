@@ -333,6 +333,9 @@ export class PandocTypstConverter {
 			if (this.pandocOptions.vaultBasePath) {
 				// Use TempDirectoryManager for plugin temp directories
 				const configDir = this.plugin?.app?.vault?.configDir;
+				if (!configDir) {
+					throw new Error('Unable to access vault configuration directory. Plugin may not be properly initialized.');
+				}
 				const tempManager = TempDirectoryManager.create(this.pandocOptions.vaultBasePath, configDir, undefined, this.plugin?.app);
 				this.tempDir = await tempManager.ensureTempDir('pandoc');
 			} else {
@@ -340,6 +343,9 @@ export class PandocTypstConverter {
 				const pathUtils = new PathUtils(this.plugin.app);
 				const vaultPath = pathUtils.getVaultPath();
 				const configDir = this.plugin?.app?.vault?.configDir;
+				if (!configDir) {
+					throw new Error('Unable to access vault configuration directory. Plugin may not be properly initialized.');
+				}
 				const tempManager = new TempDirectoryManager({ vaultPath, configDir, app: this.plugin.app });
 				this.tempDir = await tempManager.ensureTempDir('pandoc');
 			}
