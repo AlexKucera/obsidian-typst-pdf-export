@@ -154,7 +154,20 @@ export class ModalRenderer {
 			text: 'Export',
 			cls: 'mod-cta'
 		});
-		this.submitButton.addEventListener('click', () => void this.callbacks.onSubmit());
+		this.submitButton.addEventListener('click', () => {
+			this.setExportingState(true);
+			Promise.resolve(this.callbacks.onSubmit()).catch(err => {
+				// Log the error for debugging
+				console.error('Export submission failed:', err);
+
+				// Show user-facing error feedback
+				const errorMessage = err instanceof Error ? err.message : 'An unknown error occurred during export';
+				this.showValidationErrors([errorMessage]);
+
+				// Re-enable buttons so user can try again or cancel
+				this.setExportingState(false);
+			});
+		});
 	}
 	
 	/**

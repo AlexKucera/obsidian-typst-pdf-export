@@ -75,7 +75,7 @@ export class GeneralSection implements ModalSection {
 		
 		new Setting(this.container)
 			.setName('Output folder')
-			.setDesc('Location for exported PDF files (relative to vault root)')
+			.setDesc('Location for exported PDF files (relative to vault root or absolute path)')
 			.addText(text => {
 				const input = text
 					.setPlaceholder('PDF exports')
