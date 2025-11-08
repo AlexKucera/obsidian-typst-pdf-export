@@ -10,6 +10,8 @@ import { BinaryLocator } from './BinaryLocator';
 import { EnvironmentUtils } from './EnvironmentUtils';
 import type { obsidianTypstPDFExport } from '../../../main';
 
+const execAsync = promisify(exec);
+
 export interface PdfCliOptions {
 	/** Scale factor for the rendered image */
 	scale: number;
@@ -113,8 +115,6 @@ export class PdfCliExecutor {
 		plugin?: obsidianTypstPDFExport
 	): Promise<PdfCliResult> {
 		try {
-			const execAsync = promisify(exec);
-
 			// Get augmented environment for CLI execution
 			const env = EnvironmentUtils.getAugmentedEnvironment(plugin?.settings);
 			
