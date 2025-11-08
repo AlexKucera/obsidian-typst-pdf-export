@@ -9,7 +9,7 @@
  * - Consistent error messaging and logging
  * - Batch export result tracking and reporting
  * - User-facing notices with appropriate durations
- * - Support for different log levels (error, warn, info)
+ * - Support for different log levels (error, warn, debug)
  * - Specialized handlers for different error types (dependency, processing, validation)
  */
 
@@ -43,7 +43,7 @@ export interface ExportError {
 	operation: string;
 	error: Error | string;
 	shouldShowNotice?: boolean;
-	logLevel?: 'error' | 'warn' | 'info';
+	logLevel?: 'error' | 'warn' | 'debug';
 }
 
 /**
@@ -180,7 +180,7 @@ export class ExportErrorHandler {
 			case 'warn':
 				console.warn(`${operation}:`, error);
 				break;
-			case 'info':
+			case 'debug':
 				console.debug(`${operation}:`, error);
 				break;
 		}
