@@ -44,11 +44,10 @@ export class FrontmatterProcessor {
 		}
 
 		// Use gray-matter for robust frontmatter parsing
-		
+
 		// Add debugging to see what's being parsed
-		console.debug('FrontmatterProcessor: Attempting to parse content with frontmatter pattern detected');
-		console.debug('First 200 chars:', content.substring(0, 200));
-		
+		console.debug('FrontmatterProcessor: Attempting to parse content with frontmatter pattern detected', `(content length: ${content.length})`);
+
 		const parsed = matter(content);
 		
 		if (parsed.data && Object.keys(parsed.data).length > 0) {
@@ -150,8 +149,7 @@ export class FrontmatterProcessor {
 		}
 	} catch (error: unknown) {
 		const errorMessage = error instanceof Error ? error.message : String(error);
-		console.error('FrontmatterProcessor: gray-matter failed with error:', errorMessage);
-		console.error('Content being parsed (first 500 chars):', content.substring(0, 500));
+		console.error('FrontmatterProcessor: gray-matter failed with error:', errorMessage, `(content length: ${content.length})`);
 		result.warnings.push(`Failed to parse frontmatter with gray-matter: ${errorMessage}`);
 		
 		// Fallback to simple regex-based parsing
