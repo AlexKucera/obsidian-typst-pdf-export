@@ -117,13 +117,16 @@ export class SecurityUtils {
 			return false;
 		}
 
-		// Normalize path, but preserve absolute paths (mirrors SettingsTab storage logic)
+		// Normalize path (reject absolute paths so exports stay inside the vault)
 		const trimmed = outputFolder.trim();
-		const normalizedPath = path.isAbsolute(trimmed) ? trimmed : path.normalize(trimmed);
-		
+		if (path.isAbsolute(trimmed)) {
+			return false;
+		}
+		const normalizedPath = path.normalize(trimmed);
+
 		// Check for path traversal attempts
-		if (normalizedPath.includes('..') || 
-		    normalizedPath.startsWith('/') || 
+		if (normalizedPath.includes('..') ||
+		    normalizedPath.startsWith('/') ||
 		    normalizedPath.startsWith('\\') ||
 		    normalizedPath.includes('\x00')) {
 			return false;
@@ -282,10 +285,13 @@ export class SecurityUtils {
 			return 'Output folder is required';
 		}
 
-		// Normalize path, but preserve absolute paths (mirrors SettingsTab storage logic)
+		// Normalize path (reject absolute paths so exports stay inside the vault)
 		const trimmed = outputFolder.trim();
-		const normalizedPath = path.isAbsolute(trimmed) ? trimmed : path.normalize(trimmed);
-		
+		if (path.isAbsolute(trimmed)) {
+			return 'Absolute paths are not allowed - use relative paths from vault root';
+		}
+		const normalizedPath = path.normalize(trimmed);
+
 		if (normalizedPath.includes('..')) {
 			return 'Path traversal attempts (..) are not allowed';
 		}
