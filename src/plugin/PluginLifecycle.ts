@@ -53,7 +53,7 @@ export class PluginLifecycle {
 		this.cleanupStartupTempDirectories();
 
 		// Check dependencies on startup
-		this.plugin.checkDependenciesAsync();
+		this.plugin.checkDependenciesOnStartup();
 
 		// Cache available fonts (async, don't await)
 		void this.plugin.cacheAvailableFonts();

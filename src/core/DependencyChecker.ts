@@ -321,7 +321,6 @@ ${dependencyResult.allAvailable
 	 * @param typstPath - Optional custom path to Typst executable
 	 * @param imagemagickPath - Optional custom path to ImageMagick convert executable
 	 * @param additionalPaths - Additional directories to search for executables
-	 * @returns Promise that resolves when the check is complete
 	 *
 	 * @example
 	 * ```typescript
@@ -331,7 +330,7 @@ ${dependencyResult.allAvailable
 	 *     await this.loadSettings();
 	 *
 	 *     // Silent startup check - only shows notice if problems exist
-	 *     await DependencyChecker.checkDependenciesAsync(
+	 *     DependencyChecker.checkDependenciesOnStartup(
 	 *       this.settings.pandocPath,
 	 *       this.settings.typstPath,
 	 *       this.settings.imagemagickPath,
@@ -348,7 +347,7 @@ ${dependencyResult.allAvailable
 	 * //  Run 'Check Dependencies' command for details."
 	 * ```
 	 */
-	public static checkDependenciesAsync(
+	public static checkDependenciesOnStartup(
 		pandocPath?: string,
 		typstPath?: string,
 		imagemagickPath?: string,

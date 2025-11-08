@@ -178,8 +178,8 @@ export class obsidianTypstPDFExport extends Plugin {
 		);
 	}
 
-	checkDependenciesAsync(): void {
-		DependencyChecker.checkDependenciesAsync(
+	checkDependenciesOnStartup(): void {
+		DependencyChecker.checkDependenciesOnStartup(
 			this.settings.pandocPath,
 			this.settings.typstPath,
 			this.settings.executablePaths?.imagemagickPath,
