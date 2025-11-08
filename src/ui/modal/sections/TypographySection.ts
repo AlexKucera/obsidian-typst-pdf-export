@@ -164,6 +164,8 @@ export class TypographySection implements ModalSection {
 	}
 	
 	private addFallbackBodyFonts(dropdown: DropdownComponent, state: ModalState, fontType: 'body' | 'heading'): void {
+		/* eslint-disable obsidianmd/ui/sentence-case */
+		// Font names are proper nouns and must maintain original capitalization
 		dropdown
 			.addOption('Concourse OT', 'Concourse OT')
 			.addOption('Times New Roman', 'Times New Roman')
@@ -174,6 +176,7 @@ export class TypographySection implements ModalSection {
 			.addOption('Cambria', 'Cambria')
 			.addOption('Palatino', 'Palatino')
 			.addOption('Book Antiqua', 'Book Antiqua');
+		/* eslint-enable obsidianmd/ui/sentence-case */
 		
 		// Set the appropriate value based on font type
 		const currentValue = fontType === 'body' 
@@ -192,6 +195,8 @@ export class TypographySection implements ModalSection {
 	}
 	
 	private addFallbackMonospaceFonts(dropdown: DropdownComponent, state: ModalState): void {
+		/* eslint-disable obsidianmd/ui/sentence-case */
+		// Font names are proper nouns and must maintain original capitalization
 		dropdown
 			.addOption('Source Code Pro', 'Source Code Pro')
 			.addOption('Courier New', 'Courier New')
@@ -205,6 +210,7 @@ export class TypographySection implements ModalSection {
 			.onChange((value: string) => {
 				state.updateTemplateVariables({ monospaceFont: value });
 			});
+		/* eslint-enable obsidianmd/ui/sentence-case */
 	}
 	
 	validate(): ValidationResult {

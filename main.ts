@@ -79,6 +79,7 @@ export class obsidianTypstPDFExport extends Plugin {
 `);
 		
 		// Add ribbon icon using custom icon
+		// eslint-disable-next-line obsidianmd/ui/sentence-case -- "PDF" is an acronym and "Typst" is a proper noun
 		this.addRibbonIcon('typst-pdf-export', 'Export to PDF with Typst', (event: MouseEvent) => {
 			this.eventHandlers.handleRibbonClick(event);
 		});
