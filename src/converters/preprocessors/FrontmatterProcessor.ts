@@ -272,9 +272,10 @@ export class FrontmatterProcessor {
 			if (Array.isArray(value)) {
 				// For arrays, put each item on its own line if there are many items
 				if (value.length > 3) {
-					formattedValue = '\n\n' + value.map(item =>
-						typeof item === 'object' ? JSON.stringify(item) : String(item)
-					).join('\n').split('\n').map(line => `- ${line}`).join('\n') + '\n';
+					formattedValue = '\n\n' + value.map(item => {
+						const itemStr = typeof item === 'object' ? JSON.stringify(item) : String(item);
+						return `- ${itemStr}`;
+					}).join('\n') + '\n';
 				} else {
 					formattedValue = value.map(item =>
 						typeof item === 'object' ? JSON.stringify(item) : String(item)
