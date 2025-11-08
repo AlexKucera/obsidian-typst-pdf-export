@@ -271,11 +271,11 @@ export class PathUtils {
 	 * const pathUtils = new PathUtils(app);
 	 * const vaultPath = '/Users/name/vault';
 	 * const absolutePath = '/Users/name/vault/folder/file.md';
-	 * const relative = pathUtils.toVaultRelativePath(absolutePath);
+	 * const relative = pathUtils.toVaultRelative(absolutePath);
 	 * // Returns: 'folder/file.md'
 	 * ```
 	 */
-	toVaultRelativePath(absolutePath: string): string {
+	toVaultRelative(absolutePath: string): string {
 		const vaultBasePath = this.getVaultPath();
 		if (!absolutePath.startsWith(vaultBasePath)) {
 			return absolutePath;

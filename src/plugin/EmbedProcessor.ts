@@ -49,7 +49,7 @@ export class EmbedProcessor {
 			const arrayBuffer = buffer.buffer.slice(buffer.byteOffset, buffer.byteOffset + buffer.byteLength);
 
 			// Convert absolute path to vault-relative for adapter operations
-			const relativeOutputPath = this.pathUtils.toVaultRelativePath(outputPath);
+			const relativeOutputPath = this.pathUtils.toVaultRelative(outputPath);
 
 			await this.plugin.app.vault.adapter.writeBinary(relativeOutputPath, arrayBuffer);
 
@@ -561,8 +561,8 @@ export class EmbedProcessor {
 
 		// Copy file using vault adapter
 		// Convert absolute paths to vault-relative paths for adapter operations
-		const relativeSourcePath = this.pathUtils.toVaultRelativePath(imagePath);
-		const relativeVaultImagePath = this.pathUtils.toVaultRelativePath(vaultImagePath);
+		const relativeSourcePath = this.pathUtils.toVaultRelative(imagePath);
+		const relativeVaultImagePath = this.pathUtils.toVaultRelative(vaultImagePath);
 
 		const sourceBuffer = await this.plugin.app.vault.adapter.readBinary(relativeSourcePath);
 		await this.plugin.app.vault.adapter.writeBinary(relativeVaultImagePath, sourceBuffer);

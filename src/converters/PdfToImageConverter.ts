@@ -416,15 +416,7 @@ export class PdfToImageConverter {
 			// Ensure output directory exists (convert absolute path to vault-relative for vault.adapter)
 			if (this.plugin?.app) {
 				const pathUtils = new PathUtils(this.plugin.app);
-				const vaultPath = pathUtils.getVaultPath();
-				// Convert absolute path to vault-relative
-				let relativeOutputDir = outputDir;
-				if (outputDir.startsWith(vaultPath)) {
-					relativeOutputDir = outputDir.substring(vaultPath.length);
-					if (relativeOutputDir.startsWith('/') || relativeOutputDir.startsWith('\\')) {
-						relativeOutputDir = relativeOutputDir.substring(1);
-					}
-				}
+				const relativeOutputDir = pathUtils.toVaultRelative(outputDir);
 				await pathUtils.ensureDir(relativeOutputDir);
 			}
 

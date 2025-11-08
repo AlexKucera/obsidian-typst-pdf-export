@@ -218,19 +218,8 @@ export class ImageOptimizer {
 					// Clean up the original PNG if conversion succeeded
 					try {
 						if (plugin?.app) {
-							// Convert absolute path to vault-relative path for adapter.remove()
 							const pathUtils = new PathUtils(plugin.app);
-							const vaultBasePath = pathUtils.getVaultPath();
-
-							let relativePath = inputImagePath;
-							if (inputImagePath.startsWith(vaultBasePath)) {
-								// Remove vault base path and leading separator
-								relativePath = inputImagePath.substring(vaultBasePath.length);
-								if (relativePath.startsWith('/') || relativePath.startsWith('\\')) {
-									relativePath = relativePath.substring(1);
-								}
-							}
-
+							const relativePath = pathUtils.toVaultRelative(inputImagePath);
 							await plugin.app.vault.adapter.remove(relativePath);
 						} else {
 							await fs.unlink(inputImagePath);
@@ -244,27 +233,9 @@ export class ImageOptimizer {
 					// Just rename the file to PNG format
 					const pngFinalPath = finalOutputPath.replace(/\.jpeg?$/, '.png');
 					if (plugin?.app) {
-						// Convert absolute paths to vault-relative paths for adapter operations
 						const pathUtils = new PathUtils(plugin.app);
-						const vaultBasePath = pathUtils.getVaultPath();
-
-						let relativeInputPath = inputImagePath;
-						if (inputImagePath.startsWith(vaultBasePath)) {
-							// Remove vault base path and leading separator
-							relativeInputPath = inputImagePath.substring(vaultBasePath.length);
-							if (relativeInputPath.startsWith('/') || relativeInputPath.startsWith('\\')) {
-								relativeInputPath = relativeInputPath.substring(1);
-							}
-						}
-
-						let relativePngPath = pngFinalPath;
-						if (pngFinalPath.startsWith(vaultBasePath)) {
-							// Remove vault base path and leading separator
-							relativePngPath = pngFinalPath.substring(vaultBasePath.length);
-							if (relativePngPath.startsWith('/') || relativePngPath.startsWith('\\')) {
-								relativePngPath = relativePngPath.substring(1);
-							}
-						}
+						const relativeInputPath = pathUtils.toVaultRelative(inputImagePath);
+						const relativePngPath = pathUtils.toVaultRelative(pngFinalPath);
 
 						const content = await plugin.app.vault.adapter.readBinary(relativeInputPath);
 						await plugin.app.vault.adapter.writeBinary(relativePngPath, content);
@@ -277,27 +248,9 @@ export class ImageOptimizer {
 			} else {
 				// Keep as PNG, just rename to final location
 				if (plugin?.app) {
-					// Convert absolute paths to vault-relative paths for adapter operations
 					const pathUtils = new PathUtils(plugin.app);
-					const vaultBasePath = pathUtils.getVaultPath();
-
-					let relativeInputPath = inputImagePath;
-					if (inputImagePath.startsWith(vaultBasePath)) {
-						// Remove vault base path and leading separator
-						relativeInputPath = inputImagePath.substring(vaultBasePath.length);
-						if (relativeInputPath.startsWith('/') || relativeInputPath.startsWith('\\')) {
-							relativeInputPath = relativeInputPath.substring(1);
-						}
-					}
-
-					let relativeFinalPath = finalOutputPath;
-					if (finalOutputPath.startsWith(vaultBasePath)) {
-						// Remove vault base path and leading separator
-						relativeFinalPath = finalOutputPath.substring(vaultBasePath.length);
-						if (relativeFinalPath.startsWith('/') || relativeFinalPath.startsWith('\\')) {
-							relativeFinalPath = relativeFinalPath.substring(1);
-						}
-					}
+					const relativeInputPath = pathUtils.toVaultRelative(inputImagePath);
+					const relativeFinalPath = pathUtils.toVaultRelative(finalOutputPath);
 
 					const content = await plugin.app.vault.adapter.readBinary(relativeInputPath);
 					await plugin.app.vault.adapter.writeBinary(relativeFinalPath, content);
