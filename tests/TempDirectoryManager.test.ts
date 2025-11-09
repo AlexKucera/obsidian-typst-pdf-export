@@ -2,11 +2,35 @@ import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { TempDirectoryManager } from '../src/core/TempDirectoryManager';
 import type { App } from 'obsidian';
 
+// Create mock functions that will be used in vi.mock - using vi.hoisted to ensure they're available
+const { mockFsAccess, mockFsMkdir, mockFsReaddir, mockFsStat, mockFsUnlink } = vi.hoisted(() => ({
+	mockFsAccess: vi.fn(),
+	mockFsMkdir: vi.fn(),
+	mockFsReaddir: vi.fn(),
+	mockFsStat: vi.fn(),
+	mockFsUnlink: vi.fn(),
+}));
+
+// Mock the fs module
+vi.mock('fs', () => ({
+	default: {},
+	promises: {
+		access: mockFsAccess,
+		mkdir: mockFsMkdir,
+		readdir: mockFsReaddir,
+		stat: mockFsStat,
+		unlink: mockFsUnlink,
+	},
+}));
+
 describe('TempDirectoryManager', () => {
 	let mockApp: App;
 	let mockVaultAdapter: any;
 
 	beforeEach(() => {
+		// Reset all mocks before each test
+		vi.clearAllMocks();
+
 		// Reset mocks before each test
 		mockVaultAdapter = {
 			exists: vi.fn(),
@@ -114,8 +138,9 @@ describe('TempDirectoryManager', () => {
 
 	describe('ensureTempDir', () => {
 		it('should create directory if it does not exist', async () => {
-			mockVaultAdapter.exists.mockResolvedValue(false);
-			mockVaultAdapter.mkdir.mockResolvedValue(undefined);
+			// fs.access rejects when directory doesn't exist
+			mockFsAccess.mockRejectedValue(new Error('ENOENT'));
+			mockFsMkdir.mockResolvedValue(undefined);
 
 			const manager = new TempDirectoryManager({
 				vaultPath: '/vault',
@@ -126,13 +151,14 @@ describe('TempDirectoryManager', () => {
 
 			const result = await manager.ensureTempDir('images');
 
-			expect(mockVaultAdapter.exists).toHaveBeenCalledOnce();
-			expect(mockVaultAdapter.mkdir).toHaveBeenCalledOnce();
+			expect(mockFsAccess).toHaveBeenCalledOnce();
+			expect(mockFsMkdir).toHaveBeenCalledOnce();
 			expect(result).toContain('temp-images');
 		});
 
 		it('should not create directory if it already exists', async () => {
-			mockVaultAdapter.exists.mockResolvedValue(true);
+			// fs.access resolves when directory exists
+			mockFsAccess.mockResolvedValue(undefined);
 
 			const manager = new TempDirectoryManager({
 				vaultPath: '/vault',
@@ -143,14 +169,14 @@ describe('TempDirectoryManager', () => {
 
 			const result = await manager.ensureTempDir('images');
 
-			expect(mockVaultAdapter.exists).toHaveBeenCalledOnce();
-			expect(mockVaultAdapter.mkdir).not.toHaveBeenCalled();
+			expect(mockFsAccess).toHaveBeenCalledOnce();
+			expect(mockFsMkdir).not.toHaveBeenCalled();
 			expect(result).toContain('temp-images');
 		});
 
 		it('should handle both images and pandoc directories', async () => {
-			mockVaultAdapter.exists.mockResolvedValue(false);
-			mockVaultAdapter.mkdir.mockResolvedValue(undefined);
+			mockFsAccess.mockRejectedValue(new Error('ENOENT'));
+			mockFsMkdir.mockResolvedValue(undefined);
 
 			const manager = new TempDirectoryManager({
 				vaultPath: '/vault',
@@ -164,18 +190,16 @@ describe('TempDirectoryManager', () => {
 
 			expect(imagesDir).toContain('temp-images');
 			expect(pandocDir).toContain('temp-pandoc');
-			expect(mockVaultAdapter.mkdir).toHaveBeenCalledTimes(2);
+			expect(mockFsMkdir).toHaveBeenCalledTimes(2);
 		});
 	});
 
 	describe('cleanupTempDir', () => {
 		it('should remove all files from temp directory', async () => {
-			mockVaultAdapter.exists.mockResolvedValue(true);
-			mockVaultAdapter.list.mockResolvedValue({
-				files: ['file1.png', 'file2.png', 'file3.typ'],
-				folders: [],
-			});
-			mockVaultAdapter.remove.mockResolvedValue(undefined);
+			mockFsAccess.mockResolvedValue(undefined);
+			mockFsReaddir.mockResolvedValue(['file1.png', 'file2.png', 'file3.typ']);
+			mockFsStat.mockResolvedValue({ isFile: () => true } as any);
+			mockFsUnlink.mockResolvedValue(undefined);
 
 			const manager = new TempDirectoryManager({
 				vaultPath: '/vault',
@@ -187,11 +211,11 @@ describe('TempDirectoryManager', () => {
 			const result = await manager.cleanupTempDir('images');
 
 			expect(result).toBe(true);
-			expect(mockVaultAdapter.remove).toHaveBeenCalledTimes(3);
+			expect(mockFsUnlink).toHaveBeenCalledTimes(3);
 		});
 
 		it('should return true if directory does not exist', async () => {
-			mockVaultAdapter.exists.mockResolvedValue(false);
+			mockFsAccess.mockRejectedValue(new Error('ENOENT'));
 
 			const manager = new TempDirectoryManager({
 				vaultPath: '/vault',
@@ -203,11 +227,12 @@ describe('TempDirectoryManager', () => {
 			const result = await manager.cleanupTempDir('images');
 
 			expect(result).toBe(true);
-			expect(mockVaultAdapter.remove).not.toHaveBeenCalled();
+			expect(mockFsUnlink).not.toHaveBeenCalled();
 		});
 
 		it('should return false and log warning on error', async () => {
-			mockVaultAdapter.exists.mockRejectedValue(new Error('Access denied'));
+			mockFsAccess.mockResolvedValue(undefined);
+			mockFsReaddir.mockRejectedValue(new Error('Access denied'));
 			const consoleWarnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
 
 			const manager = new TempDirectoryManager({
@@ -226,12 +251,10 @@ describe('TempDirectoryManager', () => {
 		});
 
 		it('should handle errors during file removal', async () => {
-			mockVaultAdapter.exists.mockResolvedValue(true);
-			mockVaultAdapter.list.mockResolvedValue({
-				files: ['file1.png'],
-				folders: [],
-			});
-			mockVaultAdapter.remove.mockRejectedValue(new Error('Cannot delete'));
+			mockFsAccess.mockResolvedValue(undefined);
+			mockFsReaddir.mockResolvedValue(['file1.png']);
+			mockFsStat.mockResolvedValue({ isFile: () => true } as any);
+			mockFsUnlink.mockRejectedValue(new Error('Cannot delete'));
 			const consoleWarnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
 
 			const manager = new TempDirectoryManager({
@@ -252,12 +275,10 @@ describe('TempDirectoryManager', () => {
 
 	describe('cleanupAllTempDirs', () => {
 		it('should clean up both temp directories', async () => {
-			mockVaultAdapter.exists.mockResolvedValue(true);
-			mockVaultAdapter.list.mockResolvedValue({
-				files: ['file1.png'],
-				folders: [],
-			});
-			mockVaultAdapter.remove.mockResolvedValue(undefined);
+			mockFsAccess.mockResolvedValue(undefined);
+			mockFsReaddir.mockResolvedValue(['file1.png']);
+			mockFsStat.mockResolvedValue({ isFile: () => true } as any);
+			mockFsUnlink.mockResolvedValue(undefined);
 
 			const manager = new TempDirectoryManager({
 				vaultPath: '/vault',
@@ -269,22 +290,20 @@ describe('TempDirectoryManager', () => {
 			const result = await manager.cleanupAllTempDirs();
 
 			expect(result).toEqual({ images: true, pandoc: true });
-			expect(mockVaultAdapter.list).toHaveBeenCalledTimes(2);
+			expect(mockFsReaddir).toHaveBeenCalledTimes(2);
 		});
 
 		it('should return status for each directory independently', async () => {
 			let callCount = 0;
-			mockVaultAdapter.exists.mockImplementation(() => {
+			mockFsAccess.mockImplementation(() => {
 				callCount++;
 				// First call (images) succeeds, second call (pandoc) fails
-				if (callCount === 1) return Promise.resolve(true);
+				if (callCount === 1) return Promise.resolve(undefined);
 				return Promise.reject(new Error('Access denied'));
 			});
-			mockVaultAdapter.list.mockResolvedValue({
-				files: ['file1.png'],
-				folders: [],
-			});
-			mockVaultAdapter.remove.mockResolvedValue(undefined);
+			mockFsReaddir.mockResolvedValue(['file1.png']);
+			mockFsStat.mockResolvedValue({ isFile: () => true } as any);
+			mockFsUnlink.mockResolvedValue(undefined);
 			vi.spyOn(console, 'warn').mockImplementation(() => {});
 
 			const manager = new TempDirectoryManager({

@@ -221,7 +221,7 @@ export class SecurityUtils {
 		
 		// Check for command injection attempts
 		const dangerousPatterns = [
-			/[;&|`$<>]/,       // Shell metacharacters that can't appear in safe paths
+			/[;&|`$<>{}[\]]/,  // Shell metacharacters that can't appear in safe paths
 			// eslint-disable-next-line no-control-regex -- Intentionally checking for null byte character for security validation
 			/\x00/,            // Null bytes
 			/\n|\r/,           // Newlines

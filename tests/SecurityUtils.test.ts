@@ -154,7 +154,7 @@ describe('SecurityUtils', () => {
 
 		it('should return appropriate error for reserved names', () => {
 			const error = SecurityUtils.getPathValidationError('CON');
-			expect(error).toBe('Reserved system names are not allowed as folder names');
+			expect(error).toBe('Reserved system names are not allowed in paths (found: CON)');
 		});
 
 		it('should return generic error for unknown issues', () => {
