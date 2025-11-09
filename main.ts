@@ -79,7 +79,6 @@ export class obsidianTypstPDFExport extends Plugin {
 `);
 		
 		// Add ribbon icon using custom icon
-		// eslint-disable-next-line obsidianmd/ui/sentence-case -- "PDF" is an acronym and "Typst" is a proper noun
 		this.addRibbonIcon('typst-pdf-export', 'Export to PDF with Typst', (event: MouseEvent) => {
 			this.eventHandlers.handleRibbonClick(event);
 		});
@@ -239,9 +238,7 @@ export class obsidianTypstPDFExport extends Plugin {
 	}
 
 
-	// Obsidian supports async onunload and will await it properly, even though
-	// the Plugin type definition shows void return. This ensures cleanup completes.
-	// eslint-disable-next-line @typescript-eslint/no-misused-promises
+	// eslint-disable-next-line @typescript-eslint/no-misused-promises -- Obsidian supports async onunload and will await it properly, even though the Plugin type definition shows void return. This ensures cleanup completes.
 	async onunload(): Promise<void> {
 		// Use lifecycle manager for cleanup
 		await this.lifecycle.cleanup();
