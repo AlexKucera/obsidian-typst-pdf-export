@@ -115,7 +115,7 @@ export class FrontmatterProcessor {
 				// Return content without frontmatter, but add title as frontmatter for Pandoc
 				let processedContent: string;
 				if (this.noteTitle) {
-						const titleFrontmatter = yaml.dump({ title: this.noteTitle });
+					const titleFrontmatter = yaml.dump({ title: this.noteTitle });
 					processedContent = `---\n${titleFrontmatter}---\n${parsed.content}`;
 				} else {
 					processedContent = parsed.content;
@@ -182,7 +182,7 @@ export class FrontmatterProcessor {
 				if (this.preserveFrontmatter) {
 					// Reconstruct frontmatter with modified title
 					if (this.noteTitle) {
-								const newFrontmatter = yaml.dump(frontmatter);
+						const newFrontmatter = yaml.dump(frontmatter);
 						let processedContent = content.replace(this.FRONTMATTER_PATTERN, `---\n${newFrontmatter}---\n`);
 						
 						// Add printed frontmatter if requested
@@ -201,7 +201,7 @@ export class FrontmatterProcessor {
 				} else {
 					// Add title as frontmatter for Pandoc even when not preserving original
 					if (this.noteTitle) {
-								const titleFrontmatter = yaml.dump({ title: this.noteTitle });
+						const titleFrontmatter = yaml.dump({ title: this.noteTitle });
 						let processedContent = content.replace(this.FRONTMATTER_PATTERN, `---\n${titleFrontmatter}---\n`);
 						
 						// Add printed frontmatter if requested
@@ -324,6 +324,7 @@ export class FrontmatterProcessor {
 				}
 			} else {
 				// Handle null, undefined, or any other unexpected types
+				console.debug('FrontmatterProcessor: Unexpected type in frontmatter display formatting', `key: ${key}, type: ${typeof value}`);
 				formattedValue = '';
 			}
 

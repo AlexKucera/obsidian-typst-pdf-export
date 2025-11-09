@@ -21,7 +21,7 @@ export class TypographySection implements ModalSection {
 		// Font size settings are created after font dropdowns to preserve logical ordering
 		this.createFontSettings(state).catch(error => {
 			console.error('Failed to create font settings:', error);
-			// Font settings will fall back to default fonts if this fails
+			// If font loading fails, getAvailableFonts will use hardcoded fallback fonts
 		});
 	}
 
