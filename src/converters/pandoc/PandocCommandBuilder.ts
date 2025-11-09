@@ -285,35 +285,39 @@ export class PandocCommandBuilder {
 	 * @private
 	 */
 	private async addTemplateConfiguration(args: string[], pandocOptions: PandocOptions): Promise<void> {
-		// Use universal wrapper with --template and pass actual template as template_path variable
-		if (pandocOptions.template) {
-			const pathUtils = new PathUtils(this.plugin.app);
-			const absolutePluginDir = pandocOptions.pluginDir || '';
-			const wrapperPath = pathUtils.joinPath(absolutePluginDir, 'templates', 'universal-wrapper.pandoc.typ');
+	// Use universal wrapper with --template and pass actual template as template_path variable
+	if (pandocOptions.template) {
+		const pathUtils = new PathUtils(this.plugin.app);
+		const absolutePluginDir = pandocOptions.pluginDir || '';
+		const wrapperPath = pathUtils.joinPath(absolutePluginDir, 'templates', 'universal-wrapper.pandoc.typ');
 
-			// Verify wrapper exists
-			if (!(await pathUtils.fileExists(wrapperPath))) {
-				throw new Error(`Universal wrapper template not found at: ${wrapperPath}`);
-			}
-
-			args.push('--template', wrapperPath);
-
-			// Add plugin templates directory as a resource path so Typst can find template files
-			const templatesDir = pathUtils.joinPath(absolutePluginDir, 'templates');
-			// Path quoting handled automatically by spawn
-			args.push('--resource-path', templatesDir);
-			
-			// Pass the actual template path as a variable
-			// Use relative path from vault root for Typst import
-			let templatePathForTypst = pandocOptions.template;
-			if (path.isAbsolute(templatePathForTypst) && pandocOptions.vaultBasePath) {
-				// Make template path relative to vault for Typst import
-				templatePathForTypst = path.relative(pandocOptions.vaultBasePath, templatePathForTypst);
-			}
-			
-			args.push('-V', `template_path=${templatePathForTypst}`);
+		// Verify wrapper exists
+		if (!(await pathUtils.fileExists(wrapperPath))) {
+			throw new Error(`Universal wrapper template not found at: ${wrapperPath}`);
 		}
+
+		args.push('--template', wrapperPath);
+
+		// Add plugin templates directory as a resource path so Typst can find template files
+		const templatesDir = pathUtils.joinPath(absolutePluginDir, 'templates');
+		// Path quoting handled automatically by spawn
+		args.push('--resource-path', templatesDir);
+		
+		// Pass the actual template path as a variable
+		// Use relative path from vault root for Typst import
+		let templatePathForTypst = pandocOptions.template;
+		if (path.isAbsolute(templatePathForTypst) && pandocOptions.vaultBasePath) {
+			// Make template path relative to vault for Typst import
+			templatePathForTypst = path.relative(pandocOptions.vaultBasePath, templatePathForTypst);
+		}
+
+		// Normalize to forward slashes for Typst (Typst uses forward slashes on all platforms)
+		// This prevents Windows backslashes from being interpreted as escape characters in Typst
+		templatePathForTypst = templatePathForTypst.replace(/\\/g, '/');
+
+		args.push('-V', `template_path=${templatePathForTypst}`);
 	}
+}
 
 	/**
 	 * Adds all Typst template variables mapped from export configuration.
