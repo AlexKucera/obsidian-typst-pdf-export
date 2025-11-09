@@ -143,9 +143,9 @@ export class DependencyChecker {
 		]);
 
 		const [pandocInfo, typstInfo, imagemagickInfo] = await Promise.all([
-			ExecutableChecker.checkDependency('Pandoc', pandocExec, '--version', /pandoc\s+([\d.]+)/, DEPENDENCY_CONSTANTS.MINIMUM_VERSIONS.pandoc),
-			ExecutableChecker.checkDependency('Typst', typstExec, '--version', /typst\s+([\d.]+)/, DEPENDENCY_CONSTANTS.MINIMUM_VERSIONS.typst),
-			ExecutableChecker.checkDependency('ImageMagick', imagemagickExec, '--version', /ImageMagick\s+([\d.-]+)/, DEPENDENCY_CONSTANTS.MINIMUM_VERSIONS.imagemagick)
+			ExecutableChecker.checkDependency('Pandoc', pandocExec, '--version', /pandoc\s+([\d.]+)/i, DEPENDENCY_CONSTANTS.MINIMUM_VERSIONS.pandoc),
+			ExecutableChecker.checkDependency('Typst', typstExec, '--version', /typst\s+([\d.]+)/i, DEPENDENCY_CONSTANTS.MINIMUM_VERSIONS.typst),
+			ExecutableChecker.checkDependency('ImageMagick', imagemagickExec, '--version', /ImageMagick\s+([\d.-]+)/i, DEPENDENCY_CONSTANTS.MINIMUM_VERSIONS.imagemagick)
 		]);
 
 		const missingDependencies = [pandocInfo, typstInfo, imagemagickInfo]
