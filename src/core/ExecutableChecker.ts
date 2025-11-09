@@ -11,6 +11,7 @@
 
 import { spawn, spawnSync } from 'child_process';
 import { DEPENDENCY_CONSTANTS } from './constants';
+import { isVersionAtLeast } from '../utils/versionUtils';
 import * as path from 'path';
 
 /**
@@ -20,12 +21,16 @@ import * as path from 'path';
  * @property version - Detected version string, or null if unavailable
  * @property isAvailable - Whether the executable was found and executed successfully
  * @property executablePath - The resolved path to the executable
+ * @property meetsMinimumVersion - Whether the version meets the minimum requirement (true if no version check performed)
+ * @property minimumVersion - The minimum required version string (null if not checked)
  */
 export interface DependencyInfo {
 	name: string;
 	version: string | null;
 	isAvailable: boolean;
 	executablePath: string;
+	meetsMinimumVersion: boolean;
+	minimumVersion: string | null;
 }
 
 /**
@@ -287,7 +292,8 @@ export class ExecutableChecker {
 	 * This method:
 	 * 1. Spawns the executable with the version command (e.g., '--version')
 	 * 2. Captures stdout and parses version using the provided regex
-	 * 3. Returns comprehensive dependency information
+	 * 3. Optionally validates against minimum required version
+	 * 4. Returns comprehensive dependency information
 	 *
 	 * Security: Uses spawn instead of exec to prevent command injection. Arguments
 	 * are passed separately from the command.
@@ -296,6 +302,7 @@ export class ExecutableChecker {
 	 * @param executablePath - Path to the executable to check
 	 * @param versionCommand - Command argument for version (e.g., '--version')
 	 * @param versionRegex - Regex with capture group for version number
+	 * @param minimumVersion - Optional minimum required version (e.g., "0.13.0")
 	 * @returns DependencyInfo object with availability and version information
 	 *
 	 * @example
@@ -304,11 +311,14 @@ export class ExecutableChecker {
 	 *   'Pandoc',
 	 *   '/usr/bin/pandoc',
 	 *   '--version',
-	 *   /pandoc (\d+\.\d+(?:\.\d+)?)/
+	 *   /pandoc (\d+\.\d+(?:\.\d+)?)/,
+	 *   '3.7.0'
 	 * );
 	 *
-	 * if (info.isAvailable) {
+	 * if (info.isAvailable && info.meetsMinimumVersion) {
 	 *   console.log(`Found ${info.name} version ${info.version}`);
+	 * } else if (info.isAvailable) {
+	 *   console.warn(`${info.name} ${info.version} is below minimum ${info.minimumVersion}`);
 	 * } else {
 	 *   console.error(`${info.name} not available at ${info.executablePath}`);
 	 * }
@@ -318,7 +328,8 @@ export class ExecutableChecker {
 		name: string,
 		executablePath: string,
 		versionCommand: string,
-		versionRegex: RegExp
+		versionRegex: RegExp,
+		minimumVersion: string | null = null
 	): Promise<DependencyInfo> {
 		try {
 			// Use spawn instead of exec for security - arguments passed separately
@@ -354,19 +365,28 @@ export class ExecutableChecker {
 			
 			const match = stdout.match(versionRegex);
 			const version = match ? match[1] : null;
-			
+
+			// Check version against minimum if both are available
+			const meetsMinimumVersion = minimumVersion && version
+				? isVersionAtLeast(version, minimumVersion)
+				: true; // No minimum version check or version unavailable
+
 			return {
 				name,
 				version,
 				isAvailable: true,
-				executablePath
+				executablePath,
+				meetsMinimumVersion,
+				minimumVersion
 			};
 		} catch {
 			return {
 				name,
 				version: null,
 				isAvailable: false,
-				executablePath
+				executablePath,
+				meetsMinimumVersion: true, // Not checking if unavailable
+				minimumVersion
 			};
 		}
 	}

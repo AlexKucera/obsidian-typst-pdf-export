@@ -131,9 +131,9 @@ For development or the latest changes:
 ### 1. Install Dependencies
 
 **Required:**
-- [Pandoc](https://pandoc.org/installing.html) - Markdown to Typst conversion
-- [Typst](https://typst.app/docs/reference/foundations/) - PDF generation
-- [ImageMagick](https://imagemagick.org/script/download.php) - Enhanced image processing
+- [Pandoc](https://pandoc.org/installing.html) 3.7.0+ - Markdown to Typst conversion
+- [Typst](https://typst.app/docs/reference/foundations/) 0.13.0+ - PDF generation
+- [ImageMagick](https://imagemagick.org/script/download.php) 7.1.2+ - Enhanced image processing
 
 ### 2. Export Your First Note
 
@@ -173,11 +173,13 @@ Go to the plugin settings and click **Check Dependencies** to ensure all require
 
 ### External Dependencies
 
-| Tool | Purpose | Installation |
-|------|---------|-------------|
-| **Pandoc** | Markdown → Typst conversion | [Download here](https://pandoc.org/installing.html) or `brew install pandoc` |
-| **Typst** | PDF generation | [Download here](https://typst.app/docs/reference/foundations/) or `brew install typst` |
-| **ImageMagick** | Enhanced image processing (optional) | [Download here](https://imagemagick.org/script/download.php) or `brew install imagemagick` |
+| Tool | Minimum Version | Purpose | Installation |
+|------|----------------|---------|-------------|
+| **Pandoc** | 3.7.0 | Markdown → Typst conversion | [Download here](https://pandoc.org/installing.html) or `brew install pandoc` |
+| **Typst** | 0.13.0 | PDF generation | [Download here](https://typst.app/docs/reference/foundations/) or `brew install typst` |
+| **ImageMagick** | 7.1.2 | Enhanced image processing (optional) | [Download here](https://imagemagick.org/script/download.php) or `brew install imagemagick` |
+
+**Note**: The plugin will display warnings if your installed versions are below the minimum requirements. While older versions may work, they are not officially supported and may cause compatibility issues.
 
 ### Dependency Verification
 
@@ -259,6 +261,7 @@ JB
 |---------|----------|
 | **"Pandoc not found"** | Install Pandoc and ensure it's in your system PATH |
 | **"Typst not found"** | Install Typst CLI and verify PATH configuration |
+| **Outdated version warning** | Update dependencies to meet minimum versions (Pandoc 3.7.0+, Typst 0.13.0+, ImageMagick 7.1.2+) |
 | **Export hangs** | Check if files are locked by other applications |
 | **Images not showing** | Verify image paths and file permissions |
 | **Template errors** | Check template syntax and file integrity |
