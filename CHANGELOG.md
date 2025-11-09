@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.4.1] - 2025-01-09
+
+### Fixed
+- Windows path handling in Typst template variables - backslashes now normalized to forward slashes to prevent Typst syntax errors (OS error 123: "The syntax for the filename, directory name or volume label is incorrect")
+
 ## [1.4.0] - 2025-01-09
 
 ### Added
