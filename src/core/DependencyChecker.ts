@@ -23,6 +23,7 @@ import { ExecutableChecker, DependencyInfo } from './ExecutableChecker';
  * @property imagemagick - Detailed information about ImageMagick installation
  * @property allAvailable - True if all dependencies are available
  * @property missingDependencies - Array of names of missing dependencies
+ * @property outdatedDependencies - Array of names of dependencies with versions below minimum
  */
 export interface DependencyCheckResult {
 	pandoc: DependencyInfo;
@@ -30,6 +31,7 @@ export interface DependencyCheckResult {
 	imagemagick: DependencyInfo;
 	allAvailable: boolean;
 	missingDependencies: string[];
+	outdatedDependencies: string[];
 }
 
 /**
@@ -141,13 +143,17 @@ export class DependencyChecker {
 		]);
 
 		const [pandocInfo, typstInfo, imagemagickInfo] = await Promise.all([
-			ExecutableChecker.checkDependency('Pandoc', pandocExec, '--version', /pandoc\s+([\d.]+)/),
-			ExecutableChecker.checkDependency('Typst', typstExec, '--version', /typst\s+([\d.]+)/),
-			ExecutableChecker.checkDependency('ImageMagick', imagemagickExec, '--version', /ImageMagick\s+([\d.-]+)/)
+			ExecutableChecker.checkDependency('Pandoc', pandocExec, '--version', /pandoc\s+([\d.]+)/, DEPENDENCY_CONSTANTS.MINIMUM_VERSIONS.pandoc),
+			ExecutableChecker.checkDependency('Typst', typstExec, '--version', /typst\s+([\d.]+)/, DEPENDENCY_CONSTANTS.MINIMUM_VERSIONS.typst),
+			ExecutableChecker.checkDependency('ImageMagick', imagemagickExec, '--version', /ImageMagick\s+([\d.-]+)/, DEPENDENCY_CONSTANTS.MINIMUM_VERSIONS.imagemagick)
 		]);
 
 		const missingDependencies = [pandocInfo, typstInfo, imagemagickInfo]
 			.filter(dep => !dep.isAvailable)
+			.map(dep => dep.name);
+
+		const outdatedDependencies = [pandocInfo, typstInfo, imagemagickInfo]
+			.filter(dep => dep.isAvailable && !dep.meetsMinimumVersion)
 			.map(dep => dep.name);
 
 		return {
@@ -155,7 +161,8 @@ export class DependencyChecker {
 			typst: typstInfo,
 			imagemagick: imagemagickInfo,
 			allAvailable: missingDependencies.length === 0,
-			missingDependencies
+			missingDependencies,
+			outdatedDependencies
 		};
 	}
 
@@ -289,18 +296,32 @@ export class DependencyChecker {
 			additionalPaths
 		);
 		
-		const formatVersion = (dep: DependencyInfo) => dep.isAvailable ? (dep.version || 'Available') : 'Not found';
-		
+		const formatVersion = (dep: DependencyInfo) => {
+			if (!dep.isAvailable) return 'Not found';
+			if (!dep.meetsMinimumVersion) return `${dep.version} (minimum: ${dep.minimumVersion})`;
+			return dep.version || 'Available';
+		};
+
+		const statusLines: string[] = [];
+
+		// Build status messages
+		if (!dependencyResult.allAvailable) {
+			statusLines.push(`Missing dependencies: ${dependencyResult.missingDependencies.join(', ')}. Please install them and check the paths in settings.`);
+		} else if (dependencyResult.outdatedDependencies.length > 0) {
+			statusLines.push(`⚠️ Outdated versions detected: ${dependencyResult.outdatedDependencies.join(', ')}.`);
+			statusLines.push(`Please update to avoid compatibility issues.`);
+		} else {
+			statusLines.push('✓ All dependencies found and up to date!');
+		}
+
 		const message = `Dependency Status:
 Pandoc: ${formatVersion(dependencyResult.pandoc)}
 Typst: ${formatVersion(dependencyResult.typst)}
 ImageMagick: ${formatVersion(dependencyResult.imagemagick)}
 
-${dependencyResult.allAvailable 
-			? 'All dependencies found!' 
-			: `Missing dependencies: ${dependencyResult.missingDependencies.join(', ')}. Please install them and check the paths in settings.`}`;
-		
-		ExportErrorHandler.showProgressNotice(message, 12000); // Show for 12 seconds (longer due to more content)
+${statusLines.join('\n')}`;
+
+		ExportErrorHandler.showProgressNotice(message, 15000); // Show for 15 seconds (longer due to version info)
 	}
 
 	/**

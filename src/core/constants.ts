@@ -202,6 +202,22 @@ export const DEPENDENCY_CONSTANTS = {
 	},
 
 	/**
+	 * Minimum required versions for external dependencies.
+	 *
+	 * These versions represent the minimum supported versions that have been
+	 * tested with this plugin. Users with older versions will receive warnings.
+	 *
+	 * @property pandoc - Pandoc 3.7.0 (current stable as of plugin development)
+	 * @property typst - Typst 0.13.0 (version used during plugin development)
+	 * @property imagemagick - ImageMagick 7.1.2 (current stable as of plugin development)
+	 */
+	MINIMUM_VERSIONS: {
+		pandoc: '3.7.0',
+		typst: '0.13.0',
+		imagemagick: '7.1.2'
+	},
+
+	/**
 	 * Common installation paths to search for executables.
 	 *
 	 * These paths are checked in addition to the system PATH to handle tools
