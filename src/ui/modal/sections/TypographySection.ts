@@ -16,35 +16,38 @@ export class TypographySection implements ModalSection {
 		new Setting(this.container)
 			.setName('Typography')
 			.setHeading();
-		
-		// Create font settings asynchronously
-		void this.createFontSettings(state);
-		this.createFontSizeSettings(state);
+
+		// Create font settings asynchronously with explicit error handling
+		// Font size settings are created after font dropdowns to preserve logical ordering
+		this.createFontSettings(state).catch(error => {
+			console.error('Failed to create font settings:', error);
+			// Font settings will fall back to default fonts if this fails
+		});
 	}
-	
+
 	private async createFontSettings(state: ModalState): Promise<void> {
 		if (!this.container) return;
-		
+
 		// Get available fonts from cache
 		const availableFonts = await this.getAvailableFonts(state);
-		
+
 		// Body font dropdown
 		new Setting(this.container)
 			.setName('Body font')
 			.setDesc('Primary font for document text')
 			.addDropdown(dropdown => {
 				const currentFont = String(state.templateVariables.bodyFont || 'Times New Roman');
-				
+
 				// Add all available fonts
 				availableFonts.forEach(font => {
 					dropdown.addOption(font, font);
 				});
-				
+
 				// Add current font if it's not in the list
 				if (!availableFonts.includes(currentFont)) {
 					dropdown.addOption(currentFont, currentFont);
 				}
-				
+
 				// Set current value and change handler
 				dropdown
 					.setValue(currentFont)
@@ -52,24 +55,24 @@ export class TypographySection implements ModalSection {
 						state.updateTemplateVariables({ bodyFont: value });
 					});
 			});
-		
-		// Heading font dropdown  
+
+		// Heading font dropdown
 		new Setting(this.container)
 			.setName('Heading font')
 			.setDesc('Font for headings and titles')
 			.addDropdown(dropdown => {
 				const currentFont = String(state.templateVariables.headingFont || 'Times New Roman');
-				
+
 				// Add all available fonts
 				availableFonts.forEach(font => {
 					dropdown.addOption(font, font);
 				});
-				
+
 				// Add current font if it's not in the list
 				if (!availableFonts.includes(currentFont)) {
 					dropdown.addOption(currentFont, currentFont);
 				}
-				
+
 				// Set current value and change handler
 				dropdown
 					.setValue(currentFont)
@@ -77,24 +80,24 @@ export class TypographySection implements ModalSection {
 						state.updateTemplateVariables({ headingFont: value });
 					});
 			});
-		
+
 		// Monospace font dropdown
 		new Setting(this.container)
 			.setName('Monospace font')
 			.setDesc('Font for code blocks and inline code')
 			.addDropdown(dropdown => {
 				const currentFont = String(state.templateVariables.monospaceFont || 'Courier New');
-				
+
 				// Add all available fonts
 				availableFonts.forEach(font => {
 					dropdown.addOption(font, font);
 				});
-				
+
 				// Add current font if it's not in the list
 				if (!availableFonts.includes(currentFont)) {
 					dropdown.addOption(currentFont, currentFont);
 				}
-				
+
 				// Set current value and change handler
 				dropdown
 					.setValue(currentFont)
@@ -102,8 +105,11 @@ export class TypographySection implements ModalSection {
 						state.updateTemplateVariables({ monospaceFont: value });
 					});
 			});
+
+		// Create font size settings after font dropdowns for logical ordering
+		this.createFontSizeSettings(state);
 	}
-	
+
 	private createFontSizeSettings(state: ModalState): void {
 		if (!this.container) return;
 		
