@@ -9,6 +9,7 @@ import {
 	Setting,
 	normalizePath
 } from 'obsidian';
+import * as path from 'path';
 import type { obsidianTypstPDFExport } from '../../main';
 import { ExportFormat } from '../core/settings';
 import { SecurityUtils } from '../core/SecurityUtils';
@@ -27,9 +28,7 @@ export class ObsidianTypstPDFExportSettingTab extends PluginSettingTab {
 	display(): void {
 		const { containerEl } = this;
 		containerEl.empty();
-		
-		containerEl.createEl('h2', { text: 'Typst PDF Export Settings' });
-		
+
 		// Executable paths section
 		this.createExecutablePathsSection(containerEl);
 		
@@ -47,14 +46,16 @@ export class ObsidianTypstPDFExportSettingTab extends PluginSettingTab {
 	}
 	
 	private createExecutablePathsSection(containerEl: HTMLElement): void {
-		containerEl.createEl('h3', { text: 'Executable Paths' });
+		new Setting(containerEl)
+			.setName('Executable paths')
+			.setHeading();
 		
 		// Add dependency check button
 		new Setting(containerEl)
 			.setName('Dependencies')
 			.setDesc('Check the status of external dependencies')
 			.addButton(button => button
-				.setButtonText('Check Dependencies')
+				.setButtonText('Check dependencies')
 				.setCta()
 				.onClick(async () => {
 					await this.plugin.showDependencyStatus();
@@ -62,9 +63,9 @@ export class ObsidianTypstPDFExportSettingTab extends PluginSettingTab {
 		
 		new Setting(containerEl)
 			.setName('Pandoc path')
-			.setDesc('Path to pandoc executable (leave empty to use system PATH)')
+			.setDesc('Path to pandoc executable (leave empty to use system path)')
 			.addText(text => text
-				.setPlaceholder('pandoc')
+				.setPlaceholder('Pandoc')
 				.setValue(this.plugin.settings.pandocPath)
 				.onChange(async (value) => {
 					if (!SecurityUtils.validateExecutablePath(value)) {
@@ -77,9 +78,9 @@ export class ObsidianTypstPDFExportSettingTab extends PluginSettingTab {
 		
 		new Setting(containerEl)
 			.setName('Typst path')
-			.setDesc('Path to typst executable (leave empty to use system PATH)')
+			.setDesc('Path to typst executable (leave empty to use system path)')
 			.addText(text => text
-				.setPlaceholder('typst')
+				.setPlaceholder('Typst')
 				.setValue(this.plugin.settings.typstPath)
 				.onChange(async (value) => {
 					if (!SecurityUtils.validateExecutablePath(value)) {
@@ -91,10 +92,10 @@ export class ObsidianTypstPDFExportSettingTab extends PluginSettingTab {
 				}));
 		
 		new Setting(containerEl)
-			.setName('ImageMagick path')
-			.setDesc('Path to ImageMagick executable (leave empty to use system PATH)')
+			.setName('Imagemagick path')
+			.setDesc('Path to imagemagick executable (leave empty to use system path)')
 			.addText(text => text
-				.setPlaceholder('magick')
+				.setPlaceholder('Magick')
 				.setValue(this.plugin.settings.executablePaths.imagemagickPath)
 				.onChange(async (value) => {
 					if (!SecurityUtils.validateExecutablePath(value)) {
@@ -131,11 +132,13 @@ export class ObsidianTypstPDFExportSettingTab extends PluginSettingTab {
 	}
 	
 	private createExportDefaultsSection(containerEl: HTMLElement): void {
-		containerEl.createEl('h3', { text: 'Export Defaults' });
+		new Setting(containerEl)
+			.setName('Export defaults')
+			.setHeading();
 		
 		new Setting(containerEl)
 			.setName('Default template')
-			.setDesc('Default Typst template for exports')
+			.setDesc('Default typst template for exports')
 			.addDropdown(async (dropdown) => {
 				try {
 					const templates = await this.plugin.templateManager.getAvailableTemplates();
@@ -157,7 +160,7 @@ export class ObsidianTypstPDFExportSettingTab extends PluginSettingTab {
 				} catch (error) {
 					console.error('Failed to load templates:', error);
 					// Fallback to text input
-					dropdown.addOption('default.typ', 'default.typ');
+					dropdown.addOption('default.typ', 'Default.typ');
 					dropdown.setValue(this.plugin.settings.exportDefaults.template);
 				}
 			});
@@ -176,13 +179,14 @@ export class ObsidianTypstPDFExportSettingTab extends PluginSettingTab {
 		
 		new Setting(containerEl)
 			.setName('Output folder')
-			.setDesc('Default folder for exported PDFs (relative to vault root)')
+			.setDesc('Folder for exported pdfs (relative to vault root)')
 			.addText(text => {
 				text
-					.setPlaceholder('exports')
+					.setPlaceholder('Exports')
 					.setValue(this.plugin.settings.outputFolder)
 					.onChange(async (value) => {
-						const normalizedValue = normalizePath(value);
+						// Don't normalize absolute paths as normalizePath strips the leading slash
+					const normalizedValue = path.isAbsolute(value) ? value : normalizePath(value);
 						if (!SecurityUtils.validateOutputPath(normalizedValue)) {
 							ExportErrorHandler.showValidationError('output folder', SecurityUtils.getPathValidationError(normalizedValue));
 							return;
@@ -229,7 +233,9 @@ export class ObsidianTypstPDFExportSettingTab extends PluginSettingTab {
 	}
 
 	private createTypographyDefaultsSection(containerEl: HTMLElement): void {
-	containerEl.createEl('h3', { text: 'Typography Defaults' });
+	new Setting(containerEl)
+		.setName('Typography defaults')
+		.setHeading();
 	
 	// Use helper method for all three font dropdowns
 	this.createFontDropdown(
@@ -293,7 +299,9 @@ export class ObsidianTypstPDFExportSettingTab extends PluginSettingTab {
 	}
 
 	private createPageSetupSection(containerEl: HTMLElement): void {
-	containerEl.createEl('h3', { text: 'Page Setup' });
+	new Setting(containerEl)
+		.setName('Page setup')
+		.setHeading();
 	
 	new Setting(containerEl)
 		.setName('Page size')
@@ -363,7 +371,9 @@ export class ObsidianTypstPDFExportSettingTab extends PluginSettingTab {
 }
 	
 	private createBehaviorSection(containerEl: HTMLElement): void {
-	containerEl.createEl('h3', { text: 'Behavior' });
+	new Setting(containerEl)
+		.setName('Behavior')
+		.setHeading();
 	
 	new Setting(containerEl)
 		.setName('Open after export')

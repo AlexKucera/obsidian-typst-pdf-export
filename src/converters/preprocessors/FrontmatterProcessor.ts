@@ -3,6 +3,8 @@
  * Extracted from MarkdownPreprocessor for better code organization
  */
 
+import * as yaml from 'js-yaml';
+import matter from 'gray-matter';
 import { PreprocessingResult } from '../MarkdownPreprocessor';
 
 export interface FrontmatterProcessorConfig {
@@ -32,7 +34,6 @@ export class FrontmatterProcessor {
 		if (!this.FRONTMATTER_PATTERN.test(content)) {
 			// No frontmatter found - add title frontmatter if we have a noteTitle
 			if (this.noteTitle) {
-				const yaml = require('js-yaml');
 				const titleFrontmatter = yaml.dump({ title: this.noteTitle });
 				result.metadata.title = this.noteTitle;
 				result.metadata.frontmatter = { title: this.noteTitle };
@@ -43,28 +44,30 @@ export class FrontmatterProcessor {
 		}
 
 		// Use gray-matter for robust frontmatter parsing
-		const matter = require('gray-matter');
-		
+
 		// Add debugging to see what's being parsed
-		console.log('FrontmatterProcessor: Attempting to parse content with frontmatter pattern detected');
-		console.log('First 200 chars:', content.substring(0, 200));
-		
+		console.debug('FrontmatterProcessor: Attempting to parse content with frontmatter pattern detected', `(content length: ${content.length})`);
+
 		const parsed = matter(content);
 		
 		if (parsed.data && Object.keys(parsed.data).length > 0) {
-			// Replace frontmatter title with filename if noteTitle is provided
+			// Sanitize frontmatter first to prevent citation fields from leaking to downstream consumers
+			const sanitizedFrontmatter = this.stripCitationFields(parsed.data);
+
+			// Store sanitized frontmatter in metadata (with title override if needed)
 			if (this.noteTitle) {
-				const frontmatterCopy = { ...parsed.data };
-				frontmatterCopy.title = this.noteTitle;
-				result.metadata.frontmatter = frontmatterCopy;
+				result.metadata.frontmatter = {
+					...sanitizedFrontmatter,
+					title: this.noteTitle
+				};
 			} else {
-				result.metadata.frontmatter = parsed.data;
+				result.metadata.frontmatter = sanitizedFrontmatter;
 			}
-			
+
 			// Extract tags from frontmatter if they exist
 			if (parsed.data.tags) {
 				let frontmatterTags: string[] = [];
-				
+
 				if (Array.isArray(parsed.data.tags)) {
 					// Handle array of tags
 					frontmatterTags = parsed.data.tags
@@ -77,7 +80,7 @@ export class FrontmatterProcessor {
 						.map((tag: string) => tag.trim())
 						.filter((tag: string) => tag !== '');
 				}
-				
+
 				// Merge with existing tags (avoid duplicates)
 				for (const tag of frontmatterTags) {
 					if (!result.metadata.tags.includes(tag)) {
@@ -85,22 +88,19 @@ export class FrontmatterProcessor {
 					}
 				}
 			}
-			
+
 			// Extract title - use noteTitle if available, otherwise frontmatter title
 			if (this.noteTitle) {
 				result.metadata.title = this.noteTitle;
 			} else if (parsed.data.title && typeof parsed.data.title === 'string') {
 				result.metadata.title = parsed.data.title.trim();
 			}
-			
-			// Handle frontmatter preservation and display options
-			const finalFrontmatter = this.noteTitle ? 
-				{ ...parsed.data, title: this.noteTitle } : 
-				parsed.data;
+
+			// Use the sanitized frontmatter from metadata for writing
+			const finalFrontmatter = result.metadata.frontmatter;
 			
 			if (this.preserveFrontmatter) {
 				// Keep the frontmatter in the content, but reconstruct it with the modified title
-				const yaml = require('js-yaml');
 				const newFrontmatter = yaml.dump(finalFrontmatter);
 				let processedContent = `---\n${newFrontmatter}---\n${parsed.content}`;
 				
@@ -115,7 +115,6 @@ export class FrontmatterProcessor {
 				// Return content without frontmatter, but add title as frontmatter for Pandoc
 				let processedContent: string;
 				if (this.noteTitle) {
-					const yaml = require('js-yaml');
 					const titleFrontmatter = yaml.dump({ title: this.noteTitle });
 					processedContent = `---\n${titleFrontmatter}---\n${parsed.content}`;
 				} else {
@@ -141,7 +140,6 @@ export class FrontmatterProcessor {
 		} else {
 			// No frontmatter found - add title frontmatter if we have a noteTitle
 			if (this.noteTitle) {
-				const yaml = require('js-yaml');
 				const titleFrontmatter = yaml.dump({ title: this.noteTitle });
 				result.metadata.title = this.noteTitle;
 				result.metadata.frontmatter = { title: this.noteTitle };
@@ -152,8 +150,7 @@ export class FrontmatterProcessor {
 		}
 	} catch (error: unknown) {
 		const errorMessage = error instanceof Error ? error.message : String(error);
-		console.log('FrontmatterProcessor: gray-matter failed with error:', errorMessage);
-		console.log('Content being parsed (first 500 chars):', content.substring(0, 500));
+		console.error('FrontmatterProcessor: gray-matter failed with error:', errorMessage, `(content length: ${content.length})`);
 		result.warnings.push(`Failed to parse frontmatter with gray-matter: ${errorMessage}`);
 		
 		// Fallback to simple regex-based parsing
@@ -185,7 +182,6 @@ export class FrontmatterProcessor {
 				if (this.preserveFrontmatter) {
 					// Reconstruct frontmatter with modified title
 					if (this.noteTitle) {
-						const yaml = require('js-yaml');
 						const newFrontmatter = yaml.dump(frontmatter);
 						let processedContent = content.replace(this.FRONTMATTER_PATTERN, `---\n${newFrontmatter}---\n`);
 						
@@ -205,7 +201,6 @@ export class FrontmatterProcessor {
 				} else {
 					// Add title as frontmatter for Pandoc even when not preserving original
 					if (this.noteTitle) {
-						const yaml = require('js-yaml');
 						const titleFrontmatter = yaml.dump({ title: this.noteTitle });
 						let processedContent = content.replace(this.FRONTMATTER_PATTERN, `---\n${titleFrontmatter}---\n`);
 						
@@ -230,7 +225,6 @@ export class FrontmatterProcessor {
 		} else {
 			// No frontmatter pattern found, but gray-matter failed - treat as file without frontmatter
 			if (this.noteTitle) {
-				const yaml = require('js-yaml');
 				const titleFrontmatter = yaml.dump({ title: this.noteTitle });
 				result.metadata.title = this.noteTitle;
 				result.metadata.frontmatter = { title: this.noteTitle };
@@ -241,6 +235,20 @@ export class FrontmatterProcessor {
 		return content;
 	}
 }
+
+	/**
+	 * Strip citation-related fields from frontmatter to prevent Pandoc bibliography processing
+	 */
+	private stripCitationFields(frontmatter: Record<string, unknown>): Record<string, unknown> {
+		const citationFields = ['bibliography', 'references', 'csl', 'citation-style', 'nocite', 'link-citations', 'reference-section-title'];
+		const sanitized = { ...frontmatter };
+
+		for (const field of citationFields) {
+			delete sanitized[field];
+		}
+
+		return sanitized;
+	}
 
 	/**
 	 * Format frontmatter as a readable display block
@@ -265,13 +273,19 @@ export class FrontmatterProcessor {
 			if (Array.isArray(value)) {
 				// For arrays, put each item on its own line if there are many items
 				if (value.length > 3) {
-					formattedValue = '\n\n' + value.map(item => `- ${item}`).join('\n') + '\n';
+					formattedValue = '\n\n' + value.map(item => {
+						const itemStr = typeof item === 'object' ? JSON.stringify(item) : String(item);
+						return `- ${itemStr}`;
+					}).join('\n') + '\n';
 				} else {
-					formattedValue = value.join(', ');
+					formattedValue = value.map(item =>
+						typeof item === 'object' ? JSON.stringify(item) : String(item)
+					).join(', ');
 				}
-			} else if (typeof value === 'object') {
+			} else if (typeof value === 'object' && value !== null) {
 				formattedValue = JSON.stringify(value);
-			} else {
+			} else if (typeof value === 'string' || typeof value === 'number' || typeof value === 'boolean') {
+				// Handle primitive values
 				const valueStr = String(value);
 				// If the value is very long (like email lists), break it up
 				if (valueStr.length > 80 && valueStr.includes(',')) {
@@ -308,8 +322,12 @@ export class FrontmatterProcessor {
 				} else {
 					formattedValue = valueStr;
 				}
+			} else {
+				// Handle null, undefined, or any other unexpected types
+				console.debug('FrontmatterProcessor: Unexpected type in frontmatter display formatting', `key: ${key}, type: ${typeof value}`);
+				formattedValue = '';
 			}
-			
+
 			// Add line break after the property label, then the value
 			if (formattedValue.startsWith('\n')) {
 				// Value already starts with newline (like lists), so just add the label

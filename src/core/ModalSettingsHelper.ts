@@ -14,7 +14,7 @@
  */
 
 import { TFile } from 'obsidian';
-import { obsidianTypstPDFExportSettings } from './settings';
+import { obsidianTypstPDFExportSettings, ExportFormat } from './settings';
 import { ExportConfigModalSettings } from '../ui/modal/modalTypes';
 
 /**
@@ -179,8 +179,8 @@ export class ModalSettingsHelper {
 		};
 
 		// Auto-adjust width for single-page landscape mode
-		const landscapeAdjustment = settings.pageSetup.orientation === 'landscape' 
-			&& settings.exportDefaults.format === 'single-page'
+		const landscapeAdjustment = settings.pageSetup.orientation === 'landscape'
+			&& settings.exportDefaults.format === ExportFormat.SinglePage
 			? { width: 'auto' }
 			: {};
 

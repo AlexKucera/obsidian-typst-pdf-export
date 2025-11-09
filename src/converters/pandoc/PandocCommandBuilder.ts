@@ -201,10 +201,6 @@ export class PandocCommandBuilder {
 		// Enable standalone mode (required for PDF output)
 		args.push('--standalone');
 
-		// Disable citeproc to prevent automatic bibliography processing
-		// This prevents "document does not contain a bibliography" errors when
-		// Pandoc detects citation-like patterns but no bibliography file is provided
-		args.push('--no-citeproc');
 
 		// Embed resources (images, etc.) directly into the output
 		args.push('--embed-resources');

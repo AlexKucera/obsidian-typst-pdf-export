@@ -20,10 +20,12 @@ export class EventHandlers {
 				if (file.extension === 'md') {
 					menu.addItem((item) => {
 						item
-							.setTitle('Export to PDF (Typst)')
+							.setTitle('Export to PDF')
 							.setIcon('file-output')
 							.onClick(() => {
-								this.plugin.exportFile(file);
+								this.plugin.exportFile(file).catch(error => {
+									console.error('Failed to export file:', error);
+								});
 							});
 					});
 				}
@@ -35,10 +37,12 @@ export class EventHandlers {
 			this.plugin.app.workspace.on('editor-menu', (menu: Menu, editor: Editor, view: MarkdownView) => {
 				menu.addItem((item) => {
 					item
-						.setTitle('Export to PDF (Typst)')
+						.setTitle('Export to PDF')
 						.setIcon('file-output')
 						.onClick(() => {
-							this.plugin.exportCurrentNote(view);
+							this.plugin.exportCurrentNote(view).catch(error => {
+								console.error('Failed to export current note:', error);
+							});
 						});
 				});
 			})
@@ -48,15 +52,17 @@ export class EventHandlers {
 		this.plugin.registerEvent(
 			this.plugin.app.workspace.on('files-menu', (menu: Menu, files: TAbstractFile[]) => {
 				// Filter for markdown files only
-				const markdownFiles = files.filter(this.plugin.isMarkdownFile);
+				const markdownFiles = files.filter((file) => this.plugin.isMarkdownFile(file));
 				
 				if (markdownFiles.length > 0) {
 					menu.addItem((item) => {
 						item
-							.setTitle(`Export to PDF (Typst)`)
+							.setTitle(`Export to PDF`)
 							.setIcon('file-output')
 							.onClick(() => {
-								this.plugin.exportFiles(markdownFiles);
+								this.plugin.exportFiles(markdownFiles).catch(error => {
+									console.error('Failed to export files:', error);
+								});
 							});
 					});
 					
@@ -65,7 +71,9 @@ export class EventHandlers {
 							.setTitle(`Export with configuration...`)
 							.setIcon('settings')
 							.onClick(() => {
-								this.plugin.showExportModalForFiles(markdownFiles);
+								this.plugin.showExportModalForFiles(markdownFiles).catch(error => {
+									console.error('Failed to show export modal for files:', error);
+								});
 							});
 					});
 				}
@@ -92,7 +100,9 @@ export class EventHandlers {
 				.setTitle('Export current note(s)')
 				.setIcon('file-output')
 				.onClick(() => {
-					this.plugin.exportFile(activeView.file!);
+					this.plugin.exportFile(activeView.file!).catch(error => {
+						console.error('Failed to export file:', error);
+					});
 				})
 		);
 		
@@ -101,7 +111,9 @@ export class EventHandlers {
 				.setTitle('Export with configuration…')
 				.setIcon('settings')
 				.onClick(() => {
-					this.plugin.showExportModal(activeView);
+					this.plugin.showExportModal(activeView).catch(error => {
+						console.error('Failed to show export modal:', error);
+					});
 				})
 		);
 		

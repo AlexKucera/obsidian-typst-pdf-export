@@ -6,6 +6,7 @@
 import { Setting } from 'obsidian';
 import { ModalSection, ModalState, ValidationResult } from '../modalTypes';
 import { SUPPORTED_PAPER_SIZES } from '../../../utils/paperSizeMapper';
+import { ExportFormat } from '../../../core/settings';
 
 export class PageSetupSection implements ModalSection {
 	private container: HTMLElement | null = null;
@@ -13,7 +14,9 @@ export class PageSetupSection implements ModalSection {
 	
 	render(containerEl: HTMLElement, state: ModalState): void {
 		this.container = containerEl.createDiv('export-section');
-		this.container.createEl('h3', { text: 'Page Setup' });
+		new Setting(this.container)
+			.setName('Page setup')
+			.setHeading();
 		
 		this.createPageSizeSettings(state);
 		this.createOrientationSettings(state);
@@ -53,12 +56,12 @@ export class PageSetupSection implements ModalSection {
 					.setValue(String(state.templateVariables.orientation || 'portrait'))
 					.onChange(value => {
 						const isLandscape = value === 'landscape';
-						state.updateTemplateVariables({ 
+						state.updateTemplateVariables({
 							orientation: value,
 							flipped: isLandscape,
 							// Auto-adjust width for single-page mode when flipped
-							...(isLandscape && state.settings.format === 'single-page' 
-								? { width: 'auto' } 
+							...(isLandscape && state.settings.format === ExportFormat.SinglePage
+								? { width: 'auto' }
 								: {})
 						});
 					});
@@ -69,7 +72,7 @@ export class PageSetupSection implements ModalSection {
 		if (!this.container) return;
 		
 		const marginsContainer = this.container.createDiv('margins-container');
-		marginsContainer.createEl('h4', { text: 'Text Margins' });
+		marginsContainer.createEl('h4', { text: 'Text margins' });
 		marginsContainer.createEl('p', { 
 			text: 'Enter margins in centimeters (e.g., "2.5", "1.8", "3.0")',
 			cls: 'setting-item-description'

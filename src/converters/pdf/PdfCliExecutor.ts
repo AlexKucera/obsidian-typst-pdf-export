@@ -3,10 +3,14 @@
  * Executes external pdf2img binary to convert PDF pages to images.
  */
 
+import { exec } from 'child_process';
+import { promisify } from 'util';
 import * as path from 'path';
 import { BinaryLocator } from './BinaryLocator';
 import { EnvironmentUtils } from './EnvironmentUtils';
 import type { obsidianTypstPDFExport } from '../../../main';
+
+const execAsync = promisify(exec);
 
 export interface PdfCliOptions {
 	/** Scale factor for the rendered image */
@@ -111,10 +115,6 @@ export class PdfCliExecutor {
 		plugin?: obsidianTypstPDFExport
 	): Promise<PdfCliResult> {
 		try {
-			const { exec } = require('child_process');
-			const { promisify } = require('util');
-			const execAsync = promisify(exec);
-
 			// Get augmented environment for CLI execution
 			const env = EnvironmentUtils.getAugmentedEnvironment(plugin?.settings);
 			

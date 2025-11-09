@@ -3,6 +3,7 @@
  * Handles filename pattern matching when pdf2img generates files with different names.
  */
 
+import { promises as fs } from 'fs';
 import * as path from 'path';
 import { PathUtils } from '../../core/PathUtils';
 import type { obsidianTypstPDFExport } from '../../../main';
@@ -35,7 +36,6 @@ export class FileDiscovery {
 		if (!plugin?.app) {
 			// Fallback to path for external tool output directories
 			const expectedOutputPath = path.join(outputDir, expectedFileName);
-			const fs = require('fs').promises;
 			try {
 				await fs.access(expectedOutputPath);
 				return {
@@ -112,8 +112,7 @@ export class FileDiscovery {
 				files = dirList.files.map(f => path.basename(f));
 			} else {
 				// Use filesystem fallback for absolute/external paths
-				const fs = require('fs').promises;
-				files = await fs.readdir(outputDir);
+					files = await fs.readdir(outputDir);
 			}
 
 			// Look for any image files that might match
@@ -180,7 +179,6 @@ export class FileDiscovery {
 		expectedOutputPath: string
 	): Promise<FileDiscoveryResult> {
 		try {
-			const fs = require('fs').promises;
 			// Debug: List what files are actually in the output directory
 			const files = await fs.readdir(outputDir);
 

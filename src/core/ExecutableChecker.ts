@@ -9,6 +9,7 @@
  * - Cross-platform path handling (Unix and Windows)
  */
 
+import { spawn, spawnSync } from 'child_process';
 import { DEPENDENCY_CONSTANTS } from './constants';
 import * as path from 'path';
 
@@ -140,8 +141,6 @@ export class ExecutableChecker {
 	 * ```
 	 */
 	private static async findExecutableWithWhich(executableName: string, additionalPaths: string[] = []): Promise<string | null> {
-		const { spawn } = require('child_process');
-
 		try {
 			const stdout = await new Promise<string>((resolve, reject) => {
 				const env = this.getAugmentedEnv(additionalPaths);
@@ -259,8 +258,6 @@ export class ExecutableChecker {
 		const searchName = (userPath && userPath.trim() !== '') ? userPath.trim() : defaultName;
 
 		// Try to find the executable using which command synchronously
-		const { spawnSync } = require('child_process');
-
 		// Use platform-specific command: 'where' on Windows, 'which' on Unix
 		const whichCommand = process.platform === 'win32' ? 'where' : 'which';
 
@@ -323,8 +320,6 @@ export class ExecutableChecker {
 		versionCommand: string,
 		versionRegex: RegExp
 	): Promise<DependencyInfo> {
-		const { spawn } = require('child_process');
-
 		try {
 			// Use spawn instead of exec for security - arguments passed separately
 			const stdout = await new Promise<string>((resolve, reject) => {
@@ -396,8 +391,6 @@ export class ExecutableChecker {
 	 * ```
 	 */
 	public static checkDependencySync(executablePath: string, versionCommand: string): boolean {
-		const { spawnSync } = require('child_process');
-		
 		try {
 			const result = spawnSync(executablePath, versionCommand.split(' '), {
 				encoding: 'utf8',

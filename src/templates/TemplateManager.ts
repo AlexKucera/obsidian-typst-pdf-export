@@ -36,15 +36,7 @@ export class TemplateManager {
 			}
 
 			// Read directory contents - convert absolute path to vault-relative
-			const vaultBasePath = this.pathUtils.getVaultPath();
-			let vaultRelativePath = this.templatesPath;
-
-			// Convert absolute path to vault-relative path
-			if (this.templatesPath.startsWith(vaultBasePath)) {
-				vaultRelativePath = this.templatesPath.substring(vaultBasePath.length);
-				// Remove leading separators
-				vaultRelativePath = vaultRelativePath.replace(/^[/\\]+/, '');
-			}
+			const vaultRelativePath = this.pathUtils.toVaultRelative(this.templatesPath);
 
 			const list = await this.plugin.app.vault.adapter.list(vaultRelativePath);
 			const files = list.files.map(filePath => path.basename(filePath));
@@ -127,11 +119,12 @@ export class TemplateManager {
 				case 'version':
 					metadata.version = value;
 					break;
-				case 'variable':
+				case 'variable': {
 					// Parse variable definition (e.g., @variable: font:string:Body font family)
 					const [name, type, description] = value.split(':');
 					metadata.variables.push({ name, type, description });
 					break;
+				}
 			}
 		}
 		

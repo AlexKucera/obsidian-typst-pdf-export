@@ -3,7 +3,7 @@
  * Handles registration of all plugin commands and their callbacks
  */
 
-import { Editor, MarkdownView } from 'obsidian';
+import { Editor, MarkdownView, Notice } from 'obsidian';
 import type { obsidianTypstPDFExport } from '../../main';
 
 export class CommandRegistry {
@@ -18,7 +18,11 @@ export class CommandRegistry {
 			id: 'export-current-note',
 			name: 'Export current note(s)',
 			editorCallback: (editor: Editor, view: MarkdownView) => {
-				this.plugin.exportCurrentNote(view);
+				this.plugin.exportCurrentNote(view).catch(error => {
+					console.error('Failed to export current note:', error);
+					const errorMessage = error?.message ?? String(error);
+					new Notice(`Failed to export current note: ${errorMessage}`);
+				});
 			}
 		});
 		
@@ -27,16 +31,24 @@ export class CommandRegistry {
 			id: 'export-with-config',
 			name: 'Export with configuration…',
 			editorCallback: (editor: Editor, view: MarkdownView) => {
-				this.plugin.showExportModal(view);
+				this.plugin.showExportModal(view).catch(error => {
+					console.error('Failed to show export modal:', error);
+					const errorMessage = error?.message ?? String(error);
+					new Notice(`Failed to show export modal: ${errorMessage}`);
+				});
 			}
 		});
 		
 		// Check dependencies command
 		this.plugin.addCommand({
 			id: 'check-dependencies',
-			name: 'Check Pandoc and Typst dependencies',
+			name: 'Check pandoc and typst dependencies',
 			callback: () => {
-				this.plugin.showDependencyStatus();
+				this.plugin.showDependencyStatus().catch(error => {
+					console.error('Failed to show dependency status:', error);
+					const errorMessage = error?.message ?? String(error);
+					new Notice(`Failed to show dependency status: ${errorMessage}`);
+				});
 			}
 		});
 	}

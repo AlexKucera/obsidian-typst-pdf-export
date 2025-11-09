@@ -1,57 +1,100 @@
 // @ts-check
 
-import eslint from '@eslint/js';
-import globals from 'globals';
+import js from '@eslint/js';
 import tseslint from 'typescript-eslint';
+import obsidianmd from 'eslint-plugin-obsidianmd';
+import importPlugin from 'eslint-plugin-import';
+import globals from 'globals';
 
 export default tseslint.config(
-	// Apply ESLint recommended rules
-	eslint.configs.recommended,
-	// Apply TypeScript-ESLint recommended rules
-	...tseslint.configs.recommended,
+	// Base JavaScript recommended rules
+	js.configs.recommended,
+
+	// TypeScript recommended type-checked rules
+	...tseslint.configs.recommendedTypeChecked,
+
+	// Obsidian-specific configuration
 	{
-		// Configure language options
+		plugins: {
+			obsidianmd: obsidianmd,
+			import: importPlugin,
+		},
+
 		languageOptions: {
 			globals: {
 				...globals.node,
-				...globals.es2022,
+				...globals.browser,
+				NodeJS: 'readonly',  // TypeScript global namespace
 			},
 			parserOptions: {
-				sourceType: 'module',
-				ecmaVersion: 2022,
+				projectService: true,
+				tsconfigRootDir: import.meta.dirname,
 			},
 		},
-		
-		// Configure files to lint
-		files: ['**/*.ts', '**/*.js', 'main.ts'],
-		
-		// Configure rules - incorporating Obsidian sample plugin settings
+
+		// Apply Obsidian plugin recommended rules (manually specified)
 		rules: {
-			// Disable base ESLint no-unused-vars in favor of TypeScript version
+			// Obsidian command rules
+			'obsidianmd/commands/no-command-in-command-id': 'error',
+			'obsidianmd/commands/no-command-in-command-name': 'error',
+			'obsidianmd/commands/no-default-hotkeys': 'error',
+			'obsidianmd/commands/no-plugin-id-in-command-id': 'error',
+			'obsidianmd/commands/no-plugin-name-in-command-name': 'error',
+
+			// Settings tab rules
+			'obsidianmd/settings-tab/no-manual-html-headings': 'error',
+			'obsidianmd/settings-tab/no-problematic-settings-headings': 'error',
+
+			// Other Obsidian rules
+			'obsidianmd/vault/iterate': 'error',
+			'obsidianmd/detach-leaves': 'error',
+			'obsidianmd/hardcoded-config-path': 'error',
+			'obsidianmd/no-forbidden-elements': 'error',
+			'obsidianmd/no-plugin-as-component': 'error',
+			'obsidianmd/no-sample-code': 'error',
+			'obsidianmd/no-tfile-tfolder-cast': 'error',
+			'obsidianmd/no-view-references-in-plugin': 'error',
+			'obsidianmd/no-static-styles-assignment': 'error',
+			'obsidianmd/object-assign': 'error',
+			'obsidianmd/platform': 'error',
+			'obsidianmd/prefer-file-manager-trash-file': 'warn',
+			'obsidianmd/prefer-abstract-input-suggest': 'error',
+			'obsidianmd/regex-lookbehind': 'error',
+			'obsidianmd/sample-names': 'error',
+			'obsidianmd/validate-manifest': 'error',
+			'obsidianmd/validate-license': 'error',
+			'obsidianmd/ui/sentence-case': ['warn', { enforceCamelCaseLower: true }],
+
+			// General ESLint rules from Obsidian recommended
 			'no-unused-vars': 'off',
-			'@typescript-eslint/no-unused-vars': ['warn', { args: 'none', varsIgnorePattern: '^_', argsIgnorePattern: '^_' }],
-			
-			// Allow @ts-ignore comments (useful for Obsidian API quirks)
-			'@typescript-eslint/ban-ts-comment': 'off',
-			
-			// Allow prototype builtins usage
 			'no-prototype-builtins': 'off',
-			
-			// Allow empty functions (common in plugin architecture)
-			'@typescript-eslint/no-empty-function': 'off',
-			
-			// Allow require() imports (Node.js environment with mixed modules)
-			'@typescript-eslint/no-require-imports': 'off',
-			'@typescript-eslint/no-var-requires': 'off',
-			
-			// Obsidian plugins often use 'any' type for API flexibility
-			'@typescript-eslint/no-explicit-any': 'warn',
-			
-			// Allow lexical declarations in case blocks
-			'no-case-declarations': 'off',
-			
-			// Prefer const is good but not critical for existing code
-			'prefer-const': 'warn',
+			'no-self-compare': 'warn',
+			'no-eval': 'error',
+			'no-implied-eval': 'error',
+			'prefer-const': 'off',
+			'no-implicit-globals': 'error',
+			'no-console': ['error', { allow: ['warn', 'error', 'debug'] }],
+			'no-alert': 'error',
+			'no-undef': 'error',
+
+			// TypeScript rules from Obsidian recommended
+			'@typescript-eslint/ban-ts-comment': 'off',
+			'@typescript-eslint/no-deprecated': 'error',
+			'@typescript-eslint/require-await': 'off',
+			'@typescript-eslint/no-explicit-any': ['error', { fixToUnknown: true }],
+
+			// Downgrade strict type checking rules to warnings
+			'@typescript-eslint/no-unsafe-assignment': 'warn',
+			'@typescript-eslint/no-unsafe-member-access': 'warn',
+			'@typescript-eslint/no-unsafe-argument': 'warn',
+			'@typescript-eslint/no-unsafe-call': 'warn',
+			'@typescript-eslint/no-unsafe-return': 'warn',
+
+			// Unused vars with underscore prefix
+			'@typescript-eslint/no-unused-vars': ['warn', { args: 'none', varsIgnorePattern: '^_', argsIgnorePattern: '^_' }],
+
+			// Import rules
+			'import/no-extraneous-dependencies': 'error',
 		},
 	},
 	{

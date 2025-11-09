@@ -11,6 +11,7 @@ import {
 	Notice,
 	MarkdownView
 } from 'obsidian';
+import { shell } from 'electron';
 
 import { obsidianTypstPDFExportSettings, DEFAULT_SETTINGS } from './src/core/settings';
 import { DependencyChecker } from './src/core/DependencyChecker';
@@ -78,6 +79,7 @@ export class obsidianTypstPDFExport extends Plugin {
 `);
 		
 		// Add ribbon icon using custom icon
+		// eslint-disable-next-line obsidianmd/ui/sentence-case -- "PDF" is an acronym and "Typst" is a proper noun
 		this.addRibbonIcon('typst-pdf-export', 'Export to PDF with Typst', (event: MouseEvent) => {
 			this.eventHandlers.handleRibbonClick(event);
 		});
@@ -177,8 +179,8 @@ export class obsidianTypstPDFExport extends Plugin {
 		);
 	}
 
-	async checkDependenciesAsync(): Promise<void> {
-		return DependencyChecker.checkDependenciesAsync(
+	checkDependenciesOnStartup(): void {
+		DependencyChecker.checkDependenciesOnStartup(
 			this.settings.pandocPath,
 			this.settings.typstPath,
 			this.settings.executablePaths?.imagemagickPath,
@@ -212,8 +214,7 @@ export class obsidianTypstPDFExport extends Plugin {
 	 * Open a PDF file in the default viewer
 	 */
 	openPDF(pdfPath: string): void {
-		const { shell } = require('electron');
-		shell.openPath(pdfPath);
+		void shell.openPath(pdfPath);
 	}
 	
 	async loadSettings() {
@@ -236,11 +237,14 @@ export class obsidianTypstPDFExport extends Plugin {
 			throw error; // Re-throw to let callers handle appropriately
 		}
 	}
-	
-	
-	onunload() {
+
+
+	// Obsidian supports async onunload and will await it properly, even though
+	// the Plugin type definition shows void return. This ensures cleanup completes.
+	// eslint-disable-next-line @typescript-eslint/no-misused-promises
+	async onunload(): Promise<void> {
 		// Use lifecycle manager for cleanup
-		this.lifecycle.cleanup();
+		await this.lifecycle.cleanup();
 	}
 }
 

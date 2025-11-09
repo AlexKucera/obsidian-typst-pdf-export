@@ -11,13 +11,14 @@
  * - Error handling
  *
  * The converter supports both file-based and content-based conversions, automatically
- * managing temporary directories and cleanup on process termination.
+ * managing temporary directories with cleanup via the plugin lifecycle.
  */
 
 import { PandocOptions, TypstSettings, ConversionResult, ProgressCallback } from './converterTypes';
 import type { obsidianTypstPDFExport } from '../../main';
 import { TempDirectoryManager } from '../core/TempDirectoryManager';
 import { PathUtils } from '../core/PathUtils';
+import { promises as fs } from 'fs';
 
 import { PandocCommandBuilder } from './pandoc/PandocCommandBuilder';
 import { PandocExecutor } from './pandoc/PandocExecutor';
@@ -32,7 +33,7 @@ import { PandocExecutor } from './pandoc/PandocExecutor';
  * Key features:
  * - File and content-based conversion support
  * - Automatic temporary directory management
- * - Process cleanup on termination (exit, SIGINT, SIGTERM, exceptions)
+ * - Cleanup via plugin lifecycle (onunload)
  * - Progress callback support for UI updates
  * - Configurable Pandoc and Typst settings
  *
@@ -40,8 +41,8 @@ import { PandocExecutor } from './pandoc/PandocExecutor';
  * 1. Constructor initializes command builder and executor
  * 2. Conversion methods create temp directories and build commands
  * 3. Executor runs Pandoc with Typst engine
- * 4. Cleanup automatically removes temporary files
- * 5. dispose() for manual cleanup when done
+ * 4. Plugin unload calls dispose() to remove temporary files
+ * 5. dispose() can also be called manually for cleanup when done
  *
  * @example
  * ```typescript
@@ -74,15 +75,14 @@ export class PandocTypstConverter {
 	private plugin: obsidianTypstPDFExport;
 	private commandBuilder: PandocCommandBuilder;
 	private pandocExecutor: PandocExecutor;
-	private processCleanupHandler: (() => void) | null = null;
 	private isDisposed = false;
 
 	/**
 	 * Creates a new PandocTypstConverter instance with configuration.
 	 *
 	 * Initializes the converter with the plugin instance and configuration options
-	 * for both Pandoc and Typst. Sets up cleanup handlers to ensure temporary
-	 * files are removed on process termination.
+	 * for both Pandoc and Typst. Temporary files are cleaned up via dispose()
+	 * which is called during plugin unload.
 	 *
 	 * @param plugin - The main plugin instance for accessing app and settings
 	 * @param pandocOptions - Configuration options for Pandoc conversion (template, variables, etc.)
@@ -115,8 +115,6 @@ export class PandocTypstConverter {
 		this.plugin = plugin;
 		this.commandBuilder = new PandocCommandBuilder(plugin);
 		this.pandocExecutor = new PandocExecutor(plugin);
-		// Set up cleanup handlers for process termination
-		this.setupCleanup();
 	}
 
 	/**
@@ -254,7 +252,8 @@ export class PandocTypstConverter {
 		const pathUtils = new PathUtils(this.plugin.app);
 		const tempInputPath = pathUtils.joinPath(this.tempDir!, `temp-${Date.now()}.md`);
 
-		await this.plugin.app.vault.adapter.write(tempInputPath, content);
+		// Use fs.writeFile for temp files since external tools (Pandoc) need absolute paths
+		await fs.writeFile(tempInputPath, content, 'utf-8');
 		
 		// Merge options
 		this.pandocOptions = { ...this.pandocOptions, ...options };
@@ -264,7 +263,8 @@ export class PandocTypstConverter {
 		
 		// Cleanup temp file
 		try {
-			await this.plugin.app.vault.adapter.remove(tempInputPath);
+			// Use fs.unlink for temp files since they're in external temp directories
+			await fs.unlink(tempInputPath);
 		} catch (error) {
 			console.warn('Failed to cleanup temp file:', error);
 		}
@@ -280,45 +280,13 @@ export class PandocTypstConverter {
 }
 
 	/**
-	 * Sets up automatic cleanup handlers for process termination events.
-	 *
-	 * Registers the cleanup method to run on various process termination events
-	 * to ensure temporary files are removed even if the process exits unexpectedly.
-	 * Handlers are registered for:
-	 * - Normal exit
-	 * - SIGINT (Ctrl+C)
-	 * - SIGTERM (kill command)
-	 *
-	 * Note: Handlers are stored and removed on dispose() to prevent listener leaks.
-	 * The uncaughtException handler is NOT registered to avoid swallowing errors.
-	 *
-	 * @private
-	 */
-	private setupCleanup(): void {
-		// Store handler reference so we can remove it later
-		this.processCleanupHandler = () => {
-			// Only cleanup if not already disposed to avoid double-cleanup
-			if (!this.isDisposed) {
-				this.cleanup();
-			}
-		};
-
-		// Register cleanup handlers - these will be removed on dispose()
-		process.on('exit', this.processCleanupHandler);
-		process.on('SIGINT', this.processCleanupHandler);
-		process.on('SIGTERM', this.processCleanupHandler);
-		// Note: uncaughtException handler removed to avoid swallowing errors
-	}
-
-
-	/**
 	 * Cleans up temporary files and directories.
 	 *
 	 * This method executes all registered cleanup handlers and removes the temporary
 	 * directory created by the converter. Cleanup failures are logged but don't throw
 	 * to avoid interfering with normal operation or other cleanup operations.
 	 *
-	 * Called automatically on process termination or manually via dispose().
+	 * Called via dispose() during plugin unload.
 	 *
 	 * @private
 	 * @returns Promise that resolves when cleanup is complete
@@ -364,14 +332,20 @@ export class PandocTypstConverter {
 		if (!this.tempDir) {
 			if (this.pandocOptions.vaultBasePath) {
 				// Use TempDirectoryManager for plugin temp directories
-				const configDir = this.plugin?.app?.vault?.configDir || '.obsidian';
+				const configDir = this.plugin?.app?.vault?.configDir;
+				if (!configDir) {
+					throw new Error('Unable to access vault configuration directory. Plugin may not be properly initialized.');
+				}
 				const tempManager = TempDirectoryManager.create(this.pandocOptions.vaultBasePath, configDir, undefined, this.plugin?.app);
 				this.tempDir = await tempManager.ensureTempDir('pandoc');
 			} else {
 				// Fallback to system temp if plugin folder not available - use TempDirectoryManager fallback
 				const pathUtils = new PathUtils(this.plugin.app);
 				const vaultPath = pathUtils.getVaultPath();
-				const configDir = this.plugin?.app?.vault?.configDir || '.obsidian';
+				const configDir = this.plugin?.app?.vault?.configDir;
+				if (!configDir) {
+					throw new Error('Unable to access vault configuration directory. Plugin may not be properly initialized.');
+				}
 				const tempManager = new TempDirectoryManager({ vaultPath, configDir, app: this.plugin.app });
 				this.tempDir = await tempManager.ensureTempDir('pandoc');
 			}
@@ -409,14 +383,6 @@ export class PandocTypstConverter {
 		}
 
 		this.isDisposed = true;
-
-		// Remove process event listeners to prevent memory leaks
-		if (this.processCleanupHandler) {
-			process.off('exit', this.processCleanupHandler);
-			process.off('SIGINT', this.processCleanupHandler);
-			process.off('SIGTERM', this.processCleanupHandler);
-			this.processCleanupHandler = null;
-		}
 
 		// Cleanup temporary files and resources
 		await this.cleanup();

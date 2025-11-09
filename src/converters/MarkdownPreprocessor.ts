@@ -202,7 +202,7 @@ export interface MarkdownPreprocessorConfig {
  *
  * // Process markdown
  * const obsidianMarkdown = '# My Note\n\n[[internal-link]]\n\n![[image.png]]';
- * const result = await preprocessor.process(obsidianMarkdown);
+ * const result = preprocessor.process(obsidianMarkdown);
  *
  * console.log(result.content);  // Standard markdown
  * console.log(result.metadata.imageEmbeds);  // Image processing info
@@ -218,7 +218,7 @@ export interface MarkdownPreprocessorConfig {
  * });
  *
  * // Process with new configuration
- * const newResult = await preprocessor.process(markdown);
+ * const newResult = preprocessor.process(markdown);
  * ```
  */
 export class MarkdownPreprocessor {
@@ -268,7 +268,6 @@ export class MarkdownPreprocessor {
 	 * in the correct order, aggregates metadata from each stage, and returns a complete
 	 * result with processed content and comprehensive metadata.
 	 *
-	 * The method is async to support future extensions (though current processors are sync).
 	 * Processing is stateless - each call operates independently on the provided content.
 	 *
 	 * Processing Order (critical for avoiding conflicts):
@@ -300,7 +299,7 @@ export class MarkdownPreprocessor {
 	 * Callout: > [!note] This is important
 	 * `;
 	 *
-	 * const result = await preprocessor.process(markdown);
+	 * const result = preprocessor.process(markdown);
 	 *
 	 * // Check for errors
 	 * if (result.errors.length > 0) {
@@ -320,7 +319,7 @@ export class MarkdownPreprocessor {
 	 * ```typescript
 	 * // Handle remote images
 	 * const markdown = '![Remote](https://example.com/image.png)';
-	 * const result = await preprocessor.process(markdown);
+	 * const result = preprocessor.process(markdown);
 	 *
 	 * // Remote images are queued for download
 	 * result.metadata.imageEmbeds.forEach(embed => {
@@ -329,7 +328,7 @@ export class MarkdownPreprocessor {
 	 * });
 	 * ```
 	 */
-	public async process(content: string): Promise<PreprocessingResult> {
+	public process(content: string): PreprocessingResult {
 		const result: PreprocessingResult = {
 			content: content,
 			metadata: {
@@ -506,7 +505,7 @@ export class MarkdownPreprocessor {
 	 * });
 	 *
 	 * // Process note with web-friendly links
-	 * const result = await preprocessor.process(markdown);
+	 * const result = preprocessor.process(markdown);
 	 * // Links will use the new base URL
 	 * ```
 	 *
@@ -521,7 +520,7 @@ export class MarkdownPreprocessor {
 	 * });
 	 *
 	 * // Process with HTML-style links
-	 * const result = await preprocessor.process(markdown);
+	 * const result = preprocessor.process(markdown);
 	 * // [[note]] becomes [note](note.html)
 	 * ```
 	 *

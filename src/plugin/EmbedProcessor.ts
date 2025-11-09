@@ -3,6 +3,8 @@
  * Handles processing of PDF, image, and file embeds for PDF export
  */
 
+import { exec } from 'child_process';
+import * as util from 'util';
 import { TFile } from 'obsidian';
 import type { obsidianTypstPDFExport } from '../../main';
 import type { PreprocessingResult } from '../converters/MarkdownPreprocessor';
@@ -12,11 +14,51 @@ import * as path from 'path';
 import * as https from 'https';
 import * as http from 'http';
 
+const execAsync = util.promisify(exec);
+
 export class EmbedProcessor {
 	private readonly pathUtils: PathUtils;
 
 	constructor(private plugin: obsidianTypstPDFExport) {
 		this.pathUtils = new PathUtils(plugin.app);
+	}
+
+	/**
+	 * Handle completion of image download and write to vault.
+	 * @param chunks Downloaded image data chunks
+	 * @param outputPath Absolute path where the image should be written
+	 * @param resolve Promise resolver to call with result
+	 */
+	private async handleDownloadComplete(
+		chunks: Buffer[],
+		outputPath: string,
+		resolve: (value: string | null) => void
+	): Promise<void> {
+		try {
+			// Check if file already exists to avoid overwriting
+			const exists = await this.pathUtils.fileExists(outputPath);
+			if (exists) {
+				console.warn(`Export: Image file already exists, using existing: ${outputPath}`);
+				resolve(outputPath);
+				return;
+			}
+
+			// Combine chunks and write using vault adapter
+			const buffer = Buffer.concat(chunks);
+			// Convert Buffer to ArrayBuffer for vault adapter
+			const arrayBuffer = buffer.buffer.slice(buffer.byteOffset, buffer.byteOffset + buffer.byteLength);
+
+			// Convert absolute path to vault-relative for adapter operations
+			const relativeOutputPath = this.pathUtils.toVaultRelative(outputPath);
+
+			await this.plugin.app.vault.adapter.writeBinary(relativeOutputPath, arrayBuffer);
+
+			console.debug(`Export:Successfully downloaded image to: ${outputPath}`);
+			resolve(outputPath);
+		} catch (err) {
+			console.error(`Export: Error writing image file: ${err.message}`);
+			resolve(null);
+		}
 	}
 
 	/**
@@ -86,7 +128,7 @@ export class EmbedProcessor {
 	 * Returns the local path if successful, null if failed
 	 */
 	private async downloadRemoteImage(imageUrl: string, tempDir: string): Promise<string | null> {
-		return new Promise((resolve) => {
+		return new Promise((resolve, reject) => {
 			try {
 				// Parse URL to get filename
 				const urlObj = new URL(imageUrl);
@@ -108,7 +150,7 @@ export class EmbedProcessor {
 				// Select appropriate protocol based on parsed URL (handles case-insensitive schemes)
 				const protocol = urlObj.protocol === 'https:' ? https : http;
 
-				console.log(`Export: Downloading remote image: ${imageUrl}`);
+				console.debug(`Export:Downloading remote image: ${imageUrl}`);
 
 				// Use parsed URL object for the request to ensure correct protocol handling
 				const request = protocol.get(urlObj, (response) => {
@@ -120,9 +162,9 @@ export class EmbedProcessor {
 							// This handles both absolute URLs (e.g., "https://example.com/img.png")
 							// and relative URLs (e.g., "/assets/img.png" or "../img.png")
 							const absoluteRedirectUrl = new URL(redirectUrl, imageUrl).href;
-							console.log(`Export: Following redirect to: ${absoluteRedirectUrl}`);
+							console.debug(`Export:Following redirect to: ${absoluteRedirectUrl}`);
 							// Recursively follow redirect with resolved absolute URL
-							this.downloadRemoteImage(absoluteRedirectUrl, tempDir).then(resolve);
+							this.downloadRemoteImage(absoluteRedirectUrl, tempDir).then(resolve).catch(reject);
 							return;
 						}
 					}
@@ -141,29 +183,9 @@ export class EmbedProcessor {
 						chunks.push(chunk);
 					});
 
-					response.on('end', async () => {
-						try {
-							// Check if file already exists to avoid overwriting
-							const exists = await this.pathUtils.fileExists(outputPath);
-							if (exists) {
-								console.warn(`Export: Image file already exists, using existing: ${outputPath}`);
-								resolve(outputPath);
-								return;
-							}
-
-							// Combine chunks and write using vault adapter
-							const buffer = Buffer.concat(chunks);
-							// Convert Buffer to ArrayBuffer for vault adapter
-							const arrayBuffer = buffer.buffer.slice(buffer.byteOffset, buffer.byteOffset + buffer.byteLength);
-							await this.plugin.app.vault.adapter.writeBinary(outputPath, arrayBuffer);
-
-							console.log(`Export: Successfully downloaded image to: ${outputPath}`);
-							resolve(outputPath);
-						} catch (err) {
-							console.error(`Export: Error writing image file: ${err.message}`);
-							resolve(null);
-						}
-					});
+					response.on('end', () => {
+					void this.handleDownloadComplete(chunks, outputPath, resolve);
+				});
 
 					response.on('error', (err) => {
 						console.error(`Export: Error receiving image data: ${err.message}`);
@@ -295,13 +317,13 @@ export class EmbedProcessor {
 
 				if (isRemoteUrl) {
 					// Try to download the remote image
-					console.log(`Export: Attempting to download remote image: ${decodedPath}`);
+					console.debug(`Export:Attempting to download remote image: ${decodedPath}`);
 					const downloadedPath = await this.downloadRemoteImage(decodedPath, tempDir);
 
 					if (downloadedPath) {
 						// Successfully downloaded, use it as a local image
 						fullImagePath = downloadedPath;
-						console.log(`Export: Successfully downloaded and will embed remote image`);
+						console.debug(`Export:Successfully downloaded and will embed remote image`);
 					} else {
 						// Download failed, use placeholder
 						console.warn(`Export: Failed to download remote image: ${decodedPath}`);
@@ -338,15 +360,14 @@ export class EmbedProcessor {
 					// Convert WebP to PNG using ImageMagick
 					const originalImageName = path.basename(fullImagePath);
 					const pngFileName = originalImageName.replace(/\.webp$/i, '.png');
-					const vaultTempImagesDir = this.pathUtils.joinPath(vaultBasePath, this.pathUtils.getPluginDir(this.plugin.manifest), 'temp-images');
-					await this.pathUtils.ensureDir(vaultTempImagesDir);
-					
+					// Use vault-relative path for ensureDir (it uses vault.adapter)
+					const vaultRelativeTempDir = this.pathUtils.joinPath(this.pathUtils.getPluginDir(this.plugin.manifest), 'temp-images');
+					await this.pathUtils.ensureDir(vaultRelativeTempDir);
+					// But use absolute path for ImageMagick
+					const vaultTempImagesDir = this.pathUtils.joinPath(vaultBasePath, vaultRelativeTempDir);
+
 					const convertedImagePath = this.pathUtils.joinPath(vaultTempImagesDir, pngFileName);
-					
-					const { exec } = require('child_process');
-					const util = require('util');
-					const execAsync = util.promisify(exec);
-					
+
 					try {
 						// Use PathResolver to get the correct ImageMagick path
 						const { PathResolver } = await import('./PathResolver');
@@ -523,8 +544,11 @@ export class EmbedProcessor {
 		vaultBasePath: string
 	): Promise<{ relativeImagePath: string; relativePdfPath: string }> {
 		// Copy image to vault temp directory for access
-		const vaultTempImagesDir = this.pathUtils.joinPath(vaultBasePath, this.pathUtils.getPluginDir(this.plugin.manifest), 'temp-images');
-		await this.pathUtils.ensureDir(vaultTempImagesDir);
+		// Use vault-relative path for ensureDir (it uses vault.adapter)
+		const vaultRelativeTempDir = this.pathUtils.joinPath(this.pathUtils.getPluginDir(this.plugin.manifest), 'temp-images');
+		await this.pathUtils.ensureDir(vaultRelativeTempDir);
+		// But use absolute path for file operations
+		const vaultTempImagesDir = this.pathUtils.joinPath(vaultBasePath, vaultRelativeTempDir);
 
 		// Sanitize the basename for use in filename - replace problematic characters
 		const sanitizedBaseName = baseName
@@ -536,8 +560,12 @@ export class EmbedProcessor {
 		const vaultImagePath = this.pathUtils.joinPath(vaultTempImagesDir, imageFileName);
 
 		// Copy file using vault adapter
-		const sourceBuffer = await this.plugin.app.vault.adapter.readBinary(imagePath);
-		await this.plugin.app.vault.adapter.writeBinary(vaultImagePath, sourceBuffer);
+		// Convert absolute paths to vault-relative paths for adapter operations
+		const relativeSourcePath = this.pathUtils.toVaultRelative(imagePath);
+		const relativeVaultImagePath = this.pathUtils.toVaultRelative(vaultImagePath);
+
+		const sourceBuffer = await this.plugin.app.vault.adapter.readBinary(relativeSourcePath);
+		await this.plugin.app.vault.adapter.writeBinary(relativeVaultImagePath, sourceBuffer);
 
 		// Get relative paths from vault base
 		const relativeImagePath = path.relative(vaultBasePath, vaultImagePath);

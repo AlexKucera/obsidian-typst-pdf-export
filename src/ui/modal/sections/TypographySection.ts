@@ -3,7 +3,7 @@
  * Handles font selection and size configuration
  */
 
-import { Setting, App, DropdownComponent } from 'obsidian';
+import { Setting, App } from 'obsidian';
 import { ModalSection, ModalState, ValidationResult } from '../modalTypes';
 
 export class TypographySection implements ModalSection {
@@ -13,36 +13,41 @@ export class TypographySection implements ModalSection {
 	render(containerEl: HTMLElement, state: ModalState, app?: App): void {
 		if (app) this.app = app;
 		this.container = containerEl.createDiv('export-section');
-		this.container.createEl('h3', { text: 'Typography' });
-		
-		// Create font settings asynchronously
-		this.createFontSettings(state);
-		this.createFontSizeSettings(state);
+		new Setting(this.container)
+			.setName('Typography')
+			.setHeading();
+
+		// Create font settings asynchronously with explicit error handling
+		// Font size settings are created after font dropdowns to preserve logical ordering
+		this.createFontSettings(state).catch(error => {
+			console.error('Failed to create font settings:', error);
+			// If font loading fails, getAvailableFonts will use hardcoded fallback fonts
+		});
 	}
-	
+
 	private async createFontSettings(state: ModalState): Promise<void> {
 		if (!this.container) return;
-		
+
 		// Get available fonts from cache
 		const availableFonts = await this.getAvailableFonts(state);
-		
+
 		// Body font dropdown
 		new Setting(this.container)
 			.setName('Body font')
 			.setDesc('Primary font for document text')
 			.addDropdown(dropdown => {
 				const currentFont = String(state.templateVariables.bodyFont || 'Times New Roman');
-				
+
 				// Add all available fonts
 				availableFonts.forEach(font => {
 					dropdown.addOption(font, font);
 				});
-				
+
 				// Add current font if it's not in the list
 				if (!availableFonts.includes(currentFont)) {
 					dropdown.addOption(currentFont, currentFont);
 				}
-				
+
 				// Set current value and change handler
 				dropdown
 					.setValue(currentFont)
@@ -50,24 +55,24 @@ export class TypographySection implements ModalSection {
 						state.updateTemplateVariables({ bodyFont: value });
 					});
 			});
-		
-		// Heading font dropdown  
+
+		// Heading font dropdown
 		new Setting(this.container)
 			.setName('Heading font')
 			.setDesc('Font for headings and titles')
 			.addDropdown(dropdown => {
 				const currentFont = String(state.templateVariables.headingFont || 'Times New Roman');
-				
+
 				// Add all available fonts
 				availableFonts.forEach(font => {
 					dropdown.addOption(font, font);
 				});
-				
+
 				// Add current font if it's not in the list
 				if (!availableFonts.includes(currentFont)) {
 					dropdown.addOption(currentFont, currentFont);
 				}
-				
+
 				// Set current value and change handler
 				dropdown
 					.setValue(currentFont)
@@ -75,24 +80,24 @@ export class TypographySection implements ModalSection {
 						state.updateTemplateVariables({ headingFont: value });
 					});
 			});
-		
+
 		// Monospace font dropdown
 		new Setting(this.container)
 			.setName('Monospace font')
 			.setDesc('Font for code blocks and inline code')
 			.addDropdown(dropdown => {
 				const currentFont = String(state.templateVariables.monospaceFont || 'Courier New');
-				
+
 				// Add all available fonts
 				availableFonts.forEach(font => {
 					dropdown.addOption(font, font);
 				});
-				
+
 				// Add current font if it's not in the list
 				if (!availableFonts.includes(currentFont)) {
 					dropdown.addOption(currentFont, currentFont);
 				}
-				
+
 				// Set current value and change handler
 				dropdown
 					.setValue(currentFont)
@@ -100,8 +105,11 @@ export class TypographySection implements ModalSection {
 						state.updateTemplateVariables({ monospaceFont: value });
 					});
 			});
+
+		// Create font size settings after font dropdowns for logical ordering
+		this.createFontSizeSettings(state);
 	}
-	
+
 	private createFontSizeSettings(state: ModalState): void {
 		if (!this.container) return;
 		
@@ -160,51 +168,7 @@ export class TypographySection implements ModalSection {
 			];
 		}
 	}
-	
-	private addFallbackBodyFonts(dropdown: DropdownComponent, state: ModalState, fontType: 'body' | 'heading'): void {
-		dropdown
-			.addOption('Concourse OT', 'Concourse OT')
-			.addOption('Times New Roman', 'Times New Roman')
-			.addOption('Georgia', 'Georgia')
-			.addOption('Arial', 'Arial')
-			.addOption('Helvetica', 'Helvetica')
-			.addOption('Calibri', 'Calibri')
-			.addOption('Cambria', 'Cambria')
-			.addOption('Palatino', 'Palatino')
-			.addOption('Book Antiqua', 'Book Antiqua');
-		
-		// Set the appropriate value based on font type
-		const currentValue = fontType === 'body' 
-			? state.templateVariables.bodyFont 
-			: state.templateVariables.headingFont;
-		
-		dropdown
-			.setValue(String(currentValue || 'Concourse OT'))
-			.onChange((value: string) => {
-				if (fontType === 'body') {
-					state.updateTemplateVariables({ bodyFont: value });
-				} else {
-					state.updateTemplateVariables({ headingFont: value });
-				}
-			});
-	}
-	
-	private addFallbackMonospaceFonts(dropdown: DropdownComponent, state: ModalState): void {
-		dropdown
-			.addOption('Source Code Pro', 'Source Code Pro')
-			.addOption('Courier New', 'Courier New')
-			.addOption('Monaco', 'Monaco')
-			.addOption('Consolas', 'Consolas')
-			.addOption('Menlo', 'Menlo')
-			.addOption('DejaVu Sans Mono', 'DejaVu Sans Mono')
-			.addOption('Liberation Mono', 'Liberation Mono')
-			.addOption('Ubuntu Mono', 'Ubuntu Mono')
-			.setValue(String(state.templateVariables.monospaceFont || 'Source Code Pro'))
-			.onChange((value: string) => {
-				state.updateTemplateVariables({ monospaceFont: value });
-			});
-	}
-	
+
 	validate(): ValidationResult {
 		const errors: string[] = [];
 		const warnings: string[] = [];

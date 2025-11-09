@@ -57,8 +57,9 @@ export class EmbeddedTemplateManager {
         }
 
         try {
-            // Ensure templates directory exists
-            await this.pathUtils.ensureDir(this.templatesDir);
+            // Ensure templates directory exists (convert absolute to vault-relative for vault.adapter)
+            const relativeTemplatesDir = this.pathUtils.toVaultRelative(this.templatesDir);
+            await this.pathUtils.ensureDir(relativeTemplatesDir);
 
             // Extract template content
             const content = extractTemplate(templateName, filePath);
@@ -105,8 +106,9 @@ export class EmbeddedTemplateManager {
 
         const embeddedNames = getAllTemplateNames();
 
-        // Ensure templates directory exists
-        await this.pathUtils.ensureDir(this.templatesDir);
+        // Ensure templates directory exists (convert absolute to vault-relative for vault.adapter)
+        const relativeTemplatesDir = this.pathUtils.toVaultRelative(this.templatesDir);
+        await this.pathUtils.ensureDir(relativeTemplatesDir);
 
         for (const templateName of embeddedNames) {
             try {

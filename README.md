@@ -169,7 +169,7 @@ Go to the plugin settings and click **Check Dependencies** to ensure all require
 
 - **Obsidian**: Version 1.9.12 or higher
 - **Platform**: Desktop only (Windows, macOS, Linux) - I develop this on macOS, but it should in theory work on Windows and Linux. I just have no way to test it.
-- **Node.js**: Version 16+ (for development)
+- **Node.js**: Version 18.20+ (for development)
 
 ### External Dependencies
 

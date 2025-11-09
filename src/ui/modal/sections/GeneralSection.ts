@@ -4,6 +4,7 @@
  */
 
 import { Setting, App, normalizePath, DropdownComponent } from 'obsidian';
+import * as path from 'path';
 import { ModalSection, ModalState, ValidationResult } from '../modalTypes';
 import { ExportFormat } from '../../../core/settings';
 import { FolderSuggest } from '../../components/FolderSuggest';
@@ -18,7 +19,9 @@ export class GeneralSection implements ModalSection {
 	render(containerEl: HTMLElement, state: ModalState, app?: App): void {
 		if (app) this.app = app;
 		this.container = containerEl.createDiv('export-section');
-		this.container.createEl('h3', { text: 'General Settings' });
+		new Setting(this.container)
+			.setName('General settings')
+			.setHeading();
 		
 		this.createTemplateSelection(state);
 		this.createFormatSelection(state);
@@ -72,13 +75,14 @@ export class GeneralSection implements ModalSection {
 		
 		new Setting(this.container)
 			.setName('Output folder')
-			.setDesc('Folder where PDFs will be saved (relative to vault root)')
+			.setDesc('Location for exported PDF files (relative to vault root or absolute path)')
 			.addText(text => {
 				const input = text
-					.setPlaceholder('exports')
+					.setPlaceholder('PDF exports')
 					.setValue(state.settings.outputFolder || 'exports')
 					.onChange(value => {
-						const normalizedValue = normalizePath(value);
+						// Don't normalize absolute paths as normalizePath strips the leading slash
+					const normalizedValue = path.isAbsolute(value) ? value : normalizePath(value);
 						state.updateSettings({ outputFolder: normalizedValue });
 					});
 				this.outputFolderInput = input.inputEl;
@@ -102,9 +106,11 @@ export class GeneralSection implements ModalSection {
 		
 		// Validate output folder
 		if (this.outputFolderInput) {
-			const value = normalizePath(this.outputFolderInput.value.trim());
-			if (!SecurityUtils.validateOutputPath(value)) {
-				errors.push(SecurityUtils.getPathValidationError(value));
+			const rawValue = this.outputFolderInput.value.trim();
+			// Don't normalize absolute paths as normalizePath strips the leading slash
+			const normalizedValue = path.isAbsolute(rawValue) ? rawValue : normalizePath(rawValue);
+			if (!SecurityUtils.validateOutputPath(normalizedValue)) {
+				errors.push(SecurityUtils.getPathValidationError(normalizedValue));
 			}
 		}
 		

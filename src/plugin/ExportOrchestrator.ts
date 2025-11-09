@@ -143,7 +143,7 @@ export class ExportOrchestrator {
 		this.plugin.currentExportController = new AbortController();
 		
 		try {
-			// Create temp directory for conversion
+			// Create temp directories for conversion
 			const tempManager = new TempDirectoryManager({
 				vaultPath: vaultPath,
 				configDir: this.plugin.app.vault.configDir,
@@ -151,20 +151,21 @@ export class ExportOrchestrator {
 				pluginName: this.plugin.manifest.id
 			});
 			const tempDir = await tempManager.ensureTempDir('pandoc');
+			const tempImagesDir = await tempManager.ensureTempDir('images');
 			
 			// Load file content
 			const content = await this.plugin.app.vault.read(file);
 			
 			// Create progress notice with cancel button
 			const progressNotice = new Notice('', 0);
-			const cancelButton = progressNotice.noticeEl.createEl('button', {
+			const cancelButton = progressNotice.messageEl.createEl('button', {
 				text: 'Cancel',
 				cls: 'mod-warning'
 			});
 			cancelButton.addEventListener('click', () => this.cancelExport());
-			progressNotice.setMessage('Preprocessing markdown content...');
+			progressNotice.setMessage('Preprocessing Markdown content...');
 			
-			// Preprocess markdown
+			// Preprocess Markdown
 			const preprocessor = new MarkdownPreprocessor({
 				vaultPath: vaultPath,
 				options: {
@@ -179,7 +180,7 @@ export class ExportOrchestrator {
 				noteTitle: file.basename
 			});
 			
-			const processedResult = await preprocessor.process(content);
+			const processedResult = preprocessor.process(content);
 			
 			if (processedResult.errors.length > 0) {
 				console.warn('Preprocessing errors:', processedResult.errors);
@@ -191,12 +192,12 @@ export class ExportOrchestrator {
 			// Process PDF embeds if any were found
 			if (processedResult.metadata.pdfEmbeds && processedResult.metadata.pdfEmbeds.length > 0) {
 				const embedPdfFiles = config.embedPdfFiles ?? this.plugin.settings.behavior.embedPdfFiles;
-				await this.plugin.processPdfEmbeds(processedResult, vaultPath, tempDir, file, embedPdfFiles);
+				await this.plugin.processPdfEmbeds(processedResult, vaultPath, tempImagesDir, file, embedPdfFiles);
 			}
 			
 			// Process image embeds if any were found
 			if (processedResult.metadata.imageEmbeds && processedResult.metadata.imageEmbeds.length > 0) {
-				await this.plugin.processImageEmbeds(processedResult, vaultPath, tempDir, file);
+				await this.plugin.processImageEmbeds(processedResult, vaultPath, tempImagesDir, file);
 			}
 			
 			// Process file embeds if any were found
@@ -319,10 +320,10 @@ export class ExportOrchestrator {
 	 */
 	async handleFolderExport(folder: TFolder): Promise<void> {
 		// Get all markdown files in the folder
-		const markdownFiles = folder.children.filter(this.plugin.isMarkdownFile);
+		const markdownFiles = folder.children.filter((file) => this.plugin.isMarkdownFile(file));
 		
 		if (markdownFiles.length === 0) {
-			new Notice('No markdown files found in this folder');
+			new Notice('No Markdown files found in this folder');
 			return;
 		}
 		

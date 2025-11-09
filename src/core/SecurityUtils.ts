@@ -116,13 +116,17 @@ export class SecurityUtils {
 		if (!outputFolder || typeof outputFolder !== 'string') {
 			return false;
 		}
-		
-		// Normalize and resolve the path to detect traversal attempts
-		const normalizedPath = path.normalize(outputFolder.trim());
-		
+
+		// Normalize path (reject absolute paths so exports stay inside the vault)
+		const trimmed = outputFolder.trim();
+		if (path.isAbsolute(trimmed)) {
+			return false;
+		}
+		const normalizedPath = path.normalize(trimmed);
+
 		// Check for path traversal attempts
-		if (normalizedPath.includes('..') || 
-		    normalizedPath.startsWith('/') || 
+		if (normalizedPath.includes('..') ||
+		    normalizedPath.startsWith('/') ||
 		    normalizedPath.startsWith('\\') ||
 		    normalizedPath.includes('\x00')) {
 			return false;
@@ -218,7 +222,7 @@ export class SecurityUtils {
 		// Check for command injection attempts
 		const dangerousPatterns = [
 			/[;&|`$<>]/,       // Shell metacharacters that can't appear in safe paths
-			// eslint-disable-next-line no-control-regex
+			// eslint-disable-next-line no-control-regex -- Intentionally checking for null byte character for security validation
 			/\x00/,            // Null bytes
 			/\n|\r/,           // Newlines
 			/\s*[;&|]\s*/,     // Command separators with whitespace
@@ -280,9 +284,14 @@ export class SecurityUtils {
 		if (!outputFolder || typeof outputFolder !== 'string') {
 			return 'Output folder is required';
 		}
-		
-		const normalizedPath = path.normalize(outputFolder.trim());
-		
+
+		// Normalize path (reject absolute paths so exports stay inside the vault)
+		const trimmed = outputFolder.trim();
+		if (path.isAbsolute(trimmed)) {
+			return 'Absolute paths are not allowed - use relative paths from vault root';
+		}
+		const normalizedPath = path.normalize(trimmed);
+
 		if (normalizedPath.includes('..')) {
 			return 'Path traversal attempts (..) are not allowed';
 		}
@@ -374,7 +383,8 @@ export class SecurityUtils {
 		if (/[;&|`$<>]/.test(normalizedPath)) {
 			return 'Shell metacharacters are not allowed in executable paths';
 		}
-		if (/\x00/.test(normalizedPath)) { // eslint-disable-line no-control-regex
+		// eslint-disable-next-line no-control-regex -- Intentionally checking for null byte character for security validation
+		if (/\x00/.test(normalizedPath)) {
 			return 'Null bytes are not allowed in paths';
 		}
 		if (/\n|\r/.test(normalizedPath)) {

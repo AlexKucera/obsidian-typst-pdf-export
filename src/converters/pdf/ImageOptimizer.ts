@@ -3,6 +3,8 @@
  * Handles format conversion, quality management, and dimension detection.
  */
 
+import { spawn } from 'child_process';
+import { promises as fs } from 'fs';
 import * as path from 'path';
 import { PathUtils } from '../../core/PathUtils';
 import type { obsidianTypstPDFExport } from '../../../main';
@@ -58,7 +60,6 @@ export class ImageOptimizer {
 		quality: number = 90
 	): Promise<{success: boolean; error?: string}> {
 		try {
-			const { spawn } = require('child_process');
 			
 			// Use ImageMagick to convert PNG to JPEG
 			const convertProcess = spawn('magick', [
@@ -108,7 +109,6 @@ export class ImageOptimizer {
 		fallbackDimensions: ImageDimensions = { width: 800, height: 600 }
 	): Promise<{dimensions: ImageDimensions; success: boolean; error?: string}> {
 		try {
-			const { spawn } = require('child_process');
 			
 			// Use ImageMagick identify to get image dimensions
 			const identifyProcess = spawn('magick', [
@@ -218,22 +218,10 @@ export class ImageOptimizer {
 					// Clean up the original PNG if conversion succeeded
 					try {
 						if (plugin?.app) {
-							// Convert absolute path to vault-relative path for adapter.remove()
 							const pathUtils = new PathUtils(plugin.app);
-							const vaultBasePath = pathUtils.getVaultPath();
-
-							let relativePath = inputImagePath;
-							if (inputImagePath.startsWith(vaultBasePath)) {
-								// Remove vault base path and leading separator
-								relativePath = inputImagePath.substring(vaultBasePath.length);
-								if (relativePath.startsWith('/') || relativePath.startsWith('\\')) {
-									relativePath = relativePath.substring(1);
-								}
-							}
-
+							const relativePath = pathUtils.toVaultRelative(inputImagePath);
 							await plugin.app.vault.adapter.remove(relativePath);
 						} else {
-							const fs = require('fs').promises;
 							await fs.unlink(inputImagePath);
 						}
 					} catch (unlinkError) {
@@ -245,11 +233,14 @@ export class ImageOptimizer {
 					// Just rename the file to PNG format
 					const pngFinalPath = finalOutputPath.replace(/\.jpeg?$/, '.png');
 					if (plugin?.app) {
-						const content = await plugin.app.vault.adapter.readBinary(inputImagePath);
-						await plugin.app.vault.adapter.writeBinary(pngFinalPath, content);
-						await plugin.app.vault.adapter.remove(inputImagePath);
+						const pathUtils = new PathUtils(plugin.app);
+						const relativeInputPath = pathUtils.toVaultRelative(inputImagePath);
+						const relativePngPath = pathUtils.toVaultRelative(pngFinalPath);
+
+						const content = await plugin.app.vault.adapter.readBinary(relativeInputPath);
+						await plugin.app.vault.adapter.writeBinary(relativePngPath, content);
+						await plugin.app.vault.adapter.remove(relativeInputPath);
 					} else {
-						const fs = require('fs').promises;
 						await fs.rename(inputImagePath, pngFinalPath);
 					}
 					actualImagePath = pngFinalPath;
@@ -257,11 +248,14 @@ export class ImageOptimizer {
 			} else {
 				// Keep as PNG, just rename to final location
 				if (plugin?.app) {
-					const content = await plugin.app.vault.adapter.readBinary(inputImagePath);
-					await plugin.app.vault.adapter.writeBinary(finalOutputPath, content);
-					await plugin.app.vault.adapter.remove(inputImagePath);
+					const pathUtils = new PathUtils(plugin.app);
+					const relativeInputPath = pathUtils.toVaultRelative(inputImagePath);
+					const relativeFinalPath = pathUtils.toVaultRelative(finalOutputPath);
+
+					const content = await plugin.app.vault.adapter.readBinary(relativeInputPath);
+					await plugin.app.vault.adapter.writeBinary(relativeFinalPath, content);
+					await plugin.app.vault.adapter.remove(relativeInputPath);
 				} else {
-					const fs = require('fs').promises;
 					await fs.rename(inputImagePath, finalOutputPath);
 				}
 				actualImagePath = finalOutputPath;

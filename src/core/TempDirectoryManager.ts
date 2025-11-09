@@ -24,6 +24,7 @@ import { PLUGIN_DIRS } from './constants';
 import { normalizePath } from 'obsidian';
 import type { App } from 'obsidian';
 import * as path from 'path';
+import { promises as fs } from 'fs';
 
 /**
  * Configuration options for TempDirectoryManager initialization.
@@ -167,7 +168,8 @@ export class TempDirectoryManager {
 	private getPluginDir(): string {
 		// path.join automatically handles absolute paths correctly
 		const result = path.join(this.vaultPath, this.configDir, 'plugins', this.pluginName);
-		return normalizePath(result);
+		// Don't normalize absolute paths as normalizePath strips the leading slash
+		return path.isAbsolute(result) ? result : normalizePath(result);
 	}
 
 	/**
@@ -207,7 +209,8 @@ export class TempDirectoryManager {
 		// Use path.join to properly handle absolute paths
 		const result = path.join(pluginDir, dirName);
 
-		return normalizePath(result);
+		// Don't normalize absolute paths as normalizePath strips the leading slash
+		return path.isAbsolute(result) ? result : normalizePath(result);
 	}
 
 	/**
@@ -253,9 +256,13 @@ export class TempDirectoryManager {
 	public async ensureTempDir(type: 'images' | 'pandoc'): Promise<string> {
 		const tempDir = this.getTempDir(type);
 
-		const exists = await this.app.vault.adapter.exists(tempDir);
-		if (!exists) {
-			await this.app.vault.adapter.mkdir(tempDir);
+		// Use fs.mkdir for temp directories since external tools (pdf2img, ImageMagick)
+		// need to write to them directly with absolute paths
+		try {
+			await fs.access(tempDir);
+		} catch {
+			// Directory doesn't exist, create it with recursive option
+			await fs.mkdir(tempDir, { recursive: true });
 		}
 
 		return tempDir;
@@ -302,13 +309,19 @@ export class TempDirectoryManager {
 	public async cleanupTempDir(type: 'images' | 'pandoc'): Promise<boolean> {
 		const tempDir = this.getTempDir(type);
 
+		// Use fs for temp directory cleanup since these directories contain
+		// files created by external tools
 		try {
-			const exists = await this.app.vault.adapter.exists(tempDir);
+			const exists = await fs.access(tempDir).then(() => true).catch(() => false);
 			if (exists) {
-				const list = await this.app.vault.adapter.list(tempDir);
+				const files = await fs.readdir(tempDir);
 				// Remove only files, not subdirectories (matching current pattern)
-				for (const file of list.files) {
-					await this.app.vault.adapter.remove(file);
+				for (const file of files) {
+					const filePath = path.join(tempDir, file);
+					const stat = await fs.stat(filePath);
+					if (stat.isFile()) {
+						await fs.unlink(filePath);
+					}
 				}
 			}
 			return true;

@@ -1,6 +1,7 @@
 // ABOUTME: Centralized path utilities for safe Obsidian API operations
 // ABOUTME: Handles vault paths, plugin directories, and file operations
 
+import { promises as fs } from 'fs';
 import { FileSystemAdapter, normalizePath, Notice } from 'obsidian';
 import type { App, PluginManifest } from 'obsidian';
 import * as path from 'path';
@@ -105,6 +106,11 @@ export class PathUtils {
 			return '';
 		}
 		const result = path.join(...filtered);
+		// Don't use normalizePath on absolute paths as it strips the leading slash
+		// Only normalize vault-relative paths
+		if (path.isAbsolute(result)) {
+			return result;
+		}
 		return normalizePath(result);
 	}
 
@@ -132,8 +138,10 @@ export class PathUtils {
 				await this.app.vault.adapter.mkdir(normalizedPath);
 			}
 		} catch (error) {
-			new Notice(`Failed to create directory: ${normalizedPath}`);
-			throw error;
+			const errorMessage = error instanceof Error ? error.message : String(error);
+			const userMessage = `Failed to create output directory "${normalizedPath}". ${errorMessage.includes('parent') || errorMessage.includes('ENOENT') ? 'The parent directory may not exist or you may not have write permissions.' : 'You may not have write permissions or the path is invalid.'}`;
+			new Notice(userMessage);
+			throw new Error(userMessage);
 		}
 	}
 
@@ -238,7 +246,6 @@ export class PathUtils {
 
 		if (isAbsolutePath) {
 			try {
-				const fs = require('fs').promises;
 				await fs.access(path);
 				return true;
 			} catch {
@@ -247,5 +254,37 @@ export class PathUtils {
 		}
 
 		return false;
+	}
+
+	/**
+	 * Converts an absolute path to a vault-relative path.
+	 *
+	 * This method is used to convert absolute filesystem paths to vault-relative
+	 * paths suitable for use with Obsidian's vault adapter operations. If the path
+	 * does not start with the vault base path, it is returned unchanged.
+	 *
+	 * @param absolutePath - The absolute path to convert
+	 * @returns The vault-relative path (without leading slash) or the original path if not within vault
+	 *
+	 * @example
+	 * ```typescript
+	 * const pathUtils = new PathUtils(app);
+	 * const vaultPath = '/Users/name/vault';
+	 * const absolutePath = '/Users/name/vault/folder/file.md';
+	 * const relative = pathUtils.toVaultRelative(absolutePath);
+	 * // Returns: 'folder/file.md'
+	 * ```
+	 */
+	toVaultRelative(absolutePath: string): string {
+		const vaultBasePath = this.getVaultPath();
+		if (!absolutePath.startsWith(vaultBasePath)) {
+			return absolutePath;
+		}
+
+		let relativePath = absolutePath.substring(vaultBasePath.length);
+		if (relativePath.startsWith('/') || relativePath.startsWith('\\')) {
+			relativePath = relativePath.substring(1);
+		}
+		return relativePath;
 	}
 }

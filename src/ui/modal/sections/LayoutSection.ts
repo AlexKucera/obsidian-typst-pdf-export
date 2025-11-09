@@ -13,7 +13,9 @@ export class LayoutSection implements ModalSection {
 	
 	render(containerEl: HTMLElement, state: ModalState): void {
 		this.container = containerEl.createDiv('export-section');
-		this.container.createEl('h3', { text: 'Page Layout' });
+		new Setting(this.container)
+			.setName('Page layout')
+			.setHeading();
 		
 		this.createPageSizeSettings(state);
 		this.createOrientationSettings(state);
