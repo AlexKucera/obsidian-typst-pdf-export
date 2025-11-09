@@ -51,19 +51,23 @@ export class FrontmatterProcessor {
 		const parsed = matter(content);
 		
 		if (parsed.data && Object.keys(parsed.data).length > 0) {
-			// Replace frontmatter title with filename if noteTitle is provided
+			// Sanitize frontmatter first to prevent citation fields from leaking to downstream consumers
+			const sanitizedFrontmatter = this.stripCitationFields(parsed.data);
+
+			// Store sanitized frontmatter in metadata (with title override if needed)
 			if (this.noteTitle) {
-				const frontmatterCopy = { ...parsed.data };
-				frontmatterCopy.title = this.noteTitle;
-				result.metadata.frontmatter = frontmatterCopy;
+				result.metadata.frontmatter = {
+					...sanitizedFrontmatter,
+					title: this.noteTitle
+				};
 			} else {
-				result.metadata.frontmatter = parsed.data;
+				result.metadata.frontmatter = sanitizedFrontmatter;
 			}
-			
+
 			// Extract tags from frontmatter if they exist
 			if (parsed.data.tags) {
 				let frontmatterTags: string[] = [];
-				
+
 				if (Array.isArray(parsed.data.tags)) {
 					// Handle array of tags
 					frontmatterTags = parsed.data.tags
@@ -76,7 +80,7 @@ export class FrontmatterProcessor {
 						.map((tag: string) => tag.trim())
 						.filter((tag: string) => tag !== '');
 				}
-				
+
 				// Merge with existing tags (avoid duplicates)
 				for (const tag of frontmatterTags) {
 					if (!result.metadata.tags.includes(tag)) {
@@ -84,19 +88,16 @@ export class FrontmatterProcessor {
 					}
 				}
 			}
-			
+
 			// Extract title - use noteTitle if available, otherwise frontmatter title
 			if (this.noteTitle) {
 				result.metadata.title = this.noteTitle;
 			} else if (parsed.data.title && typeof parsed.data.title === 'string') {
 				result.metadata.title = parsed.data.title.trim();
 			}
-			
-			// Handle frontmatter preservation and display options
-			const sanitizedFrontmatter = this.stripCitationFields(parsed.data);
-			const finalFrontmatter = this.noteTitle ?
-				{ ...sanitizedFrontmatter, title: this.noteTitle } :
-				sanitizedFrontmatter;
+
+			// Use the sanitized frontmatter from metadata for writing
+			const finalFrontmatter = result.metadata.frontmatter;
 			
 			if (this.preserveFrontmatter) {
 				// Keep the frontmatter in the content, but reconstruct it with the modified title
