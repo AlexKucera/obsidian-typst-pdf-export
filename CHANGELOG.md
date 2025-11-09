@@ -7,6 +7,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.4.0] - 2025-01-09
+
+### Added
+- Minimum version requirements for external dependencies (Pandoc 3.7.0+, Typst 0.13.0+, ImageMagick 7.1.2+)
+- Version comparison utilities (`compareVersions`, `isVersionAtLeast`) for semantic version validation
+- Outdated dependency warnings in dependency checker with detailed version information
+- Enhanced dependency status display showing current version vs. minimum required version
+- Comprehensive version checking documentation in README
+
+### Changed
+- Updated README to document minimum version requirements in Quick Start and Requirements sections
+- Enhanced dependency checker to validate installed versions against minimum requirements
+- Improved user-facing dependency status messages with version-specific guidance
+
+### Fixed
+- Case-sensitive regex pattern for Typst version detection (now case-insensitive with `/i` flag)
+- Version extraction now correctly handles "Typst 0.13.0" (capital T) format
+
 ## [1.3.1] - 2025-11-09
 
 ### Added
