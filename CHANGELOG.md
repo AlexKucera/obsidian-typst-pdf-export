@@ -5,10 +5,16 @@ All notable changes to the Obsidian Typst PDF Export plugin will be documented i
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased] - 2025-09-25
+## [Unreleased]
+
+## [1.3.1] - 2025-11-09
 
 ### Added
-- **Remote Image Download**: Automatic download and embedding of remote images (http:// and https:// URLs) during export. Works with both wikilink-style embeds `![[https://...]]` and standard markdown images `![alt](https://...)`. Falls back to placeholder text if download fails (10-second timeout). Images are downloaded to temp directory and cleaned up after export
+- Unit tests for core functionalities with comprehensive test coverage
+- YAML parsing support (js-yaml) for enhanced frontmatter and configuration handling
+- Extensive docstrings throughout codebase for improved maintainability
+- Config directory existence check for enhanced error handling
+- **Remote Image Download**: Automatic download and embedding of remote images (http:// and https:// URLs) during export. Works with both wikilink-style embeds `![[https://...]]` and standard markdown images `![alt](https://...)`. Falls back to placeholder text if download fails (10-second timeout)
 - **Windows Compatibility**: Comprehensive Windows executable detection with platform-specific extensions (.cmd, .bat, .ps1, .exe)
 - **Dynamic Image Format Support**: FileDiscovery now supports multiple image formats (.png, .jpg, .jpeg, .webp, .gif, .bmp, .tiff)
 - **Enhanced Pattern Matching**: Five-strategy file discovery system for robust PDF-to-image conversion output detection
@@ -16,9 +22,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Improved Plugin Isolation**: TempDirectoryManager now uses proper plugin namespacing to prevent conflicts
 
 ### Fixed
+- Path doubling issues in directory creation and file operations
+- Executable path resolution on Windows for better cross-platform compatibility
+- Bibliography errors by properly handling YAML parsing conflicts
+- Image download order to ensure correct processing sequence
+- Images without extensions now handled correctly
 - **Windows Absolute Path Handling**: Fixed ENOENT errors on Windows caused by improper path joining when combining vault paths with plugin directories. PathUtils.joinPath() now properly detects and handles absolute paths using path.isAbsolute() to prevent invalid path construction like `C:\MyVault\C:\MyVault\...`
 - **Remote URL Image Handling**: Fixed ENOENT errors when markdown contains remote image URLs. Remote images are now automatically downloaded and embedded, with graceful fallback to placeholder text if download fails
-- **Bibliography Errors**: Fixed "document does not contain a bibliography" errors by disabling Pandoc's automatic citeproc filter. Pandoc was detecting citation-like patterns in markdown (such as wikilinks or certain frontmatter fields) and attempting to generate bibliographies without a bibliography file
 - **Cross-Platform Binary Discovery**: BinaryLocator now includes comprehensive fallback paths for different installation methods
 - **Vault-Relative Path Consistency**: Fixed all vault.adapter operations to use proper vault-relative paths instead of absolute paths
 - **Resource Path Resolution**: Removed extra quotes from Pandoc arguments that could break spawn commands on Windows
@@ -26,12 +36,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Template Path Resolution**: Fixed resource path handling in PandocCommandBuilder for better cross-platform compatibility
 
 ### Changed
+- Node.js requirement updated to version 18.20+ for latest LTS support
+- Logging improvements: replaced 'info' with 'debug' for better log level hierarchy
+- Path normalization simplified for Windows compatibility
+- Refactored path handling throughout codebase for consistency and reliability
+- Applied Obsidian linter rules and fixed code quality issues
+- Standardized terminology and error handling across modules
+- Automated cleanup with async lifecycle handling for better resource management
 - **Enhanced Error Recovery**: Improved fallback mechanisms and graceful degradation throughout font and file discovery systems
 - **Platform Detection**: Added platform awareness to caching systems for better cross-platform consistency
 - **Code Quality**: Improved type safety, error handling, and validation across all affected modules
 - **Performance**: Optimized file discovery with progressive pattern matching strategies
 
 ### Security
+- Sanitizes frontmatter to prevent data leakage in exports
+- Rejects absolute paths in vault exports for improved security
+- Restricts shell metacharacters in paths to prevent injection attacks
+- Strengthens path validation against reserved names and reserved filesystem names
+- Enhanced cleanup ensures proper resource disposal
 - **Path Validation**: Enhanced path sanitization and validation for all file system operations
 - **Process Spawning**: Improved security in font discovery and binary execution with proper argument handling
 
