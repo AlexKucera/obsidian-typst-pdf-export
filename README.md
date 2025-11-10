@@ -19,6 +19,7 @@ Export Obsidian notes to PDF using the Typst typesetting system. Supports custom
 - [Requirements](#requirements)
 - [Templates](#templates)
 - [Advanced Usage](#advanced-usage)
+- [Known Limitations](#known-limitations)
 - [Troubleshooting](#troubleshooting)
 - [Development](#development)
 - [Contributing](#contributing)
@@ -252,6 +253,32 @@ Best!
 JB
 ```
 ````
+
+## Known Limitations
+
+This plugin works by converting your Markdown notes to PDF through a static conversion pipeline (Markdown → Typst → PDF). Due to this design, certain Obsidian features that generate or modify content dynamically cannot be exported:
+
+### Dynamic Content Plugins
+
+**DataView Plugin**: Queries and dynamically generated tables/lists from DataView will not appear in the exported PDF. DataView evaluates queries at runtime within Obsidian, but the plugin exports the raw Markdown source before this evaluation occurs.
+
+**Database/Query Plugins**: Similar to DataView, any plugin that generates content through database queries or dynamic rendering will not be included in the export. This includes:
+- Core Properties/Bases plugin
+- Database folder plugin
+- Any query-based content generation
+
+### Custom Syntax & Styling
+
+**Plugin-Specific Syntax**: Plugins that introduce custom Markdown syntax extensions will not translate to the PDF unless Pandoc explicitly supports that syntax. The conversion pipeline relies on Pandoc's understanding of Markdown, which may not recognize plugin-specific extensions.
+
+**Custom Styling**: Visual styling applied by themes or plugins (such as callout styling, custom CSS classes, or plugin-specific formatting) will not be preserved. The PDF output uses Typst templates for styling, which are independent of Obsidian's rendering engine.
+
+### Workarounds
+
+For content you need in the exported PDF:
+1. **Manual Inclusion**: Copy DataView query results into static Markdown before exporting
+2. **Preprocessing**: Create a separate note with materialized content for export
+3. **Alternative Formatting**: Use standard Markdown features that Pandoc and Typst support natively
 
 ## Troubleshooting
 
